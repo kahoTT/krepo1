@@ -1,4 +1,3 @@
-"Kaho Tse"
 from multiprocessing.pool import Pool
 import numpy as np
 import matplotlib.pylab as plt
