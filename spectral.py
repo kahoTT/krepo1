@@ -1,5 +1,4 @@
 from multiprocessing.pool import Pool
-sdasdsad
 
 import numpy as np
 import matplotlib.pylab as plt
