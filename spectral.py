@@ -1,7 +1,3 @@
-update
-assaoas
-asoas
-asassda
 from multiprocessing.pool import Pool
 
 import numpy as np
