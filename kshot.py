@@ -15,7 +15,7 @@ from functools import partial
 #         r0       r1       r2              r[jm]
 #            t[1]     t[2]           t[jm]      t[jm+1]
 #            d[1]     d[2]           d[jm]	d[jm+1]
-#            p[1]     p[2]           p[jm]
+#            p[1]     p[2]           p[jm]      p[jm+1]
 #            e[1]     e[2]           e[jm]
 #         xl0                               xl[jm]
 #         g0                                g[jm]
@@ -107,12 +107,14 @@ class Shot(object):
             dd0 = f/df
             d0n = d0 - dd0  
             d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
+### 1st zone        
+
         p_surf = p0
         t_surf = T
         #dm = d0 * 4 * np.pi * (R**3 - (R-dr)**3) / 3  # solve directly , dm : change of mass
-        t0 = T # guess
+        t0 = T 
         r0 = R
-        xm_surf = 4 * np.pi * r0**2   * ki0 * 2 / 3
+        xm1 = 4 * np.pi * r0**2   * ki0 * 2 / 3 # surface mass
         xl0 = L
         z0 = M
         xm0 = xms
@@ -131,7 +133,7 @@ class Shot(object):
             ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3
             acdr0 = ac * ki0 / (d0 * 0.5 * dr0) # 0.5 comes from going to a half of the zone
             l0 = (t0**4 - t_surf**4) * acdr0
-
+            
             f0 = p0 - p1
             h0 = l0 - xl0
 
@@ -158,45 +160,35 @@ class Shot(object):
 
 # third step: include energy generation, we have t0 d0 p0 at the zone center
 # for pdv : using the boundary pressure
-
+        p1  = p_surf
         dt0 = xm0 / mdot
         s0  = net.epsdt(t0, d0, dt0, update=True)
-        dL  = s0 * xm0
-        xlm = xl0 - dL
-        print(dL)
-#        du = u0 - u1
-#        pdv = p0 *       
-#        sdot = mdot * du / xm1 + s0
+#@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
+        z0  = M - xm1 
+#@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
         print(f'first zone , tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
         print(f'next zone mass={xm0*1.2:12.5e}')
 
-# by Alex       dm = 0.5 * (m1 + m2) # by Alex
-# by Alex       du = u_2 - u_1
-# by Alex       sdot=du/dt=2*mdot*(u_2-u1) / (m_2 + m_1)=(u_2-u_1) * dmx1
-# by Alex       dmx1=2*mdot/(m_2+m_1)
-# by Alex       dL = sdot * d_1
-# by Alex        s0 = net.epsdt(t0, d0, dt0, update=True)
 # l0 is actually depends on current u0 which is computed in iteration
 # 1st zone mass is modified by not affecting all the variables fro which the original zone mass is used
-        z1  = z0 - xm_surf
 
-        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
-        k = 190
-        num_run = int(k)
-        tn  = np.ndarray(num_run+1) 
-        dn  = np.ndarray(num_run+1) 
-        xm  = np.ndarray(num_run+1)
-        pn  = np.ndarray(num_run+1) 
-        xln = np.ndarray(num_run) 
-        sn  = np.ndarray(num_run) 
+#        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
+        nmax = 2**11 
+        tn  = np.ndarray(nmax+1)
+        dn  = np.ndarray(nmax+1)
+        xm  = np.ndarray(nmax+1)
+        pn  = np.ndarray(nmax+1)
+
+        xln = np.ndarray(nmax)
+        sn  = np.ndarray(nmax)
+        rn  = np.ndarray(nmax)
 #        zn  = np.ndarray(num_run) 
-#        rn  = np.ndarray(num_run) 
 #        gn  = np.ndarray(num_run) 
 
         tn[0]  = t_surf
         dn[0]  = d1
-        xm[0]  = xm_surf
-        pn[0]  = p_surf
+        xm[0]  = xm1
+        pn[0]  = p1
         xln[0] = xl0
         sn[0]  = s0
 
@@ -204,10 +196,13 @@ class Shot(object):
         dn[1]  = d0
         xm[1]  = xm0
         pn[1]  = p0
-        
+        rn[1]  = R
+
 # starting from the second zone
-#        for j in range(1 , num_run):
-        for j in range(1 , k):
+        for j in range(nmax):
+            if d0 > 5e11 or t0 > 5e9:
+                break
+            xm2 = xm1
             xm1 = xm0
             xm0 = xm1 * xmsf
             dt0 = xm0 / mdot
@@ -216,19 +211,31 @@ class Shot(object):
             z1  = z0  # mass for computing gravity
             z0  = z1 - xms
             g1  = g0
-            g0 = GRAV * z0 / r0**2
+            g0  = GRAV * z0 / r0**2
     
             ki1 = ki0
+            p2  = p1
             p1  = p0
             t1  = t0
+            d2  = d1
             d1  = d0
-    
-            xl0 = xlm
-            p = p1 +  xm0 * g0 / (4 * np.pi * r0**2) 
+            u1  = u0    
+            xl1 = xl0
+            s1  = s0
+            p   = p1 +  xm0 * g0 / (4 * np.pi * r0**2) 
+            dmx = 2 * mdot / (xm0 + xm1)
+            dt0 = xm0 / mdot
+            pdv1 = p2 * (d1 - d2) / d2**2
             while True:
                 p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
                 ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
     
+                pdv0 = p1 * (d0 - d1) / d1**2
+                du   = u0 - u1
+                sdot = du * dmx
+                dL   = (sdot + (pdv1 - pdv0) / dt0) * d1  # mass from zone 1 to zone 2, so * d1
+                xl0  = xl1 - dL
+
                 rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
                 dr0 = r0 - rm
                 ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3
@@ -259,7 +266,6 @@ class Shot(object):
             dt0 = xm0 / mdot
             s0  = net.epsdt(t0, d0, dt0, update=True)
             dL  = s0 * xm0
-            xlm = xl0 - dL
 
             tn[j+1]  = t0
             dn[j+1]  = d0
@@ -267,10 +273,19 @@ class Shot(object):
             pn[j+1]  = p0
             xln[j] = xl0
             sn[j]  = s0
+            rn[j]  = r0
 
             print(f'zone {j}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
-        self.xm = xm
-        self.xln = xln
+        self.xm  = xm[:j+1]
+        self.xln = xln[:j]
+        self.rn  = rn[:j]
+
+        self.y = np.cumsum((self.xm[1:] / (4 * np.pi * self.rn**2)))
+
+#        self.y_m = np.zeros(jm + 2)
+#        self.y_m[1:-1] = 0.5 * (self.y[:-2] + self.y[1:-1])
+#        self.y_m[ 0] = self.y[0]
+#        self.y_m[-1] = self.y[-2]
 
