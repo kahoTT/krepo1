@@ -85,7 +85,7 @@ class NetWork(Net):
 # ki0bd0 = (d(1/kappa)/(d rho))/(2 * kappa) , ki = 1/kappa
 
 class Shot(object):
-    def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
+    def __init__(self, L=7e36, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
             abu = dict(he4=0.99, n14=0.009, fe56=0.001), 
             xms=1e13, xmsf=1.2): 
         abu = AbuSet(abu)
@@ -227,40 +227,41 @@ class Shot(object):
             pdv1 = 0.5 * (p2 + p1) * (1 / d2 - 1 / d1)
             du1 = u2 - u1
             dL1 = (du1 + pdv1) * dmx1
+            ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3  # use xm0 , xm1
+#            acdr0 = ac * ki0 / (d0 * 0.5 * dr0)
 
             while True:
                 p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
                 ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
     
-                pdv0    = 0.5 * (p1 + p0) * (1 / d0 - 1 / d1)
-                pdv0bt0 = 0.5 * p0bt0 * (1 / d0 - 1 / d1)
-                pdv0bd0 = 0.5 * p0bd0 * (1 / d0 - 1 / d1) - 0.5 * (p1 + p0) * (1 / d0**2)
+                pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
+                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
+                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) * (1 / d0**2)
                 
                 du0    = u1 - u0
                 du0bt0 = - u0bt0
                 du0bd0 = - u0bd0
 
                 dL0  = (du0 + pdv0) * dmx0
-                dL   = (dL1 + dL0 + s1) * xm1
+                dL   = (0.5 * (dL1 + dL0) + s1) * xm1
                 xl0  = xl1 - dL
 
                 rc = np.cbrt(r0**3 - 3 * 0.5 * xm0 / (4 * np.pi * d0))
                 dr0 = r0 - rc
-                ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3
-#                acdr0 = ac * ki0 / (d0 * 0.5 * dr0)
                 acdr0 = ac * ki0 / (d0 * dr0)
                 l0 = (t0**4 - t1**4) * acdr0
                 f0 = p0 - p
                 h0 = l0 - xl0
     
-                breakpoint () #    
+#                breakpoint ()   
                 b = np.array([f0,h0])
                 b1 = np.array([p,xl0])
     
                 if np.abs(f0/p) < 1e-12 and np.abs(h0/xl1) < 1e-12:
                     break
-                dxl0bt0 = - (du0bt0 + pdv0bt0) * dmx0 * xm1
-                dxl0bd0 = - (du0bd0 + pdv0bd0) * dmx0 * xm1
+                print(f'Iteration[f0/p , h0/xl]'1)
+                dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
+                dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
                 dr0bd0 = - 0.5 * xm0 / (rc**2 * 4 * np.pi * d0**2)
                 f0bt0 = p0bt0
                 f0bd0 = p0bd0 
