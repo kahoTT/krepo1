@@ -83,9 +83,10 @@ class NetWork(Net):
 # HOW TO SOLVE , DON'T KNOW RHO , root to find zero, 
 # g / (1.5 * kappa(T, rho)) == P(T, rho)
 # ki0bd0 = (d(1/kappa)/(d rho))/(2 * kappa) , ki = 1/kappa
+# d(ki) = 2 * kib * ki
 
 class Shot(object):
-    def __init__(self, L=7e36, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
+    def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
             abu = dict(he4=0.99, n14=0.009, fe56=0.001), 
             xms=1e13, xmsf=1.2): 
         abu = AbuSet(abu)
@@ -161,7 +162,7 @@ class Shot(object):
         dt0 = xm0 / mdot
         s0  = net.epsdt(t0, d0, dt0, update=True)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
-        z0  = M - xm1 
+#        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
         print(f'first zone , tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
         print(f'next zone mass={xm0*1.2:12.5e}')
@@ -178,8 +179,9 @@ class Shot(object):
 
         xln = np.ndarray(k)
         sn  = np.ndarray(k)
+        scn = np.ndarray(k)
         rn  = np.ndarray(k)
-#        zn  = np.ndarray(k) 
+        dln = np.ndarray(k) 
 #        gn  = np.ndarray(k) 
 
         tn[0]  = t_surf
@@ -187,7 +189,9 @@ class Shot(object):
         xm[0]  = xm1
         pn[0]  = p1
         xln[0] = xl0
-        sn[0]  = s0
+        dln[0] = 0
+        sn[0]  = s0* xm0
+        scn[0] = sn[0]
         rn[0]  = R
 
         tn[1]  = t0
@@ -206,7 +210,7 @@ class Shot(object):
             r1  = r0
             r0  = rm
             z1  = z0  # mass for computing gravity
-            z0  = z1 - xms
+            z0  = z1 - xm1
             g1  = g0
             g0  = GRAV * z0 / r0**2
     
@@ -224,19 +228,23 @@ class Shot(object):
             dmx1 = 2 * mdot / (xm1 + xm2)
             dmx0 = 2 * mdot / (xm0 + xm1)
             dt0 = xm0 / mdot
-            pdv1 = 0.5 * (p2 + p1) * (1 / d2 - 1 / d1)
+#            pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
+            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
             du1 = u2 - u1
             dL1 = (du1 + pdv1) * dmx1
-            ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3  # use xm0 , xm1
-#            acdr0 = ac * ki0 / (d0 * 0.5 * dr0)
-
+            ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
+            jj = 1
             while True:
+                jj += 1
                 p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
                 ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
-    
+
+#                pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
+#                pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
+#                pdv0bd0 = pdv0 / (1 / p1 + 1 / p0) * p0bd0 / p0**2 + 2 / (1 / p1 + 1 / p0) * (1 / d0**2)
                 pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
                 pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
-                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) * (1 / d0**2)
+                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
                 
                 du0    = u1 - u0
                 du0bt0 = - u0bt0
@@ -246,9 +254,7 @@ class Shot(object):
                 dL   = (0.5 * (dL1 + dL0) + s1) * xm1
                 xl0  = xl1 - dL
 
-                rc = np.cbrt(r0**3 - 3 * 0.5 * xm0 / (4 * np.pi * d0))
-                dr0 = r0 - rc
-                acdr0 = ac * ki0 / (d0 * dr0)
+                acdr0 = ac * (ki0 + ki1) * 2
                 l0 = (t0**4 - t1**4) * acdr0
                 f0 = p0 - p
                 h0 = l0 - xl0
@@ -259,15 +265,14 @@ class Shot(object):
     
                 if np.abs(f0/p) < 1e-12 and np.abs(h0/xl1) < 1e-12:
                     break
-                print(f'Iteration[f0/p , h0/xl]'1)
+                print(f'Iteration {jj}={f0/p , h0/xl1}')
                 dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                 dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
-                dr0bd0 = - 0.5 * xm0 / (rc**2 * 4 * np.pi * d0**2)
                 f0bt0 = p0bt0
                 f0bd0 = p0bd0 
     
-                h0bt0 = l0 * 2 * ki0bt0 + acdr0 * 4 * t0 ** 3 - dxl0bt0
-                h0bd0 = l0 * (2 * ki0bd0 - 1 / d0 - dr0bd0 / dr0) - dxl0bd0
+                h0bt0 = (t1**4 - t0**4) * ac * 4 * ki0bt0 * ki0  + acdr0 * 4 * t0 ** 3 - dxl0bt0
+                h0bd0 = (t1**4 - t0**4) * ac * 4 * ki0bd0 * ki0 - dxl0bd0
     
                 A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]])
                 c = np.linalg.solve(A,b)
@@ -282,10 +287,12 @@ class Shot(object):
             xm[j+1]  = xm0
             pn[j+1]  = p0
             xln[j] = xl0
-            sn[j]  = s0
+            dln[j] = dL * xm0
+            sn[j]  = s1 * xm1
+            scn[j]  += sn[j]
             rn[j]  = r0
 
-            print(f'zone {j}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
+            print(f'zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
         self.xm  = xm[:j+1]
@@ -293,7 +300,10 @@ class Shot(object):
         self.tn  = tn[:j+1]
         self.dn  = dn[:j+1]
         self.xln = xln[:j]
+        self.dln = dln[:j]
         self.rn  = rn[:j]
+        self.sn  = sn[:j]
+        self.scn = scn[:j]
 
         self.y = np.cumsum((self.xm[1:] / (4 * np.pi * self.rn**2)))
 
