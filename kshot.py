@@ -114,7 +114,7 @@ class Shot(object):
         #dm = d0 * 4 * np.pi * (R**3 - (R-dr)**3) / 3  # solve directly , dm : change of mass
         t0 = T 
         r0 = R
-        xm1 = 4 * np.pi * r0**2   * ki0 * 2 / 3 # surface mass
+        xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass
         xl0 = L
         z0 = M
         xm0 = xms
@@ -172,10 +172,10 @@ class Shot(object):
 
 #        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
         k   = 1000 
-        tn  = np.ndarray(k+1)
-        dn  = np.ndarray(k+1)
-        xm  = np.ndarray(k+1)
-        pn  = np.ndarray(k+1)
+        tn  = np.ndarray(k)
+        dn  = np.ndarray(k)
+        xm  = np.ndarray(k)
+        pn  = np.ndarray(k)
 
         xln = np.ndarray(k)
         sn  = np.ndarray(k)
@@ -228,8 +228,8 @@ class Shot(object):
             dmx1 = 2 * mdot / (xm1 + xm2)
             dmx0 = 2 * mdot / (xm0 + xm1)
             dt0 = xm0 / mdot
-#            pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
-            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
+            pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
+#            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
             du1 = u2 - u1
             dL1 = (du1 + pdv1) * dmx1
             ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
@@ -239,12 +239,12 @@ class Shot(object):
                 p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
                 ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
 
-#                pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
-#                pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
-#                pdv0bd0 = pdv0 / (1 / p1 + 1 / p0) * p0bd0 / p0**2 + 2 / (1 / p1 + 1 / p0) * (1 / d0**2)
-                pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
-                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
-                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
+                pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
+                pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
+                pdv0bd0 = pdv0 / (1 / p1 + 1 / p0) * p0bd0 / p0**2 + 2 / (1 / p1 + 1 / p0) * (1 / d0**2)
+#                pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
+#                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
+#                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
                 
                 du0    = u1 - u0
                 du0bt0 = - u0bt0
@@ -254,7 +254,7 @@ class Shot(object):
                 dL   = (0.5 * (dL1 + dL0) + s1) * xm1
                 xl0  = xl1 - dL
 
-                acdr0 = ac * (ki0 + ki1) * 2
+                acdr0 = ac * (ki0 + ki1)
                 l0 = (t0**4 - t1**4) * acdr0
                 f0 = p0 - p
                 h0 = l0 - xl0
@@ -271,8 +271,8 @@ class Shot(object):
                 f0bt0 = p0bt0
                 f0bd0 = p0bd0 
     
-                h0bt0 = (t1**4 - t0**4) * ac * 4 * ki0bt0 * ki0  + acdr0 * 4 * t0 ** 3 - dxl0bt0
-                h0bd0 = (t1**4 - t0**4) * ac * 4 * ki0bd0 * ki0 - dxl0bd0
+                h0bt0 = (t0**4 - t1**4) * ac * 2 * ki0bt0 * ki0  + acdr0 * 4 * t0 ** 3 - dxl0bt0
+                h0bd0 = (t0**4 - t1**4) * ac * 2 * ki0bd0 * ki0 - dxl0bd0
     
                 A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]])
                 c = np.linalg.solve(A,b)
@@ -295,10 +295,20 @@ class Shot(object):
             print(f'zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
+        tn[j+1] = np.nan
+        dn[j+1] = np.nan
+        pn[j+1] = np.nan
+        xm[j+1] = M
+
+        tn      = tn[:j+2][::-1]
+        dn      = dn[:j+2][::-1]
+        pn      = pn[:j+2][::-1]
+        xm      = xm[:j+2][::-1]
+
+        self.pn  = pn
+        self.tn  = tn
+        self.dn  = dn
         self.xm  = xm[:j+1]
-        self.pn  = pn[:j+1]
-        self.tn  = tn[:j+1]
-        self.dn  = dn[:j+1]
         self.xln = xln[:j]
         self.dln = dln[:j]
         self.rn  = rn[:j]
