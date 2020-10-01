@@ -100,7 +100,8 @@ class Shot(object):
             xms=1e13, xmsf=1.2): 
         abu = AbuSet(abu)
         net = NetWork(abu)
-        kappa = partial(TabKappa(), T4=False)  # leave all other varables open
+#        kappa = partial(TabKappa(), T4=False)  # leave all other varables open
+        kappa = partial(TabKappa(), T4=False) # original kappa function
         eos = partial(Eos(), T4=False) 
         T = qqrt(L / (4 * np.pi * R**2 * SB)) 
         g = GRAV*M/R**2
@@ -114,6 +115,7 @@ class Shot(object):
             if np.abs(f) < 1e-12 * p0:
                 break
             df = p0bd0 - g / 1.5 * ki0bd0           # ki0bd0 has to be divided by 
+#            df = p0bd0 - g / 1.5 * ki0bd0 * 2 * ki0  # original derivative of ki  
             dd0 = f/df
             d0n = d0 - dd0  
             d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
@@ -156,6 +158,9 @@ class Shot(object):
 
             h0bt0 = l0 * ki0bt0 / ki0 + acdr0 * 4 * t0 ** 3
             h0bd0 = l0 * (ki0bd0 / ki0 - 1 / d0 - dr0bd0 / dr0)
+
+#            h0bt0 = l0 * 2 * ki0bt0  + acdr0 * 4 * t0 ** 3 # original kappa
+#            h0bd0 = l0 * (2 * ki0bd0 - 1 / d0 - dr0bd0 / dr0) # original kappa
 
             A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]]) # by Alex
             c = np.linalg.solve(A,b) # by Alex
@@ -286,8 +291,11 @@ class Shot(object):
                 f0bt0 = p0bt0
                 f0bd0 = p0bd0 
     
-                h0bt0 = (t0**4 - t1**4) * ac * ki0bt0 * ki0  + acdr0 * 4 * t0 ** 3 - dxl0bt0
+                h0bt0 = (t0**4 - t1**4) * ac * ki0bt0 + acdr0 * 4 * t0 ** 3 - dxl0bt0
                 h0bd0 = (t0**4 - t1**4) * ac * ki0bd0 - dxl0bd0
+
+#                h0bt0 = (t0**4 - t1**4) * ac * 2 * ki0bt0 * ki0  + acdr0 * 4 * t0 ** 3 - dxl0bt0
+#                h0bd0 = (t0**4 - t1**4) * ac * 2 * ki0bd0 * ki0 - dxl0bd0
     
                 A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]])
                 c = np.linalg.solve(A,b)
