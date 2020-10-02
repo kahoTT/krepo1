@@ -47,10 +47,15 @@ class NetWork(Net):
         self.abu = abu
         ppn = np.array([abu.Y(I.he4), 0, 0])
         super().__init__(ppn, *args, **kwargs)
+
     def mu(self):
         mui = np.sum(self.ppn * (1 + ufunc_Z(self.ions)))
         mui += np.sum([a / i.mu for i,a in self.abu if i not in self.ions])
         return 1 / mui
+
+    def sdot(self, t, d, dt):
+        result = super().epsdt(t, d, dt, update=True)
+        return result
 
 class SimpleEos(object):
     def __init__(self , net):
@@ -84,23 +89,20 @@ class SimpleKappa(object):
 
 class SimpleNet(object):
     def __init__(self, abu, *args, **kwargs):
-        kappa = kwargs.pop(None, 'table')
-        if kappa == None:
+#        kappa = kwargs.pop('kappa', 'table')
+        if kappa == 'simple':
             self._kappai = SimpleKappa(abu) 
-        elif kappa == 'table':
-            self._kappai = partial(TabKappa(), T4=False) 
         else:
-            raise AttributeError(f'kappa undefined')
-        if eos == 'heateos':
+            self._kappai = partial(TabKappa(), T4=False) 
+#        eos = kwargs.pop('eos', 'table')
+        if eos == 'simple':
+            self.eos = SimpleEos(self._net) 
+        else:
             self.eos = partial(Eos(), T4=False) 
-        elif eos == None:
-            self.eos = SimpleEos(_net) 
         self._net = Network(abu)
-        self.sdot = partial(self.net.sdot, update=True)
+        self.sdot = self._net.sdot 
 
-    def net(self, Net):
-     
-#!!! FINAL BOSS, PUT IT THE DAMN KEPLER !!!
+#!!! FINAL BOSS, PUT IN THE DAMN KEPLER !!!
 
 #from kepler.code import Kepler
 #class KepNet(object):
@@ -110,25 +112,29 @@ class SimpleNet(object):
 
 class Shot(object):
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
-            abu = dict(he4=0.99, n14=0.009, fe56=0.001), 
-            xms=1e13, xmsf=1.2): 
-        if net == 'simple'
-            net = SimpleNet(abu)
-        self.net = net
-        eos = net.eos
-        sdot = net.sdot
-
+            abu = None, 
+            xms=1e13, xmsf=1.2, net=''): 
+        if abu is None:
+            abu = dict(he4=0.99, n14=0.009, fe56=0.001)
         abu = AbuSet(abu)
-        net = NetWork(abu)
-#        kappa = partial(TabKappa(), T4=False) # original kappa function
-        eos = net.eos
+        if net == 'simple':
+            net = SimpleNet(abu)
+            self.net = net
+            eos = net.eos
+            sdot = net.sdot
+            kappa = net._kappai
+        else:
+            breakpoint ()   
+            break 
+print(f'please define a network')
+
         T = qqrt(L / (4 * np.pi * R**2 * SB)) 
         g = GRAV*M/R**2
         d0 = 1
         while True:
-            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0) # we need only 2, look up the SimpleEos
-            ki0,_,ki0bd0 = kappa(T , d0)                 # we will use heat kappa , look at call, 3 results
-            f = p0 - g / 1.5 * ki0 # 2/3 optical depth
+            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0)
+            ki0,_,ki0bd0 = kappa(T , d0)
+            f = p0 - g / 1.5 * ki0
             if np.abs(f) < 1e-12 * p0:
                 break
             df = p0bd0 - g / 1.5 * ki0bd0           # ki0bd0 has to be divided by 
@@ -191,7 +197,7 @@ class Shot(object):
 # for pdv : using the boundary pressure
         p1  = p_surf
         dt0 = xm0 / mdot
-        s0  = net.epsdt(t0, d0, dt0, update=True)
+        s0  = net.sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
@@ -296,7 +302,6 @@ class Shot(object):
                 f0 = p0 - p
                 h0 = l0 - xl0
     
-#                breakpoint ()   
                 b = np.array([f0,h0])
                 b1 = np.array([p,xl0])
     
@@ -320,7 +325,7 @@ class Shot(object):
                 t0, d0 = v - c
 
 
-            s0  = net.epsdt(t0, d0, dt0, update=True)
+            s0  = net.sdot(t0, d0, dt0)
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
 
             tn[j+1]  = t0
