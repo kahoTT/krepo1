@@ -89,18 +89,19 @@ class SimpleKappa(object):
 
 class SimpleNet(object):
     def __init__(self, abu, *args, **kwargs):
-#        kappa = kwargs.pop('kappa', 'table')
+        kappa = kwargs.pop('kappa', 'abc')
         if kappa == 'simple':
             self._kappai = SimpleKappa(abu) 
         else:
             self._kappai = partial(TabKappa(), T4=False) 
-#        eos = kwargs.pop('eos', 'table')
+        eos = kwargs.pop('eos', 'table')
         if eos == 'simple':
             self.eos = SimpleEos(self._net) 
         else:
             self.eos = partial(Eos(), T4=False) 
-        self._net = Network(abu)
+        self._net = NetWork(abu, *args, **kwargs)
         self.sdot = self._net.sdot 
+
 
 #!!! FINAL BOSS, PUT IN THE DAMN KEPLER !!!
 
@@ -113,7 +114,10 @@ class SimpleNet(object):
 class Shot(object):
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
             abu = None, 
-            xms=1e13, xmsf=1.2, net=''): 
+            xms=1e13, xmsf=1.2,
+            net='',
+            eos=''
+                 ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
         abu = AbuSet(abu)
@@ -124,9 +128,9 @@ class Shot(object):
             sdot = net.sdot
             kappa = net._kappai
         else:
-            breakpoint ()   
-            break 
-print(f'please define a network')
+            print(f'please define a network')
+        #breakpoint ()   
+        #break 
 
         T = qqrt(L / (4 * np.pi * R**2 * SB)) 
         g = GRAV*M/R**2
@@ -366,6 +370,8 @@ print(f'please define a network')
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
 
+        y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
+
         self.pn  = pn
         self.tn  = tn
         self.dn  = dn
@@ -376,6 +382,5 @@ print(f'please define a network')
         self.rn  = rn
         self.sn  = sn
         self.scn = scn
-
-#        self.y = np.cumsum((self.xm[1:] / (4 * np.pi * self.rn**2)))
+        self.y   = np.append(y,0)
 
