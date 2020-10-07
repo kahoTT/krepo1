@@ -371,6 +371,10 @@ class Shot(object):
         rn      = rn[:j+3][::-1]
 
         y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
+        y_m = np.zeros(j+3)
+        y_m[1:-1] = 0.5 * (y[:-1] + y[1:])
+        y_m[0] = y[0]
+        y_m[-1] = y[-1]
 
         self.pn  = pn
         self.tn  = tn
@@ -383,4 +387,5 @@ class Shot(object):
         self.sn  = sn
         self.scn = scn
         self.y   = np.append(y,0)
+        self.y_m = y_m
 
