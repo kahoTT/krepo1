@@ -8,6 +8,78 @@ from heat.numeric import *
 import numpy as np
 from functools import partial
 from heat.kappa import kappa as TabKappa_
+from matplotlib import pylab as plt
+
+class TabKappa(object):
+    def __init__(self, *args, **kwars):
+        self.kappa = TabKappa_(*args, **kwars)
+    def __call__(self, *args, **kwargs):
+        ki, kitx, kidx = self.kappa.__call__(*args, **kwargs)
+        ki2 = 2 * ki
+        return ki, kitx * ki2, kidx * ki2
+
+class NetWork(Net):
+    def __init__(self, abu, *args, **kwargs):
+        self.abu = abu
+        ppn = np.array([abu.Y(I.he4), 0, 0])
+        super().__init__(ppn, *args, **kwargs)
+
+    def mu(self):
+        mui = np.sum(self.ppn * (1 + ufunc_Z(self.ions)))
+        mui += np.sum([a / i.mu for i,a in self.abu if i not in self.ions])
+        return 1 / mui
+
+    def sdot(self, t, d, dt):
+        result = super().epsdt(t, d, dt, update=True)
+        return result
+
+class SimpleEos(object):
+    def __init__(self , net):
+        self.mu = net.mu()
+
+    def __call__(self , T , rho):
+        mu = self.mu
+        p = ARAD / 3 * T**4  + RK * T * rho / mu
+        u = 3 / 2* RK *T /mu + ARAD*T**4/rho
+        pt = 4/3*ARAD*T**3 + RK*rho/mu
+        pd = RK*T/mu
+        ut = 1.5 * RK / mu + 4*ARAD*T**3/rho
+        ud = -4*ARAD*T**4/rho**2
+        return p,u,pt,pd,ut,ud    
+
+class SimpleKappa(object):
+    def __init__(self, abu):
+        self.abu = abu
+    def __call__(self, T, rho, dT = True, drho=True):
+        k = 0.4 * self.abu.Ye()
+        result = [1/k]
+        if dT:
+            kt = 0.
+            result.append(kt)
+        if drho:
+            kd = 0.
+            result.append(kd)
+        if len(result) == 0:
+            return result[0]
+        return result
+
+class SimpleNet(object):
+    def __init__(self, abu, *args, **kwargs):
+        kappa = kwargs.pop('kappa', 'abc')
+        if kappa == 'simple':
+            self._kappai = SimpleKappa(abu) 
+        else:
+            self._kappai = partial(TabKappa(), T4=False) 
+        eos = kwargs.pop('eos', 'table')
+        if eos == 'simple':
+            self.eos = SimpleEos(self._net) 
+        else:
+            self.eos = partial(Eos(), T4=False) 
+        self._net = NetWork(abu, *args, **kwargs)
+        self.sdot = self._net.sdot 
+
+
+class Shot(object):
 
 #    Shooting code.
 #    We use same grid variable naming scheme as in Kepler
@@ -32,86 +104,36 @@ from heat.kappa import kappa as TabKappa_
 #    --//--|-------|-------|-------|-------|--//--
 #              m       0       1       2
 #         m2       m       0       1       2
-
-class TabKappa(object):
-    def __init__(self, *args, **kwars):
-        self.kappa = TabKappa_(*args, **kwars)
-    def __call__(self, *args, **kwargs):
-        ki, kitx, kidx = self.kappa.__call__(*args, **kwargs)
-        ki2 = 2 * ki
-        return ki, kitx * ki2, kidx * ki2
-
-class NetWork(Net):
-    """
-    modified network that takes into account inert trace elements
-    """
-    def __init__(self, abu, *args, **kwargs):  #first abu , create abu for NetWork, **kwargs pass ketworads
-        self.abu = abu
-        ppn = np.array([abu.Y(I.he4), 0, 0])
-        super().__init__(ppn, *args, **kwargs)
-    def mu(self):
-        """
-        compute mu from combination of network abundaces and total abundances
-        """
-        mui = np.sum(self.ppn * (1 + ufunc_Z(self.ions)))
-        mui += np.sum([a / i.mu for i,a in self.abu if i not in self.ions])
-        return 1 / mui
-
-#class SimpleEos(object):
-#    def __init__(self , net):
-#        self.mu = net.mu() # network is a class, 
-#
-#    def __call__(self , T , rho):
-#        mu = self.mu
-#        p = ARAD / 3 * T**4  + RK * T * rho / mu # P(T,rho) = Rgas*T*rho/mu ,  P_rad = 1/3*a*T**4 
-#        u = 3 / 2* RK *T /mu + ARAD*T**4/rho  #  a*T**4 is raidation energy per unit volume
-#        pt = 4/3*ARAD*T**3 + RK*rho/mu
-#        pd = RK*T/mu
-#        ut = 1.5 * RK / mu + 4*ARAD*T**3/rho # no 3/2 but 1.5
-#        ud = -4*ARAD*T**4/rho**2
-#        return p,u,pt,pd,ut,ud    
-
-#class SimpleKappa(object): # I guess my kappa can't resolve the two partial terms
-#    def __init__(self, abu):
-#        self.abu = abu
-#    def __call__(self, T, rho, dT = True, drho=True):
-#        k = 0.4 * self.abu.Ye()
-#        result = [1/k]
-#        if dT:
-#            kt = 0.
-#            result.append(kt)
-#        if drho:
-#            kd = 0.
-#            result.append(kd)
-#        if len(result) == 0:
-#            return result[0]
-#        return result
-
-### note ###
-# 2/3 optical depth >>> efective Temp. Radius
-# HOW TO SOLVE , DON'T KNOW RHO , root to find zero, 
-# g / (1.5 * kappa(T, rho)) == P(T, rho)
-# ki0bd0 = (d(1/kappa)/(d rho))/(2 * kappa) , ki = 1/kappa
-# d(ki) = 2 * kib * ki
-
-class Shot(object):
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
-            abu = dict(he4=0.99, n14=0.009, fe56=0.001), 
-            xms=1e13, xmsf=1.2): 
+            abu = None, 
+            xms=1e13, xmsf=1.2,
+            net='',
+            eos=''
+                 ): 
+        if abu is None:
+            abu = dict(he4=0.99, n14=0.009, fe56=0.001)
         abu = AbuSet(abu)
-        net = NetWork(abu)
-#        kappa = partial(TabKappa(), T4=False)  # leave all other varables open
-        kappa = partial(TabKappa(), T4=False) # original kappa function
-        eos = partial(Eos(), T4=False) 
+        if net == 'simple':
+            net = SimpleNet(abu)
+            self.net = net
+            eos = net.eos
+            sdot = net.sdot
+            kappa = net._kappai
+        elif net == 'kepnet':
+            net = KepNet(abu, kepler=kepler, eosburn=eosburn, safeadap=safeadap)
+
+        else:
+            print(f'please define a network')
+        #breakpoint ()   
+        #break 
+
         T = qqrt(L / (4 * np.pi * R**2 * SB)) 
         g = GRAV*M/R**2
         d0 = 1
-        # first guess value for density,>>> P - g / (...) = 0, 
-        # call eos function to have rho
         while True:
-            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0) # we need only 2, look up the SimpleEos
-            ki0,_,ki0bd0 = kappa(T , d0)                 # we will use heat kappa , look at call, 3 results
-            f = p0 - g / 1.5 * ki0 # 2/3 optical depth
+            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0)
+            ki0,_,ki0bd0 = kappa(T , d0)
+            f = p0 - g / 1.5 * ki0
             if np.abs(f) < 1e-12 * p0:
                 break
             df = p0bd0 - g / 1.5 * ki0bd0           # ki0bd0 has to be divided by 
@@ -174,7 +196,7 @@ class Shot(object):
 # for pdv : using the boundary pressure
         p1  = p_surf
         dt0 = xm0 / mdot
-        s0  = net.epsdt(t0, d0, dt0, update=True)
+        s0  = net.sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
@@ -279,7 +301,6 @@ class Shot(object):
                 f0 = p0 - p
                 h0 = l0 - xl0
     
-#                breakpoint ()   
                 b = np.array([f0,h0])
                 b1 = np.array([p,xl0])
     
@@ -303,7 +324,7 @@ class Shot(object):
                 t0, d0 = v - c
 
 
-            s0  = net.epsdt(t0, d0, dt0, update=True)
+            s0  = net.sdot(t0, d0, dt0)
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
 
             tn[j+1]  = t0
@@ -344,6 +365,12 @@ class Shot(object):
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
 
+        y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
+        y_m = np.zeros(j+3)
+        y_m[1:-1] = 0.5 * (y[:-1] + y[1:])
+        y_m[0] = y[0]
+        y_m[-1] = y[-1]
+
         self.pn  = pn
         self.tn  = tn
         self.dn  = dn
@@ -354,6 +381,6 @@ class Shot(object):
         self.rn  = rn
         self.sn  = sn
         self.scn = scn
-
-#        self.y = np.cumsum((self.xm[1:] / (4 * np.pi * self.rn**2)))
+        self.y   = np.append(y,0)
+        self.y_m = y_m
 

@@ -10,30 +10,6 @@ from functools import partial
 from heat.kappa import kappa as TabKappa_
 from matplotlib import pylab as plt
 
-#    Shooting code.
-#    We use same grid variable naming scheme as in Kepler
-#      0      1         2              jm
-#    .....|--------|--------|--//--|--------|........
-#         r0       r1       r2              r[jm]
-#            t[1]     t[2]           t[jm]      t[jm+1]
-#            d[1]     d[2]           d[jm]	d[jm+1]
-#            p[1]     p[2]           p[jm]      p[jm+1]
-#            e[1]     e[2]           e[jm]
-#         xl0                               xl[jm]
-#         g0                                g[jm]
-#    t[jm+1], d[jm+1], p[jm] - surface
-#    in loops we us:
-#      0 - current zone
-#      1 - zone above
-#      2 - 2 aones above
-#      m - zone below.
-#      m2 - 2 zones below
-#    specifically, zone j has index 0 and lower boundary values
-#    at index m and upper boundary values at indices 0
-#    --//--|-------|-------|-------|-------|--//--
-#              m       0       1       2
-#         m2       m       0       1       2
-
 class TabKappa(object):
     def __init__(self, *args, **kwars):
         self.kappa = TabKappa_(*args, **kwars)
@@ -105,13 +81,145 @@ class SimpleNet(object):
 
 #!!! FINAL BOSS, PUT IN THE DAMN KEPLER !!!
 
-#from kepler.code import Kepler
-#class KepNet(object):
-#    def __init__(self):
-#
-#    def eos(self, t, d):
+from pathlib import Path 
+from xrb.gen.setups import OneZone, ShotGen
+from xrb.defaults import base 
+from kepler.code import Kepler
+from kepler.process import Kepler as KeplerProcess
+from tempfile import TemporaryDirectory
+from utils import index1d
+import sys
+
+class KepNet(object):
+    def __init__(
+            self,
+            abu = dict(he4=0.99, n14=0.009, fe56=0.001),
+            burn = True,
+            name = 'one',
+            base = None,
+            scale = 1,
+            eosburn = False,
+            kepler = 'process',
+            safeadap = False,
+            ):
+        if base is None:
+            self.tempdir = TemporaryDirectory()
+            base = Path(self.tempdir.name)
+        else:
+            self.tempdir = None
+        o = OneZone(
+            name,
+            env = abu,
+            base = base,
+            program = None,
+            savedump0 = False,
+            ndump = 0,
+            kaptab = 3,
+            o16lim = -1.,
+            nbkupmax = 20,
+            )
+        self.scale = scale
+        self.eosburn = eosburn
+        if safeadap:
+            self.flags = Kepler.SAFEADAP
+        else:
+            self.flags = 0
+rundir = base / name
+        run = name
+        gen = o.genfile.name
+        self.bdat = o.bdat
+        if kepler == 'process':
+            K = KeplerProcess
+        else:
+            K = Kepler
+        k = K(start=False)
+        if k.status == 'started':
+            raise Exception('Kepler module is already running other problem.')
+            pass
+        if k.status == 'terminated':
+            raise Exception('Kepler module has been terminated and should no longer be used.')
+            pass
+        if k.status not in ('loaded', 'running', ):
+            raise Exception('Kepler module not in pristine modus anticipated.')
+            pass
+        k.start(run, gen, path=rundir)
+
+        self.abu_init = abu
+        self.k = k
+
+    def eos(self, tem, den, dt):
+        if self.eosburn:
+            p, e, sig, pt, pd, et, ed, k, kt, kd, xs, xst, xsd= self.k.eos(1, tem, den, dt, dsdot=False)
+        else:
+            p, e, pt, pd, et, ed, k, kt, kd = self.k.esk(1, tem, den)
+        ki = 1 / k
+        ki2m = -ki**2
+        return p, e, pt, pd, et, ed, ki, kt * ki2m, kd * ki2m
+
+def sdot(self, tem, den, dt, return_snu = True):
+        sn, snu = self.k.burnzone(1, tem, den, dt)
+        sn *= self.scale
+        snu *= self.scale
+        return sn, snu
+
+    def abu(self):
+        if self.k.lburn == 1:
+            j = 1
+            data = self.k.kd
+            numib = data.numib
+            ionnb = data.ionnb
+            ionsb = data.ionsb
+            aionb = data.aionb
+            inb = data.netnumb[j] - 1
+            iion = ionnb[:numib[inb],inb] - 1
+            xfrac = data.ppnb[iion,j] * aionb[iion]
+            xions = I(ionsb[iion])
+            ii = np.where(xfrac > 1.e-99)
+            return AbuSet(xions[ii], xfrac[ii])
+
+def done(self):
+        try:
+            del self.tempdir
+        except:
+            pass
+        try:
+            self.k.terminate()
+        except:
+            pass
+        try:
+            self.k.status = 'terminated'
+        except:
+            pass
+        # try:
+        #     del sys.modules[self.k._kepler.__name__]
+        # except Exception as e:
+        #     print(e)
 
 class Shot(object):
+
+#    Shooting code.
+#    We use same grid variable naming scheme as in Kepler
+#      0      1         2              jm
+#    .....|--------|--------|--//--|--------|........
+#         r0       r1       r2              r[jm]
+#            t[1]     t[2]           t[jm]      t[jm+1]
+#            d[1]     d[2]           d[jm]	d[jm+1]
+#            p[1]     p[2]           p[jm]      p[jm+1]
+#            e[1]     e[2]           e[jm]
+#         xl0                               xl[jm]
+#         g0                                g[jm]
+#    t[jm+1], d[jm+1], p[jm] - surface
+#    in loops we us:
+#      0 - current zone
+#      1 - zone above
+#      2 - 2 aones above
+#      m - zone below.
+#      m2 - 2 zones below
+#    specifically, zone j has index 0 and lower boundary values
+#    at index m and upper boundary values at indices 0
+#    --//--|-------|-------|-------|-------|--//--
+#              m       0       1       2
+#         m2       m       0       1       2
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
             abu = None, 
             xms=1e13, xmsf=1.2,
@@ -127,6 +235,9 @@ class Shot(object):
             eos = net.eos
             sdot = net.sdot
             kappa = net._kappai
+        elif net == 'kepnet':
+            net = KepNet(abu, kepler=kepler, eosburn=eosburn, safeadap=safeadap)
+
         else:
             print(f'please define a network')
         #breakpoint ()   
