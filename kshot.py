@@ -119,9 +119,6 @@ class Shot(object):
             eos = net.eos
             sdot = net.sdot
             kappa = net._kappai
-        elif net == 'kepnet':
-            net = KepNet(abu, kepler=kepler, eosburn=eosburn, safeadap=safeadap)
-
         else:
             print(f'please define a network')
         #breakpoint ()   
@@ -228,8 +225,8 @@ class Shot(object):
         sv[0]  = 0
         xln[0] = xln[1] = xl0
         dln[0] = 0
-        sn[0]  = s0* xm0
-        scn[0] = sn[0]
+        sn[0]  = 0
+        scn[0] = 0
         rn[0]  = np.inf
 
         tn[1]  = t0
@@ -237,6 +234,7 @@ class Shot(object):
         xm[1]  = xm0
         pn[1]  = p0
         rn[1]  = R
+        sn[1]  = s0* xm0
        
 
 # starting from the second zone
@@ -334,8 +332,7 @@ class Shot(object):
             xln[j+1] = xl0
             sv[j] = sv1
             dln[j] = dL * xm0
-            sn[j]  = s1 * xm1
-            scn[j]  += sn[j]
+            sn[j+1]  = s0 * xm0
             rn[j+1]  = r0
 
 
@@ -356,6 +353,7 @@ class Shot(object):
         sv[j+2] = np.nan
         xm[j+2] = M
         xln[j+2] = xl0
+        sn[j+2] = np.nan
 
         tn      = tn[:j+3][::-1]
         dn      = dn[:j+3][::-1]
@@ -364,6 +362,7 @@ class Shot(object):
         xm      = xm[:j+3][::-1]
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
+        sn      = sn[:j+3][::-1]
 
         y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
         y_m = np.zeros(j+3)
@@ -380,7 +379,25 @@ class Shot(object):
         self.dln = dln
         self.rn  = rn
         self.sn  = sn
-        self.scn = scn
         self.y   = np.append(y,0)
         self.y_m = y_m
 
+    def plot_l(self, ax=None, fig=None, escale='MeV'):
+        i1 = slice(1, None)
+        i0 = slice(None, -1)
+        ir = slice(None, None, -1)
+
+        if escale=='MeV':
+            yunit = 1 
+        else:
+            yunit = 1
+        fig , ax = plt.subplots()
+        ax.set_xscale('log')
+        ax.set_ylabel('Specific Flux $\mathrm{erg\,s}^{-1}$')
+        ax.set_xlabel('Column Depth $\mathrm{g\,cm}^{-2}$')
+
+        xlnn = np.cumsum(self.sn[ir])[ir]
+        ax.plot(self.y_m[i1] , self.xln[i1])
+        ax.plot(self.y_m[i1] , xlnn[i1])
+        plt.show()
+       
