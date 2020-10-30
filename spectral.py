@@ -6,12 +6,20 @@ from astropy.timeseries import LombScargle
 import pycwt
 
 class dps(object):
-    def __init__(self, filename):
-        self.lc = fits.open(filename)
-        self.fig = None
-        self.ax = None
-        t = self.lc[1].data['TIME']
-        y = self.lc[1].data['RATE']
+    def __init__(self, t=None, y=None, filename=None):
+        if t and y:
+            pass
+        else:
+            if filename:
+                self.lc = fits.open(filename)
+                self.fig = None
+                self.ax = None
+                t = self.lc[1].data['TIME']
+                y = self.lc[1].data['RATE']
+            else:
+                raise AttributeError(f'give me a light curve')
+        self.t = t
+        self.y = y 
 
     @staticmethod
     def lsf(args):
@@ -22,20 +30,23 @@ class dps(object):
         time = np.average(t)
         return power, time
 
+#    def wl(args):
+#        t, y, f = args
+
     def plot(
             self,
             fig = None,
             ax = None,
-            f1 = 2**-13,
-            f2 = 2**-3,
-            nf = 2**10,
-            step = 2**7,
-            width = 2**11,
+            f1 = 2e-3,
+            f2 = 15e-3,
+            nf = 200,
+            step = 50,
+            width = 1000,
             tstart = None,
             tend = None,
             logf = False,
             logp = False,
-            time_window = False,
+            time_window = True,
             parallel = True,
             ):
         """
