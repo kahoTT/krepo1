@@ -467,8 +467,8 @@ class Shot(object):
         self.ax = ax
         
         scale = MEV * self.mdot * NA
-        ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
         ax.set_xscale('log')
+        ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
