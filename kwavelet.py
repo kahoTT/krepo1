@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt as wavelet
-import matplotlib.pylab
+
 
 class Analysis(object):
     def __init__(self):
