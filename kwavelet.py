@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt as wavelet
+import minbar
 
 
 class Analysis(object):
@@ -24,16 +25,28 @@ class Analysis(object):
         self.dt = dt
 
 class Wave(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None):
         if t is not None and y is not None:
             pass
+        elif filename:
+            self.lc = fits.open(filename)
+            t = self.lc[1].data['TIME']
+            y = self.lc[1].data['RATE']
+        elif obsid:
+            b = minbar.Bursts()
+            o = minbar.Observations()
+            b.obsid(obsid)
+            o.obsid(obsid)
+            obs = minbar.Observation(o[o.get('entry')]) 
+            _path = obs.instr.lightcurve(obsid)
+            self.lc = fits.open(obs.get_path()+'/'+_path)
+            t = self.lc[1].data['TIME']
+            y = self.lc[1].data['RATE']
         else:
-            if filename:
-                self.lc = fits.open(filename)
-                t = self.lc[1].data['TIME']
-                y = self.lc[1].data['RATE']
-            else:
-                raise AttributeError(f'give me a light curve')
+            raise AttributeError(f'give me a light curve')
+
+#        break ###
+
         if np.any(np.isnan(y)) == True:
             print('arrays contain nan data')
             _int = np.where(np.isnan(y) == False)
@@ -42,6 +55,7 @@ class Wave(object):
             print('nan data are clean')
         else:
             print('No nan data')
+#        if len(b.get('bnum')) == 0:
         if dt is None:
             dt = t[1]-t[0]
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
@@ -66,9 +80,11 @@ class Wave(object):
 #        signif, fft_theor = wavelet.significance(1.0, dt, scales, 0, alpha,significance_level=0.99,wavelet=mother)
 
     def test_lc(self):
-        slices = [slice(a0+1, a1+1) for a0, a1 in zip(self.ag[:-1], self.ag[1:])]
+        slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(self.ag[:-1], self.ag[1:])], [slice(self.ag[-1]+1, None)]), axis=0)
         for s in slices:
             plt.plot(self.t[s],self.y[s])
+        plt.ylabel('Count/s')
+        plt.xlabel('Time (s)')
         plt.show()
 
     def plot_lc(self,
@@ -78,7 +94,7 @@ class Wave(object):
                 tend = None
                ):
         ii = slice(astart, aend)
-        plt.plot(self.t[ii], self.y[ii])
+        plt.plot(self.t[ii], self.y[ii],'.')
         plt.show()
  
 
