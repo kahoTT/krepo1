@@ -28,7 +28,7 @@ class Wave(object):
         if t is not None and y is not None:
             pass
         elif filename:
-            if kepler = True:
+            if kepler == True:
                 import lcdata
                 lc = lcdata.load(filename)
                 t = lc.time
@@ -61,7 +61,11 @@ class Wave(object):
             print('nan data are clean')
         else:
             print('No nan data')
-#        if len(b.get('bnum')) == 0:
+        if len(b.get('bnum')) == 0:
+            print('no bursts on this observation')
+        else:
+            pass
+            print(str(len(b.get('bnum'))+' bursts on this observation')
         if dt is None:
             dt = t[1]-t[0]
         else:
