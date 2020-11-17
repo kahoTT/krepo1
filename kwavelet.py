@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt as wavelet
-import minbar
 
 
 class Analysis(object):
@@ -25,14 +24,21 @@ class Analysis(object):
         self.dt = dt
 
 class Wave(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None):
         if t is not None and y is not None:
             pass
         elif filename:
-            self.lc = fits.open(filename)
-            t = self.lc[1].data['TIME']
-            y = self.lc[1].data['RATE']
+            if kepler = True:
+                import lcdata
+                lc = lcdata.load(filename)
+                t = lc.time
+                y = lc.xlum
+            else:
+                self.lc = fits.open(filename)
+                t = self.lc[1].data['TIME']
+                y = self.lc[1].data['RATE']
         elif obsid:
+            import minbar
             b = minbar.Bursts()
             o = minbar.Observations()
             b.obsid(obsid)
@@ -58,6 +64,8 @@ class Wave(object):
 #        if len(b.get('bnum')) == 0:
         if dt is None:
             dt = t[1]-t[0]
+        else:
+            pass
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
         if np.any(res) == True:
             print('Gaps between data')
