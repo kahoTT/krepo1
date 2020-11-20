@@ -77,7 +77,7 @@ class Wave(object):
             for i in range(len(b.get('bnum'))):
                 a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0]
                 b = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0]
-                barray.append(list(np.r_[a:b]))
+                barray.extend(np.r_[a:b])
             tb = t[barray]
             yb = y[barray]
 # dealing with bursts
@@ -102,6 +102,8 @@ class Wave(object):
         self.dt = dt
 #        self.gnum = i+1
         self.ag = ag
+        self.tb = tb
+        self.yb = yb
 
 #    def sig(arg):
 #        y, alpha, self.analysis = arg 
@@ -123,6 +125,12 @@ class Wave(object):
                ):
         ii = slice(astart, aend)
         plt.plot(self.t[ii], self.y[ii],'.')
+        plt.show()
+ 
+    def plot_b(self):
+        plt.plot(self.tb, self.yb, 'rx')
+        plt.ylabel('Count/s')
+        plt.xlabel('Time (s)')
         plt.show()
  
 
