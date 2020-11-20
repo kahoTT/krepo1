@@ -25,6 +25,7 @@ class Analysis(object):
 
 class Wave(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None):
+#read lc
         if t is not None and y is not None:
             pass
         elif filename:
@@ -35,7 +36,8 @@ class Wave(object):
                 y = lc.xlum
             else:
                 self.lc = fits.open(filename)
-                t = self.lc[1].data['TIME']
+                t1 = self.lc[1].data['TIME']
+                t = t1 - t1[0]
                 y = self.lc[1].data['RATE']
         elif obsid:
             import minbar
@@ -43,14 +45,15 @@ class Wave(object):
             o = minbar.Observations()
             b.obsid(obsid)
             o.obsid(obsid)
-            obs = minbar.Observation(o[o.get('entry')]) 
+            obs = minbar.Observation(o[o['entry']]) 
             _path = obs.instr.lightcurve(obsid)
             self.lc = fits.open(obs.get_path()+'/'+_path)
-            t = self.lc[1].data['TIME']
+            t1 = self.lc[1].data['TIME']
             y = self.lc[1].data['RATE']
+            t = t1 - t1[0]
         else:
             raise AttributeError(f'give me a light curve')
-
+# reading lc
 #        break ###
 
         if np.any(np.isnan(y)) == True:
@@ -61,11 +64,24 @@ class Wave(object):
             print('nan data are clean')
         else:
             print('No nan data')
+
+# dealing with bursts
         if len(b.get('bnum')) == 0:
             print('no bursts on this observation')
         else:
-            pass
-            print(str(len(b.get('bnum'))+' bursts on this observation')
+            print(str(len(b.get('bnum'))) +' bursts on this observation')
+            obs.get_lc()
+            bst = (obs.bursts['time'] - obs.mjd.value[0])*86400
+            bet = bst + obs.bursts['dur']
+            barray = list()
+            for i in range(len(b.get('bnum'))):
+                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0]
+                b = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0]
+                barray.append(list(np.r_[a:b]))
+            tb = t[barray]
+            yb = y[barray]
+# dealing with bursts
+
         if dt is None:
             dt = t[1]-t[0]
         else:
