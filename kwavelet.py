@@ -80,6 +80,8 @@ class Wave(object):
                 barray.extend(np.r_[a:b])
             tb = t[barray]
             yb = y[barray]
+            t = np.delete(t, barray)
+            y = np.delete(y, barray)
 # dealing with bursts
 
         if dt is None:
@@ -109,7 +111,7 @@ class Wave(object):
 #        y, alpha, self.analysis = arg 
 #        signif, fft_theor = wavelet.significance(1.0, dt, scales, 0, alpha,significance_level=0.99,wavelet=mother)
 
-    def test_lc(self):
+    def lc_nob(self):
         slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(self.ag[:-1], self.ag[1:])], [slice(self.ag[-1]+1, None)]), axis=0)
         for s in slices:
             plt.plot(self.t[s],self.y[s])
