@@ -1,4 +1,4 @@
-from physconst import ARAD, RK, GRAV, SB, CLIGHT
+from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA
 from isotope import ion as I, ufunc_A, ufunc_Z
 from heat.net import Net3aC12 as Net
 from heat.eos import eos as Eos
@@ -8,7 +8,7 @@ from heat.numeric import *
 import numpy as np
 from functools import partial
 from heat.kappa import kappa as TabKappa_
-from matplotlib import pylab as plt
+from matplotlib import pyplot as plt
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -79,122 +79,6 @@ class SimpleNet(object):
         self.sdot = self._net.sdot 
 
 
-#!!! FINAL BOSS, PUT IN THE DAMN KEPLER !!!
-
-from pathlib import Path 
-from xrb.gen.setups import OneZone, ShotGen
-from xrb.defaults import base 
-from kepler.code import Kepler
-from kepler.process import Kepler as KeplerProcess
-from tempfile import TemporaryDirectory
-from utils import index1d
-import sys
-
-class KepNet(object):
-    def __init__(
-            self,
-            abu = dict(he4=0.99, n14=0.009, fe56=0.001),
-            burn = True,
-            name = 'one',
-            base = None,
-            scale = 1,
-            eosburn = False,
-            kepler = 'process',
-            safeadap = False,
-            ):
-        if base is None:
-            self.tempdir = TemporaryDirectory()
-            base = Path(self.tempdir.name)
-        else:
-            self.tempdir = None
-        o = OneZone(
-            name,
-            env = abu,
-            base = base,
-            program = None,
-            savedump0 = False,
-            ndump = 0,
-            kaptab = 3,
-            o16lim = -1.,
-            nbkupmax = 20,
-            )
-        self.scale = scale
-        self.eosburn = eosburn
-        if safeadap:
-            self.flags = Kepler.SAFEADAP
-        else:
-            self.flags = 0
-rundir = base / name
-        run = name
-        gen = o.genfile.name
-        self.bdat = o.bdat
-        if kepler == 'process':
-            K = KeplerProcess
-        else:
-            K = Kepler
-        k = K(start=False)
-        if k.status == 'started':
-            raise Exception('Kepler module is already running other problem.')
-            pass
-        if k.status == 'terminated':
-            raise Exception('Kepler module has been terminated and should no longer be used.')
-            pass
-        if k.status not in ('loaded', 'running', ):
-            raise Exception('Kepler module not in pristine modus anticipated.')
-            pass
-        k.start(run, gen, path=rundir)
-
-        self.abu_init = abu
-        self.k = k
-
-    def eos(self, tem, den, dt):
-        if self.eosburn:
-            p, e, sig, pt, pd, et, ed, k, kt, kd, xs, xst, xsd= self.k.eos(1, tem, den, dt, dsdot=False)
-        else:
-            p, e, pt, pd, et, ed, k, kt, kd = self.k.esk(1, tem, den)
-        ki = 1 / k
-        ki2m = -ki**2
-        return p, e, pt, pd, et, ed, ki, kt * ki2m, kd * ki2m
-
-def sdot(self, tem, den, dt, return_snu = True):
-        sn, snu = self.k.burnzone(1, tem, den, dt)
-        sn *= self.scale
-        snu *= self.scale
-        return sn, snu
-
-    def abu(self):
-        if self.k.lburn == 1:
-            j = 1
-            data = self.k.kd
-            numib = data.numib
-            ionnb = data.ionnb
-            ionsb = data.ionsb
-            aionb = data.aionb
-            inb = data.netnumb[j] - 1
-            iion = ionnb[:numib[inb],inb] - 1
-            xfrac = data.ppnb[iion,j] * aionb[iion]
-            xions = I(ionsb[iion])
-            ii = np.where(xfrac > 1.e-99)
-            return AbuSet(xions[ii], xfrac[ii])
-
-def done(self):
-        try:
-            del self.tempdir
-        except:
-            pass
-        try:
-            self.k.terminate()
-        except:
-            pass
-        try:
-            self.k.status = 'terminated'
-        except:
-            pass
-        # try:
-        #     del sys.modules[self.k._kepler.__name__]
-        # except Exception as e:
-        #     print(e)
-
 class Shot(object):
 
 #    Shooting code.
@@ -222,6 +106,7 @@ class Shot(object):
 #         m2       m       0       1       2
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
             abu = None, 
+            amode = None,
             xms=1e13, xmsf=1.2,
             net='',
             eos=''
@@ -235,9 +120,6 @@ class Shot(object):
             eos = net.eos
             sdot = net.sdot
             kappa = net._kappai
-        elif net == 'kepnet':
-            net = KepNet(abu, kepler=kepler, eosburn=eosburn, safeadap=safeadap)
-
         else:
             print(f'please define a network')
         #breakpoint ()   
@@ -271,6 +153,7 @@ class Shot(object):
         p1 = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
         u1 = u0
         d1 = d0
+        ppn0 = net._net.ppn.copy()
         while True:
             p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)   # what is b? 
             ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
@@ -332,9 +215,12 @@ class Shot(object):
         sv  = np.ndarray(k)
         xln = np.ndarray(k)
         sn  = np.ndarray(k)
+        smn  = np.ndarray(k)
         scn = np.ndarray(k)
         rn  = np.ndarray(k)
         dln = np.ndarray(k) 
+        xlnsv  = np.ndarray(k)
+        abu = np.ndarray(k, dtype=np.object)
 #        gn  = np.ndarray(k) 
 
         tn[0]  = t_surf
@@ -344,15 +230,22 @@ class Shot(object):
         sv[0]  = 0
         xln[0] = xln[1] = xl0
         dln[0] = 0
-        sn[0]  = s0* xm0
-        scn[0] = sn[0]
+        sn[0]  = 0
+        smn[0]  = 0
+        scn[0] = 0
         rn[0]  = np.inf
+        xlnsv[0]  = 0
+        abu[0] = ppn0
 
         tn[1]  = t0
         dn[1]  = d0
         xm[1]  = xm0
         pn[1]  = p0
         rn[1]  = R
+        sn[1]  = s0
+        smn[1]  = s0* xm0
+        xlnsv[1]  = 0
+        abu[1] = net._net.ppn.copy()
        
 
 # starting from the second zone
@@ -385,10 +278,16 @@ class Shot(object):
             dmx1 = 2 * mdot / (xm1 + xm2)
             dmx0 = 2 * mdot / (xm0 + xm1)
             dt0 = xm0 / mdot
-            pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
+
+            if amode == 1:
+                pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
+                du1 = u2 - u1
+                dL1 = (du1 + pdv1) * dmx1
+            else:
+                du1 = u2 - u1
+                dL1 = du1 * dmx1
+
 #            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
-            du1 = u2 - u1
-            dL1 = (du1 + pdv1) * dmx1
             ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
             jj = 1
             while True:
@@ -396,19 +295,32 @@ class Shot(object):
                 p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
                 ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
 
-                pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
-                pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
-                pdv0bd0 = pdv0 / (1 / p1 + 1 / p0) * p0bd0 / p0**2 + 2 / (1 / p1 + 1 / p0) * (1 / d0**2)
-#                pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
-#                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
-#                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
-                
                 du0    = u1 - u0
                 du0bt0 = - u0bt0
                 du0bd0 = - u0bd0
 
-                dL0  = (du0 + pdv0) * dmx0
-                sv1  = 0.5 * (dL1 + dL0)
+                if amode == 1:
+                    pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
+                    pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
+                    pdv0bd0 = pdv0 / (1 / p1 + 1 / p0) * p0bd0 / p0**2 + 2 / (1 / p1 + 1 / p0) * (1 / d0**2)
+                    dL0  = (du0 + pdv0) * dmx0
+                    dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
+                    dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
+                    sv1  = 0.5 * (dL1 + dL0)
+                else:
+                    pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
+                    pdv0bt0 = -  p0bt0 / (d1 + d0)
+                    pdv0bd0 = (p1 + p0 - (d1 + d0) * p0bd0) / (d1 + d0)**2
+                    dphi = g0 * r0 - g1 * r1
+                    dL0 = du0 * dmx0
+                    dw = (pdv + dphi) *  mdot / xm1
+                    dxl0bt0 = - 0.5 * du0bt0 * dmx0 * xm1 - pdv0bt0 * mdot
+                    dxl0bd0 = - 0.5 * du0bd0 * dmx0 * xm1 - pdv0bd0 * mdot
+                    sv1  = 0.5 * (dL1 + dL0) + dw
+#                pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
+#                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
+#                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
+
                 dL   = (sv1 + s1) * xm1
                 xl0  = xl1 - dL
 
@@ -423,8 +335,6 @@ class Shot(object):
                 if np.abs(f0/p) < 1e-12 and np.abs(h0/xl1) < 1e-12:
                     break
                 print(f'Iteration {jj}={f0/p , h0/xl1}')
-                dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
-                dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
                 f0bt0 = p0bt0
                 f0bd0 = p0bd0 
     
@@ -450,9 +360,11 @@ class Shot(object):
             xln[j+1] = xl0
             sv[j] = sv1
             dln[j] = dL * xm0
-            sn[j]  = s1 * xm1
-            scn[j]  += sn[j]
+            sn[j+1]  = s0
+            smn[j+1]  = s0 * xm0
             rn[j+1]  = r0
+            xlnsv[j+1] = sv1 * xm1
+            abu[j+1] = net._net.ppn.copy()
 
 
             print(f'zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
@@ -464,6 +376,7 @@ class Shot(object):
 # phoney
         rn[j+2] = rm
         sv[j+1] = sv1**2 / sv2
+        xlnsv[j+2] = sv[j+1] * xm0
         xl0 = xl0 - (s0 + sv[j+1]) * xm0
 # phoney
         tn[j+2] = np.nan
@@ -472,6 +385,9 @@ class Shot(object):
         sv[j+2] = np.nan
         xm[j+2] = M
         xln[j+2] = xl0
+        sn[j+2] = np.nan
+        smn[j+2] = np.nan
+        abu[j+2] = np.array([0,0,0])
 
         tn      = tn[:j+3][::-1]
         dn      = dn[:j+3][::-1]
@@ -480,6 +396,11 @@ class Shot(object):
         xm      = xm[:j+3][::-1]
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
+        sn      = sn[:j+3][::-1]
+        smn      = smn[:j+3][::-1]
+        xlnn = np.append(smn[1:], 0) 
+        xlnsv      = xlnsv[:j+3][::-1]
+        abu      = abu[:j+3][::-1]
 
         y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
         y_m = np.zeros(j+3)
@@ -496,7 +417,126 @@ class Shot(object):
         self.dln = dln
         self.rn  = rn
         self.sn  = sn
-        self.scn = scn
+        self.mdot  = mdot
+
+        self.smn  = smn
         self.y   = np.append(y,0)
         self.y_m = y_m
+        self.xlnsv = xlnsv
+        self.xlnn = xlnn
+        self.abu = abu
+        self.ppn = np.array([a for a in abu])
 
+    def plot_l(self, escale=None):
+        i1 = slice(1, None)
+        i0 = slice(None, -1)
+        ir = slice(None, None, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        if escale=='MeV':
+            scale = MEV * self.mdot * NA
+            ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
+        else:
+            scale = 1
+            ax.set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)')
+
+        ax.set_xscale('log')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+
+        xlnn = np.cumsum(self.xlnn[ir])[ir]
+        xlnsv = np.cumsum(self.xlnsv[ir])[ir]
+        xlsum = self.xln + xlnn + xlnsv
+
+        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
+        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
+        ax.plot(self.y_m[i1], xlsum[i1] / scale, '--', label='sum')
+        ax.legend(loc='best')
+        plt.show()
+       
+    def plot_l2(self):
+        i1 = slice(1, None)
+        i0 = slice(None, -1)
+        ir = slice(None, None, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+        
+        scale = MEV * self.mdot * NA
+        ax.set_xscale('log')
+        ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+
+        xlnn = np.cumsum(self.xlnn[ir])[ir]
+        xlnsv = np.cumsum(self.xlnsv[ir])[ir]
+        xlsum = self.xln + xlnn + xlnsv
+
+        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
+        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
+        ax.plot(self.y_m[i1], xlsum[i1] / scale, '--', label='sum')
+        ax.legend(loc='best')
+        plt.show()
+       
+    def plot_td(self):
+        i1 = slice(1, None)
+        i0 = slice(None, -1)
+        ir = slice(None, None, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel('Temperature ($\mathrm{K}$), Density ($\mathrm{g\,cm}^{-3}$)')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+
+        ax.plot(self.y_m[i1], self.tn[i1], label= '$\mathrm{T}$')
+        ax.plot(self.y_m[i1], self.dn[i1], label= '$\\rho$')
+        ax.legend(loc='best')
+        plt.show()
+
+    def plot_abu(self):
+        i1 = slice(1, None)
+        i0 = slice(None, -1)
+        ir = slice(None, None, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+        ax.set_ylabel('Mass fraction')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+
+        for j,i in enumerate(self.net._net.ions):
+            ax.plot(self.y_m[i1], self.ppn[i1, j] * i.A, label=i.mpl)
+        ax.legend(loc='best')
+        plt.show()
+
+    def plot_s(self):
+        i1 = slice(1, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+
+        ax.plot(self.y_m[i1], self.sn[i1], label= 'Nuclear')
+        ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+
+        ax.legend(loc='best')
+        smax = np.maximum(np.max(self.sn[i1]), np.max(self.sv[i1])) * 2
+        smin = smax * 1e-18
+        ax.set_ylim(smin, smax)
+
+        plt.show()
