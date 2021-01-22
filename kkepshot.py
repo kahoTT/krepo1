@@ -110,7 +110,14 @@ class Shot(object):
             amode = None,
             xms=1e13, xmsf=1.2,
             net='',
-            eos=''
+            eos='',
+            kepler = 'process', # single | process
+            yfloorx = None,
+            safenet = True,
+            eosmode = None, # static | burn | adapt
+            kaptab = None,
+            dtcp  = None,
+            scale = 1,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -122,16 +129,30 @@ class Shot(object):
             sdot = net.sdot
             kappa = net._kappai
         else:
-            print(f'please define a network')
+            net = KepNet(
+                abu,
+                kepler=kepler,
+                eosmode=eosmode,
+                safenet=safenet,
+                kaptab=kaptab,
+                yfloorx=yfloorx,
+                dtcp=dtcp,
+                scale=scale,
+                )
+            self.net = net
+            eos = net.eos
+            sdot = net.sdot
         #breakpoint ()   
         #break 
 
         T = qqrt(L / (4 * np.pi * R**2 * SB)) 
         g = GRAV*M/R**2
-        d0 = 1
+        d0 = 1.
+        dt0 = 1.
         while True:
-            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0)
-            ki0,_,ki0bd0 = kappa(T , d0)
+            p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
+#            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0)
+#            ki0,_,ki0bd0 = kappa(T , d0)
             f = p0 - g / 1.5 * ki0
             if np.abs(f) < 1e-12 * p0:
                 break
@@ -154,10 +175,13 @@ class Shot(object):
         p1 = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
         u1 = u0
         d1 = d0
-        ppn0 = net._net.ppn.copy()
+        dt0 = xm0 / mdot
+#        ppn0 = net._net.ppn.copy()
+        ppn0 = net.abu()
         while True:
-            p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)   # what is b? 
-            ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
+             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
+#            p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)   # what is b? 
+#            ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
 
             rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) # the density of the first half zone is the surface density and unchanged
             dr0 = r0 - rm # rm : curretly r at bottom
@@ -195,7 +219,6 @@ class Shot(object):
 # third step: include energy generation, we have t0 d0 p0 at the zone center
 # for pdv : using the boundary pressure
         p1  = p_surf
-        dt0 = xm0 / mdot
         s0  = net.sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
