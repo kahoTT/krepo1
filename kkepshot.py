@@ -9,6 +9,7 @@ import numpy as np
 from functools import partial
 from heat.kappa import kappa as TabKappa_
 from matplotlib import pyplot as plt
+from starshot.kepnet import KepNet
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
