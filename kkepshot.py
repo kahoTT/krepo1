@@ -1,5 +1,5 @@
 from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA
-from isotope import ion as I, ufunc_A, ufunc_Z
+from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
 from heat.net import Net3aC12 as Net
 from heat.eos import eos as Eos
 from heat.kappa import kappa as Kappa
@@ -114,7 +114,7 @@ class Shot(object):
             kepler = 'process', # single | process
             yfloorx = None,
             safenet = True,
-            eosmode = None, # static | burn | adapt
+            eosmode = None, # static | burn | adapt , is NOT adaptive step sive !!!
             kaptab = None,
             dtcp  = None,
             scale = 1,
@@ -130,7 +130,7 @@ class Shot(object):
             kappa = net._kappai
         else:
             if eosmode is None:
-                eosmode = 'burn'
+                eosmode = 'adapt'
             net = KepNet(
                 abu,
                 kepler=kepler,
@@ -249,6 +249,7 @@ class Shot(object):
         dln = np.ndarray(k) 
         xlnsv  = np.ndarray(k)
         abu = np.ndarray(k, dtype=np.object)
+        abulen = np.ndarray(k)
 #        gn  = np.ndarray(k) 
 
         tn[0]  = t_surf
@@ -264,6 +265,7 @@ class Shot(object):
         rn[0]  = np.inf
         xlnsv[0]  = 0
         abu[0] = ppn0
+        abulen[0] = len(abu[0])
 
         tn[1]  = t0
         dn[1]  = d0
@@ -275,6 +277,7 @@ class Shot(object):
         xlnsv[1]  = 0
 #        abu[1] = net._net.ppn.copy()
         abu[1] = net.abu()
+        abulen[1] = len(abu[1])
        
 
 # starting from the second zone
@@ -396,6 +399,7 @@ class Shot(object):
             xlnsv[j+1] = sv1 * xm1
 #            abu[j+1] = net._net.ppn.copy()
             abu[j+1] = net.abu()
+            abulen[j+1] = len(abu[j+1])
 
 
             print(f'zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
@@ -421,6 +425,7 @@ class Shot(object):
         sn[j+2] = np.nan
         smn[j+2] = np.nan
         abu[j+2] = np.array([0,0,0])
+        abulen[j+2] = len(abu[j+2])
 
         tn      = tn[:j+3][::-1]
         dn      = dn[:j+3][::-1]
@@ -434,6 +439,7 @@ class Shot(object):
         xlnn = np.append(smn[1:], 0) 
         xlnsv      = xlnsv[:j+3][::-1]
         abu      = abu[:j+3][::-1]
+        abulen   = abulen[:j+3][::-1]
 
         y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
         y_m = np.zeros(j+3)
@@ -458,7 +464,13 @@ class Shot(object):
         self.xlnsv = xlnsv
         self.xlnn = xlnn
         self.abu = abu
+        self.abulen = abulen
         self.ppn = np.array([a for a in abu])
+
+# mapping ions
+        self.maxions = self.abulen.argmax()
+        da = ufunc_idx(s.abu[self.maxions].iso)
+
 
     def plot_l(self, escale=None):
         i1 = slice(1, None)
@@ -478,6 +490,7 @@ class Shot(object):
 
         ax.set_xscale('log')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        ax.set_ylim(-.3e35, 2e36)
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
@@ -534,7 +547,25 @@ class Shot(object):
         ax.legend(loc='best')
         plt.show()
 
-    def plot_abu(self):
+#    def plot_abu(self):
+#        i1 = slice(1, None)
+#        i0 = slice(None, -1)
+#        ir = slice(None, None, -1)
+#
+#        fig, ax = plt.subplots()
+#        self.fig = fig
+#        self.ax = ax
+#
+#        ax.set_xscale('log')
+#        ax.set_ylabel('Mass fraction')
+#        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+#
+#        for j,i in enumerate(self.net._net.ions):
+#            ax.plot(self.y_m[i1], self.ppn[i1, j] * i.A, label=i.mpl)
+#        ax.legend(loc='best')
+#        plt.show()
+
+    def plot_abu(self, mmin = 1.e-3):
         i1 = slice(1, None)
         i0 = slice(None, -1)
         ir = slice(None, None, -1)
@@ -544,13 +575,15 @@ class Shot(object):
         self.ax = ax
 
         ax.set_xscale('log')
+        ax.set_yscale('log')
         ax.set_ylabel('Mass fraction')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        for j,i in enumerate(self.net._net.ions):
-            ax.plot(self.y_m[i1], self.ppn[i1, j] * i.A, label=i.mpl)
-        ax.legend(loc='best')
-        plt.show()
+#        for a in range(0,len(self.y_m[i1]),1):
+#            print(len(self.abu[a]))
+#            for j,i in enumerate(self.abu[i1][a]):
+#                ax.plot(self.y_m[i1][a], i[1])
+#        plt.show()
 
     def plot_s(self):
         i1 = slice(1, -1)
