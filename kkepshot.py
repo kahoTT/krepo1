@@ -465,12 +465,12 @@ class Shot(object):
         self.xlnn = xlnn
         self.abu = abu
         self.abulen = abulen
-        self.ppn = np.array([a for a in abu])
+#        self.ppn = np.array([a for a in abu])
 
 # mapping ions
         self.maxions = self.abulen.argmax()
-        da = ufunc_idx(s.abu[self.maxions].iso)
-
+        self.da = ufunc_idx(self.abu[self.maxions].iso)
+        self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
 
     def plot_l(self, escale=None):
         i1 = slice(1, None)
@@ -578,6 +578,21 @@ class Shot(object):
         ax.set_yscale('log')
         ax.set_ylabel('Mass fraction')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+
+        for ai in self.da[1:100]: 
+            for bi in range(0, len(self.abu)-1, 1): 
+                if ai in ufunc_idx(self.abu[bi+1].iso):
+                    k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
+                    self.pabu[bi] = self.abu[bi+1].abu[k][0]
+                else:
+                    self.pabu[bi] = 0
+            abuname = ufunc_ion_from_idx(ai).item(0)
+            ax.plot(self.y_m[i1], self.pabu)
+            maxabu = np.argmax(self.pabu)
+            ax.text(
+                self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
+                ha='center', va='center', clip_on=True)
+        ax.set_ylim(1.e-3, 1.5)
 
 #        for a in range(0,len(self.y_m[i1]),1):
 #            print(len(self.abu[a]))
