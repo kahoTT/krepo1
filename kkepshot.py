@@ -1,4 +1,4 @@
-from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA
+from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA, SIGT, AMU 
 from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
 from heat.net import Net3aC12 as Net
 from heat.eos import eos as Eos
@@ -105,9 +105,9 @@ class Shot(object):
 #    --//--|-------|-------|-------|-------|--//--
 #              m       0       1       2
 #         m2       m       0       1       2
-    def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # Mdot must be in unit g/s
+    def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=1, # default mdot = 1 Eddington accretion rate
             abu = None, 
-            amode = None,
+            amode = 1,
             xms=1e13, xmsf=1.2,
             net='',
             eos='',
@@ -118,6 +118,8 @@ class Shot(object):
             kaptab = None,
             dtcp  = None,
             scale = 1,
+            accuracy = 1.e-10,
+            accept = 1.e-8
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -144,8 +146,14 @@ class Shot(object):
             self.net = net
             eos = net.eos
             sdot = net.sdot
-        #breakpoint ()   
-        #break 
+
+        xledd = 4 * np.pi * CLIGHT * GRAV * M * AMU / abu.mue() / SIGT
+        xaccedd = xledd * R / (GRAV * M)
+        mdot = xaccedd * mdot
+        if L < 100:
+            L = L * xledd
+        print(f'[SHOT] Mdot = {mdot:12g} g/s ({mdot/xaccedd:12g} Edd.)')
+        print(f'[SHOT] L    = {L:12g} erg/s ({L/xledd:12g} Edd.)')
 
 # surface zone
         T = qqrt(L / (4 * np.pi * R**2 * SB)) 
@@ -198,7 +206,7 @@ class Shot(object):
             b = np.array([f0,h0]) # by Alex
             b1 = np.array([p1,xl0])
 
-            if np.abs(f0/p1) < 1e-12 and np.abs(h0/xl0) < 1e-12:
+            if np.abs(f0/p1) < accuracy and np.abs(h0/xl0) < accuracy:
                 break
 
             dr0bd0 = - xm0 / (rm**2 * 4 * np.pi * d0**2)
@@ -310,15 +318,15 @@ class Shot(object):
             dmx1 = 2 * mdot / (xm1 + xm2)
             dmx0 = 2 * mdot / (xm0 + xm1)
             dt0 = xm0 / mdot
+            du1 = u2 - u1
 
             if amode == 1:
                 pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
-                du1 = u2 - u1
                 dL1 = (du1 + pdv1) * dmx1
-            else:
-                du1 = u2 - u1
-                dL1 = du1 * dmx1
 
+            else:
+                dL1 = du1 * dmx1
+  
 #            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
             ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
             jj = 1
@@ -332,7 +340,7 @@ class Shot(object):
                 du0bt0 = - u0bt0
                 du0bd0 = - u0bd0
 
-                if amode == 1:
+                if amode == 1: # Harmonic mean for pressure
                     pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
                     pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
                     pdv0bd0 = pdv0 / (1 / p1 + 1 / p0) * p0bd0 / p0**2 + 2 / (1 / p1 + 1 / p0) * (1 / d0**2)
@@ -340,6 +348,7 @@ class Shot(object):
                     dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                     dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
                     sv1  = 0.5 * (dL1 + dL0)
+
                 else:
                     pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
                     pdv0bt0 = -  p0bt0 / (d1 + d0)
@@ -350,6 +359,7 @@ class Shot(object):
                     dxl0bt0 = - 0.5 * du0bt0 * dmx0 * xm1 - pdv0bt0 * mdot
                     dxl0bd0 = - 0.5 * du0bd0 * dmx0 * xm1 - pdv0bd0 * mdot
                     sv1  = 0.5 * (dL1 + dL0) + dw
+
 #                pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
 #                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
 #                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
@@ -365,8 +375,11 @@ class Shot(object):
                 b = np.array([f0,h0])
                 b1 = np.array([p,xl0])
     
-                if np.abs(f0/p) < 1e-12 and np.abs(h0/xl1) < 1e-12:
+                if np.abs(f0/p) < accuracy and np.abs(h0/xl1) < accuracy:
                     break
+                if jj >= 20:
+                    if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
+                        break
                 print(f'Iteration {jj}={f0/p , h0/xl1}')
                 f0bt0 = p0bt0
                 f0bd0 = p0bd0 
@@ -579,19 +592,22 @@ class Shot(object):
         ax.set_ylabel('Mass fraction')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        for ai in self.da[1:100]: 
+        for ai in self.da[:100]: 
             for bi in range(0, len(self.abu)-1, 1): 
                 if ai in ufunc_idx(self.abu[bi+1].iso):
                     k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
                     self.pabu[bi] = self.abu[bi+1].abu[k][0]
                 else:
                     self.pabu[bi] = 0
-            abuname = ufunc_ion_from_idx(ai).item(0)
-            ax.plot(self.y_m[i1], self.pabu)
-            maxabu = np.argmax(self.pabu)
-            ax.text(
-                self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
-                ha='center', va='center', clip_on=True)
+            if all(self.pabu < mmin):
+                pass
+            else:
+                abuname = ufunc_ion_from_idx(ai).item(0)
+                ax.plot(self.y_m[i1], self.pabu)
+                maxabu = np.argmax(self.pabu)
+                ax.text(
+                    self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
+                    ha='center', va='center', clip_on=True)
         ax.set_ylim(1.e-3, 1.5)
 
 #        for a in range(0,len(self.y_m[i1]),1):
