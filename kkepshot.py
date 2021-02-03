@@ -105,7 +105,7 @@ class Shot(object):
 #    --//--|-------|-------|-------|-------|--//--
 #              m       0       1       2
 #         m2       m       0       1       2
-    def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=1, # default mdot = 1 Eddington accretion rate
+    def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # default mdot = 1 Eddington accretion rate
             abu = None, 
             amode = 1,
             xms=1e13, xmsf=1.2,
@@ -119,7 +119,8 @@ class Shot(object):
             dtcp  = None,
             scale = 1,
             accuracy = 1.e-10,
-            accept = 1.e-8
+            accept = 1.e-8,
+            Q = None,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -149,9 +150,15 @@ class Shot(object):
 
         xledd = 4 * np.pi * CLIGHT * GRAV * M * AMU / abu.mue() / SIGT
         xaccedd = xledd * R / (GRAV * M)
-        mdot = xaccedd * mdot
-        if L < 100:
+        if mdot < 10:
+            mdot = xaccedd * mdot
+        self.mdot = mdot / xaccedd
+        if L < 10:
             L = L * xledd
+        if Q is not None:
+            L = mdot * Q * NA * MEV
+        else:
+            Q = L / (mdot * NA * MEV)
         print(f'[SHOT] Mdot = {mdot:12g} g/s ({mdot/xaccedd:12g} Edd.)')
         print(f'[SHOT] L    = {L:12g} erg/s ({L/xledd:12g} Edd.)')
 
@@ -592,7 +599,7 @@ class Shot(object):
         ax.set_ylabel('Mass fraction')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        for ai in self.da[:100]: 
+        for ai in self.da: 
             for bi in range(0, len(self.abu)-1, 1): 
                 if ai in ufunc_idx(self.abu[bi+1].iso):
                     k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
