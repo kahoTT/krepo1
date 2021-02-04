@@ -121,6 +121,7 @@ class Shot(object):
             accuracy = 1.e-10,
             accept = 1.e-8,
             Q = None,
+            ymax = 1e14
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -168,7 +169,7 @@ class Shot(object):
         d0 = 1.
         dt0 = 1.
         while True:
-            p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(T, d0, dt0)
+            p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
 #            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0)
 #            ki0,_,ki0bd0 = kappa(T , d0)
             f = p0 - g / 1.5 * ki0
@@ -337,6 +338,7 @@ class Shot(object):
 #            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
             ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
             jj = 1
+            ri = 1
             while True:
                 jj += 1
 #                p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
@@ -384,7 +386,7 @@ class Shot(object):
     
                 if np.abs(f0/p) < accuracy and np.abs(h0/xl1) < accuracy:
                     break
-                if jj >= 20:
+                if jj >= 50:
                     if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
                         break
                 print(f'Iteration {jj}={f0/p , h0/xl1}')
@@ -400,8 +402,10 @@ class Shot(object):
                 A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]])
                 c = np.linalg.solve(A,b)
                 v = np.array([t0, d0])
-                t0, d0 = v - c
-
+                if (jj/20) % 1 == 0:
+                    ri *= .9
+                    print(f'{ri} reduction for the correction of temperature and density')
+                t0, d0 = v - c*(ri)
 
             s0, _, _  = net.sdot(t0, d0, dt0)
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
