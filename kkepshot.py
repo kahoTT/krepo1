@@ -238,8 +238,7 @@ class Shot(object):
 # third step: include energy generation, we have t0 d0 p0 at the zone center
 # for pdv : using the boundary pressure
         p1  = p_surf
-        s0  = net.sdot(t0, d0, dt0)
-        s0, _, _ = net.sdot(t0, d0, dt0)
+        s0, _, dxmax = net.sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
@@ -251,7 +250,7 @@ class Shot(object):
         sv1 = sv0 = 0
 
 #        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
-        k   = 1000 
+        k   = 2000 
         tn  = np.ndarray(k)
         dn  = np.ndarray(k)
         xm  = np.ndarray(k)
@@ -267,6 +266,7 @@ class Shot(object):
         abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
 #        gn  = np.ndarray(k) 
+        yy  = np.ndarray(k)
 
         tn[0]  = t_surf
         dn[0]  = d1
@@ -282,6 +282,7 @@ class Shot(object):
         xlnsv[0]  = 0
         abu[0] = ppn0
         abulen[0] = len(abu[0])
+        yy[0] = 0
 
         tn[1]  = t0
         dn[1]  = d0
@@ -294,7 +295,7 @@ class Shot(object):
 #        abu[1] = net._net.ppn.copy()
         abu[1] = net.abu()
         abulen[1] = len(abu[1])
-       
+        yy[1] = xm1 / (4 * np.pi * R**2)
 
 # starting from the second zone
         for j in range(1 , k , 1):
@@ -409,6 +410,7 @@ class Shot(object):
 
             s0, _, _  = net.sdot(t0, d0, dt0)
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
+            yy0 = xm1 / (4 * np.pi * r0**2)
 
             tn[j+1]  = t0
             dn[j+1]  = d0
@@ -424,12 +426,12 @@ class Shot(object):
 #            abu[j+1] = net._net.ppn.copy()
             abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
-
+            yy[j+1] = yy[j] + yy0
 
             print(f'zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
-            if d0 > 5e11 or t0 > 5e9:
+            if (d0 > 5e11 or t0 > 5e9 or yy[j+1] > ymax):
                 break
 
         net.done()
@@ -464,6 +466,7 @@ class Shot(object):
         xlnsv      = xlnsv[:j+3][::-1]
         abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
+        yy      = yy[:j+3][::-1]
 
         y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
         y_m = np.zeros(j+3)
@@ -490,6 +493,7 @@ class Shot(object):
         self.abu = abu
         self.abulen = abulen
 #        self.ppn = np.array([a for a in abu])
+        self.yy  = yy
 
 # mapping ions
         self.maxions = self.abulen.argmax()

@@ -207,7 +207,7 @@ class Shot(object):
         sv1 = sv0 = 0
 
 #        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
-        k   = 1000 
+        k   = 2000 
         tn  = np.ndarray(k)
         dn  = np.ndarray(k)
         xm  = np.ndarray(k)
@@ -221,7 +221,7 @@ class Shot(object):
         dln = np.ndarray(k) 
         xlnsv  = np.ndarray(k)
         abu = np.ndarray(k, dtype=np.object)
-#        gn  = np.ndarray(k) 
+        yy  = np.ndarray(k) 
 
         tn[0]  = t_surf
         dn[0]  = d1
@@ -236,6 +236,7 @@ class Shot(object):
         rn[0]  = np.inf
         xlnsv[0]  = 0
         abu[0] = ppn0
+        yy[0] = 0
 
         tn[1]  = t0
         dn[1]  = d0
@@ -246,7 +247,7 @@ class Shot(object):
         smn[1]  = s0* xm0
         xlnsv[1]  = 0
         abu[1] = net._net.ppn.copy()
-       
+        yy[1] = xm1 / (4 * np.pi * R**2)
 
 # starting from the second zone
         for j in range(1 , k , 1):
@@ -352,6 +353,7 @@ class Shot(object):
 
             s0  = net.sdot(t0, d0, dt0)
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
+            yy0 = xm1 / (4 * np.pi * r0**2)
 
             tn[j+1]  = t0
             dn[j+1]  = d0
@@ -365,8 +367,8 @@ class Shot(object):
             rn[j+1]  = r0
             xlnsv[j+1] = sv1 * xm1
             abu[j+1] = net._net.ppn.copy()
-
-
+            yy[j+1] = yy[j] + yy0
+       
             print(f'zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
@@ -401,6 +403,7 @@ class Shot(object):
         xlnn = np.append(smn[1:], 0) 
         xlnsv      = xlnsv[:j+3][::-1]
         abu      = abu[:j+3][::-1]
+        yy      = yy[:j+3][::-1]
 
         y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
         y_m = np.zeros(j+3)
@@ -426,6 +429,7 @@ class Shot(object):
         self.xlnn = xlnn
         self.abu = abu
         self.ppn = np.array([a for a in abu])
+        self.yy  = yy 
 
     def plot_l(self, escale=None):
         i1 = slice(1, None)
