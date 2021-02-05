@@ -408,7 +408,7 @@ class Shot(object):
                     print(f'{ri} reduction for the correction of temperature and density')
                 t0, d0 = v - c*(ri)
 
-            s0, _, _  = net.sdot(t0, d0, dt0)
+            s0, snu0, damax  = net.sdot(t0, d0, dt0)
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
             yy0 = xm1 / (4 * np.pi * r0**2)
 
