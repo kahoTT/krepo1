@@ -8,20 +8,30 @@ class Analysis(object):
     def __init__(self):
         pass
 
-    def __call__(self, t, y, f, sigma, dt):
-        t0 = t[0]
+    def __call__(self, t, y, f, sigma, dt, ag):
         mother = wavelet.Morlet(sigma)
-        p = np.polyfit(t - t0, y, 1) # fit a 1-degree polynomial function
-        y_notrend = y - np.polyval(p, t - t0)
+        p = np.polyfit(t, y, 3) # fit a 1-degree polynomial function
+        y_notrend = y - np.polyval(p, t)
         std = y_notrend.std()  # Standard deviation
         var = std ** 2  # Variance
         y_norm = y_notrend / std  # Normalized dataset
 #        alpha, _, _ = wavelet.ar1(y) 
-        wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y_norm, dt,wavelet=mother,freqs=f)
-        power = (np.abs(wave)) ** 2
-        Liu_power = power / scales[:, None]
-        return power , scales, Liu_power, coi
-        self.dt = dt
+        slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(ag[:-1], ag[1:])], [slice(ag[-1]+1, None)]), axis=0)
+        powera = Liu_powera = None
+        for s in slices:
+            wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y_norm[s], dt,wavelet=mother,freqs=f)
+            power = (np.abs(wave)) ** 2
+            Liu_power = power / scales[:, None]
+            print(power.shape)
+            if powera is None:
+                powera = power
+            else:
+                powera = np.hstack((powera, power))
+            if Liu_powera is None:
+                Liu_powera = Liu_power
+            else:
+                Liu_powera = np.hstack((Liu_powera, Liu_power))
+        return  powera, scales, Liu_powera, coi
 
 class Wave(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None):
@@ -73,6 +83,7 @@ class Wave(object):
             obs.get_lc()
             bst = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bet = bst + obs.bursts['dur']
+#            bet = bst + 100
             barray = list()
             for i in range(len(b.get('bnum'))):
                 a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0]
@@ -92,11 +103,6 @@ class Wave(object):
         if np.any(res) == True:
             print('Gaps between data')
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-#            for i in range(0,(len(ag)-1)):
-#                globals()['t%s' % i] = t[(ag[i]+1):(ag[i+1]+1)]
-#                globals()['y%s' % i] = y[(ag[i]+1):(ag[i+1]+1)]
-#            globals()['t%s' % str(i+1)] = t[ag[-1]:]
-#            globals()['y%s' % str(i+1)] = y[ag[-1]:]
         else:
             print('No gaps between data')
         self.t = t
@@ -111,7 +117,7 @@ class Wave(object):
 #        y, alpha, self.analysis = arg 
 #        signif, fft_theor = wavelet.significance(1.0, dt, scales, 0, alpha,significance_level=0.99,wavelet=mother)
 
-    def lc_nob(self):
+    def plot_nob(self):
         slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(self.ag[:-1], self.ag[1:])], [slice(self.ag[-1]+1, None)]), axis=0)
         for s in slices:
             plt.plot(self.t[s],self.y[s])
@@ -141,9 +147,9 @@ class Wave(object):
             astart = None,
             aend = None,
             f1 = 2e-3,
-            f2 = 12e-3,
+            f2 = 13e-3,
             nf = 200,
-            sigma = 6,
+            sigma = 15,
             power = None 
 #            tstart = None,
 #            tend = None
@@ -158,7 +164,7 @@ class Wave(object):
         self.f = f
 
         self.an = Analysis()
-        p, s, lp, coi = self.an(self.t[ii], self.y[ii], self.f, sigma, self.dt)
+        p, s, lp, coi = self.an(self.t[ii], self.y[ii], self.f, sigma, self.dt, self.ag)
         self.coi=coi       
 
         ax[0].clear()
@@ -168,6 +174,10 @@ class Wave(object):
 #        ax[0].set_xticks([])
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
+#        if power == 'normal':
+#            ax[1].contourf(self.t[ii], self.f, p, cmap=plt.cm.viridis)
+#        else:
+#            ax[1].contourf(self.t[ii], self.f, lp, cmap=plt.cm.viridis)
         if power == 'normal':
             ax[1].contourf(self.t[ii], self.f, p, cmap=plt.cm.viridis)
         else:
