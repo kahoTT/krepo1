@@ -114,7 +114,7 @@ class Shot(object):
             kepler = 'process', # single | process
             yfloorx = None,
             safenet = True,
-            eosmode = None, # static | burn | adapt , is NOT adaptive step sive !!!
+            eosmode = None, # static | burn | adapt , is NOT adaptive step size !!!
             kaptab = None,
             dtcp  = None,
             scale = 1,
@@ -170,13 +170,10 @@ class Shot(object):
         dt0 = 1.
         while True:
             p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
-#            p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0)
-#            ki0,_,ki0bd0 = kappa(T , d0)
             f = p0 - g / 1.5 * ki0
             if np.abs(f) < 1e-12 * p0:
                 break
             df = p0bd0 - g / 1.5 * ki0bd0           # ki0bd0 has to be divided by 
-#            df = p0bd0 - g / 1.5 * ki0bd0 * 2 * ki0  # original derivative of ki  
             dd0 = f/df
             d0n = d0 - dd0  
             d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
@@ -266,7 +263,7 @@ class Shot(object):
         abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
 #        gn  = np.ndarray(k) 
-        yy  = np.ndarray(k)
+        y  = np.ndarray(k)
 
         tn[0]  = t_surf
         dn[0]  = d1
@@ -282,7 +279,7 @@ class Shot(object):
         xlnsv[0]  = 0
         abu[0] = ppn0
         abulen[0] = len(abu[0])
-        yy[0] = 0
+        y[0] = 0
 
         tn[1]  = t0
         dn[1]  = d0
@@ -295,7 +292,7 @@ class Shot(object):
 #        abu[1] = net._net.ppn.copy()
         abu[1] = net.abu()
         abulen[1] = len(abu[1])
-        yy[1] = xm1 / (4 * np.pi * R**2)
+        y[1] = xm1 / (4 * np.pi * R**2)
 
 # starting from the second zone
         for j in range(1 , k , 1):
@@ -342,8 +339,6 @@ class Shot(object):
             ri = 1
             while True:
                 jj += 1
-#                p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
-#                ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
                 p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
 
                 du0    = u1 - u0
@@ -410,7 +405,7 @@ class Shot(object):
 
             s0, snu0, damax  = net.sdot(t0, d0, dt0)
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
-            yy0 = xm1 / (4 * np.pi * r0**2)
+            y0 = xm1 / (4 * np.pi * r0**2)
 
             tn[j+1]  = t0
             dn[j+1]  = d0
@@ -423,15 +418,14 @@ class Shot(object):
             smn[j+1]  = s0 * xm0
             rn[j+1]  = r0
             xlnsv[j+1] = sv1 * xm1
-#            abu[j+1] = net._net.ppn.copy()
             abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
-            yy[j+1] = yy[j] + yy0
+            y[j+1] = y[j] + y0
 
             print(f'zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
-            if (d0 > 5e11 or t0 > 5e9 or yy[j+1] > ymax):
+            if (d0 > 5e11 or t0 > 5e9 or y[j+1] > ymax):
                 break
 
         net.done()
@@ -441,6 +435,7 @@ class Shot(object):
         sv[j+1] = sv1**2 / sv2
         xlnsv[j+2] = sv[j+1] * xm0
         xl0 = xl0 - (s0 + sv[j+1]) * xm0
+        y[j+2] = y[j+1] + xm0 / (4 * np.pi * rm**2)
 # phoney
         tn[j+2] = np.nan
         dn[j+2] = np.nan
@@ -466,13 +461,13 @@ class Shot(object):
         xlnsv      = xlnsv[:j+3][::-1]
         abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
-        yy      = yy[:j+3][::-1]
+        y      = y[:j+3][::-1]
 
-        y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
+#        y = np.cumsum((xm[1:] / (4 * np.pi * rn[:-1]**2))[::-1])[::-1]
         y_m = np.zeros(j+3)
-        y_m[1:-1] = 0.5 * (y[:-1] + y[1:])
+        y_m[1:-1] = 0.5 * (y[:-2] + y[1:-1])
         y_m[0] = y[0]
-        y_m[-1] = y[-1]
+        y_m[-1] = y[-2]
 
         self.pn  = pn
         self.tn  = tn
@@ -486,14 +481,12 @@ class Shot(object):
         self.mdot  = mdot
 
         self.smn  = smn
-        self.y   = np.append(y,0)
+        self.y  = y
         self.y_m = y_m
         self.xlnsv = xlnsv
         self.xlnn = xlnn
         self.abu = abu
         self.abulen = abulen
-#        self.ppn = np.array([a for a in abu])
-        self.yy  = yy
 
 # mapping ions
         self.maxions = self.abulen.argmax()
@@ -518,7 +511,7 @@ class Shot(object):
 
         ax.set_xscale('log')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
-        ax.set_ylim(-.3e35, 2e36)
+#        ax.set_ylim(-.3e35, 2e36)
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
