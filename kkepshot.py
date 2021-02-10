@@ -546,7 +546,7 @@ class Shot(object):
         ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
         ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
         ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
-        ax.plot(self.y_m[i1], xlnun[i1] / scale, label = r'$L_{\nu}$')
+        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$L_{\nu}$')
         ax.legend(loc='best')
         plt.show()
        
