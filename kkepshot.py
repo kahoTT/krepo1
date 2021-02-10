@@ -231,7 +231,7 @@ class Shot(object):
 # third step: include energy generation, we have t0 d0 p0 at the zone center
 # for pdv : using the boundary pressure
         p1  = p_surf
-        s0, _, dxmax = net.sdot(t0, d0, dt0)
+        s0, snu0, dxmax = net.sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
@@ -251,7 +251,9 @@ class Shot(object):
         sv  = np.ndarray(k)
         xln = np.ndarray(k)
         sn  = np.ndarray(k)
+        snun  = np.ndarray(k)
         smn  = np.ndarray(k)
+        smnun  = np.ndarray(k)
         scn = np.ndarray(k)
         rn  = np.ndarray(k)
         dln = np.ndarray(k) 
@@ -269,7 +271,9 @@ class Shot(object):
         xln[0] = xln[1] = xl0
         dln[0] = 0
         sn[0]  = 0
+        snun[0]  = 0
         smn[0]  = 0
+        smnun[0]  = 0
         scn[0] = 0
         rn[0]  = np.inf
         xlnsv[0]  = 0
@@ -283,7 +287,9 @@ class Shot(object):
         pn[1]  = p0
         rn[1]  = R
         sn[1]  = s0
-        smn[1]  = s0* xm0
+        snun[1]  = snu0
+        smn[1]  = s0 * xm0
+        smnun[1]  = snu0 * xm0
         xlnsv[1]  = 0
         abu[1] = net.abu()
         abulen[1] = len(abu[1])
@@ -312,6 +318,7 @@ class Shot(object):
             sv2 = sv1
             sv1 = sv0
             s1  = s0
+            snu1  = snu0
 ### adaptive network set in to change the xmsf ###
             xmaf = 1
             while True:
@@ -424,7 +431,9 @@ class Shot(object):
             sv[j] = sv1
             dln[j] = dL * xm0
             sn[j+1]  = s0
+            snun[j+1]  = snu0
             smn[j+1]  = s0 * xm0
+            smnun[j+1]  = snu0 * xm0
             rn[j+1]  = r0
             xlnsv[j+1] = sv1 * xm1
             abu[j+1] = net.abu()
@@ -453,7 +462,9 @@ class Shot(object):
         xm[j+2] = M
         xln[j+2] = xl0
         sn[j+2] = np.nan
+        snun[j+2] = np.nan
         smn[j+2] = np.nan
+        smnun[j+2] = np.nan
         abu[j+2] = np.array([0,0,0])
         abulen[j+2] = len(abu[j+2])
 
@@ -465,8 +476,11 @@ class Shot(object):
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
         sn      = sn[:j+3][::-1]
+        snun      = snun[:j+3][::-1]
         smn      = smn[:j+3][::-1]
+        smnun      = smnun[:j+3][::-1]
         xlnn = np.append(smn[1:], 0) 
+        xlnun = np.append(smnun[1:], 0) 
         xlnsv      = xlnsv[:j+3][::-1]
         abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
@@ -486,6 +500,7 @@ class Shot(object):
         self.dln = dln
         self.rn  = rn
         self.sn  = sn
+        self.snun  = snun
         self.mdot  = mdot
 
         self.smn  = smn
@@ -493,6 +508,7 @@ class Shot(object):
         self.y_m = y_m
         self.xlnsv = xlnsv
         self.xlnn = xlnn
+        self.xlnun = xlnun
         self.abu = abu
         self.abulen = abulen
 
@@ -522,13 +538,15 @@ class Shot(object):
 #        ax.set_ylim(-.3e35, 2e36)
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
+        xlnun = np.cumsum(self.xlnun[ir])[ir]
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
         ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
         ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
         ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
-        ax.plot(self.y_m[i1], xlsum[i1] / scale, '--', label='sum')
+        ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
+        ax.plot(self.y_m[i1], xlnun[i1] / scale, label = r'$L_{\nu}$')
         ax.legend(loc='best')
         plt.show()
        
@@ -645,6 +663,7 @@ class Shot(object):
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
         ax.plot(self.y_m[i1], self.sn[i1], label= 'Nuclear')
+        ax.plot(self.y_m[i1], self.snun[i1],'--', label= 'Neutrino loss')
         ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
 
         ax.legend(loc='best')
