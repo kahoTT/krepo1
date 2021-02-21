@@ -514,7 +514,7 @@ class Shot(object):
 
 # mapping ions
         self.maxions = self.abulen.argmax()
-        self.da = ufunc_idx(self.abu[self.maxions].iso)
+        sielf.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
 
     def plot_l(self, escale=None):
@@ -526,7 +526,7 @@ class Shot(object):
         self.fig = fig
         self.ax = ax
 
-        if escale=='MeV':
+        if escale is None:
             scale = MEV * self.mdot * NA
             ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
         else:
@@ -543,7 +543,7 @@ class Shot(object):
         xlsum = self.xln + xlnn + xlnsv
 
         ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$L_{\mathrm{nuc}}$')
         ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
         ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
         ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$L_{\nu}$')
@@ -612,7 +612,7 @@ class Shot(object):
 #        ax.legend(loc='best')
 #        plt.show()
 
-    def plot_abu(self, mmin = 1.e-3):
+    def plot_abu(self, mmin = 1.e-3, array=None):
         i1 = slice(1, None)
         i0 = slice(None, -1)
         ir = slice(None, None, -1)
@@ -625,8 +625,9 @@ class Shot(object):
         ax.set_yscale('log')
         ax.set_ylabel('Mass fraction')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
-
-        for ai in self.da: 
+        ax.set_ylim(1.e-3, 1.5)
+     
+        for ai in self.da[:array]: 
             for bi in range(0, len(self.abu)-1, 1): 
                 if ai in ufunc_idx(self.abu[bi+1].iso):
                     k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
@@ -642,7 +643,6 @@ class Shot(object):
                 ax.text(
                     self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
                     ha='center', va='center', clip_on=True)
-        ax.set_ylim(1.e-3, 1.5)
 
 #        for a in range(0,len(self.y_m[i1]),1):
 #            print(len(self.abu[a]))
@@ -662,9 +662,9 @@ class Shot(object):
         ax.set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        ax.plot(self.y_m[i1], self.sn[i1], label= 'Nuclear')
-        ax.plot(self.y_m[i1], self.snun[i1],'--', label= 'Neutrino loss')
+        ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
         ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+        ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')
 
         ax.legend(loc='best')
         smax = np.maximum(np.max(self.sn[i1]), np.max(self.sv[i1])) * 2
