@@ -347,7 +347,7 @@ class Shot(object):
                     jj += 1
                     p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
     ### check whether change of abundance is too large
-                    if np.abs(f0/p) < 1.e-8 and np.abs(h0/xl1) < 1.e-8:
+                    if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
                         if np.min(dxmax) < 1:
                             print(f'[SHOT] Time step reduced as it is too large')
                             xmaf *= (GOLDEN - 1)  
@@ -397,9 +397,9 @@ class Shot(object):
         
                     if np.abs(f0/p) < accuracy and np.abs(h0/xl1) < accuracy and dxmax > 1:
                         break
-#                    if jj >= 50:
-#                        if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
-#                            break
+                    if jj >= 50:
+                        if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
+                            break
                     print(f'[SHOT] Iteration {jj}={f0/p , h0/xl1}')
                     f0bt0 = p0bt0
                     f0bd0 = p0bd0 
@@ -514,7 +514,7 @@ class Shot(object):
 
 # mapping ions
         self.maxions = self.abulen.argmax()
-        sielf.da = ufunc_idx(self.abu[self.maxions].iso)
+        self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
 
     def plot_l(self, escale=None):
@@ -672,3 +672,9 @@ class Shot(object):
         ax.set_ylim(smin, smax)
 
         plt.show()
+
+    def plot_map(self):
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
