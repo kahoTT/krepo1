@@ -1,7 +1,7 @@
 import os
 import io
 from multiprocessing import JoinableQueue, Process
-from . import Shot
+from kkepshot import Shot
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19):
         super().__init__()

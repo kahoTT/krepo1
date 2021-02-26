@@ -260,6 +260,7 @@ class Shot(object):
         xlnsv  = np.ndarray(k)
         abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
+        max_mass_no = np.ndarray(k)
 #        gn  = np.ndarray(k) 
         y  = np.ndarray(k)
 
@@ -279,6 +280,7 @@ class Shot(object):
         xlnsv[0]  = 0
         abu[0] = ppn0
         abulen[0] = len(abu[0])
+        max_mass_no[0] = np.max(ufunc_A(abu[0].iso))
         y[0] = 0
 
         tn[1]  = t0
@@ -293,6 +295,7 @@ class Shot(object):
         xlnsv[1]  = 0
         abu[1] = net.abu()
         abulen[1] = len(abu[1])
+        max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
         y[1] = xm1 / (4 * np.pi * R**2)
 
 # starting from the second zone
@@ -438,6 +441,7 @@ class Shot(object):
             xlnsv[j+1] = sv1 * xm1
             abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
+            max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
             y[j+1] = y[j] + y0
 
             print(f'[SHOT] zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
@@ -467,6 +471,7 @@ class Shot(object):
         smnun[j+2] = np.nan
         abu[j+2] = np.array([0,0,0])
         abulen[j+2] = len(abu[j+2])
+        max_mass_no[j+2] = 0
 
         tn      = tn[:j+3][::-1]
         dn      = dn[:j+3][::-1]
@@ -511,6 +516,7 @@ class Shot(object):
         self.xlnun = xlnun
         self.abu = abu
         self.abulen = abulen
+        self.max_mass_no = max_mass_no
 
 # mapping ions
         self.maxions = self.abulen.argmax()
@@ -673,7 +679,7 @@ class Shot(object):
 
         plt.show()
 
-    def plot_map(self):
+    def plot_map(self, start=None, end=None):
         i1 = slice(1, None)
         i0 = slice(None, -1)
         ir = slice(None, None, -1)
@@ -687,6 +693,26 @@ class Shot(object):
 #        ax.set_ylabel('Mass fraction')
         ax.set_ylabel('Mass number')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+
+        max_mass_no = self.max_max_no[int(start+1):int(end)].max()
+        y = r_[1:max_mass_no+1]
+        
+        x = self.y_m[int(start+1):int(end)]
+
+        for j in range
+        for i in y:
+            _int = np.where(i == ufunc_A(z1.iso))
+            if _int.size == 0:
+                z1[i] = 0
+            else:
+                z1[i] = sum(z1.abu[_int])
+            if i == y[0]:
+                z = z1[i][::-1]
+            else:
+                z = np.vstack((z,z1[i][::-1]))
+        z = z.T
+        self.da = ufunc_idx(self.abu[self.maxions].iso)
+        self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
      
         for ai in self.da: 
             for bi in range(0, len(self.abu)-1, 1): 
@@ -697,7 +723,7 @@ class Shot(object):
                     self.pabu[bi] = 0
 
                 abuname = ufunc_ion_from_idx(ai).item(0)
-                ax.pcolorfast(self.y_m[i1], self.mass_no., self.pabu)
+        ax.pcolorfast(x, y, z)
 #                maxabu = np.argmax(self.pabu)
 #                ax.text(
 #                    self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
