@@ -674,7 +674,31 @@ class Shot(object):
         plt.show()
 
     def plot_map(self):
+        i1 = slice(1, None)
+        i0 = slice(None, -1)
+        ir = slice(None, None, -1)
 
         fig, ax = plt.subplots()
         self.fig = fig
         self.ax = ax
+
+        ax.set_xscale('log')
+#        ax.set_yscale('log')
+#        ax.set_ylabel('Mass fraction')
+        ax.set_ylabel('Mass number')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+     
+        for ai in self.da: 
+            for bi in range(0, len(self.abu)-1, 1): 
+                if ai in ufunc_idx(self.abu[bi+1].iso):
+                    k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
+                    self.pabu[bi] = self.abu[bi+1].abu[k][0]
+                else:
+                    self.pabu[bi] = 0
+
+                abuname = ufunc_ion_from_idx(ai).item(0)
+                ax.pcolorfast(self.y_m[i1], self.mass_no., self.pabu)
+#                maxabu = np.argmax(self.pabu)
+#                ax.text(
+#                    self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
+#                    ha='center', va='center', clip_on=True)
