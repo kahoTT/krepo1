@@ -3,6 +3,28 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt as wavelet
 
+class Cleaning(object): #Normalized light curves and fill spaces with zeors
+    def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
+        p = np.polyfit(t, y, 3) # fit a 1-degree polynomial function
+        y_notrend = y - np.polyval(p, t)
+        std = y_notrend.std()  # Standard deviation
+        var = std ** 2  # Variance
+        y_norm = y_notrend / std  # Normalized dataset
+        alpha, _, _ = wavelet.ar1(y) # Model red noise
+        
+        res = [(sub2 - sub1 > f.max() * 3) for sub1, sub2 in zip(t[:-1], t[1:])]
+#        if np.any(res) == True:
+#            pass
+#            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+#            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(ag[:-1], ag[1:])], [slice(ag[-1]+1, None)]), axis=0)
+#        else:
+ #           slices = 'null'
+        tc = np.array([])
+        for i in ag[1:]:
+            ta = np.arange(t[i] + dt, t[i+1], dt)
+            tc = np.concatenate([tc, ta])
+        print(tc)
+        self.tc = tc       
 
 class Analysis(object):
     def __init__(self):
@@ -15,11 +37,21 @@ class Analysis(object):
         std = y_notrend.std()  # Standard deviation
         var = std ** 2  # Variance
         y_norm = y_notrend / std  # Normalized dataset
-#        alpha, _, _ = wavelet.ar1(y) 
-        slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(ag[:-1], ag[1:])], [slice(ag[-1]+1, None)]), axis=0)
+        alpha, _, _ = wavelet.ar1(y) # Model red noise
+        
+        res = [(sub2 - sub1 > f.max() * 3) for sub1, sub2 in zip(t[:-1], t[1:])]
+        if np.any(res) == True:
+            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(ag[:-1], ag[1:])], [slice(ag[-1]+1, None)]), axis=0)
+        else:
+            slices = 'null'
+
         powera = Liu_powera = None
         for s in slices:
-            wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y_norm[s], dt,wavelet=mother,freqs=f)
+            if s == 'null':
+                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y_norm, dt, wavelet=mother,freqs=f)
+            else:
+                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y_norm[s], dt, wavelet=mother,freqs=f)
             power = (np.abs(wave)) ** 2
             Liu_power = power / scales[:, None]
             print(power.shape)
@@ -67,22 +99,22 @@ class Wave(object):
 #        break ###
 
         if np.any(np.isnan(y)) == True:
-            print('arrays contain nan data')
+            print('data cleaning:arrays contain nan data')
             _int = np.where(np.isnan(y) == False)
             t = t[_int]
             y = y[_int]
-            print('nan data are clean')
+            print('data cleaning:nan data are clean')
         else:
-            print('No nan data')
+            print('data cleaning:No nan data')
 
 # dealing with bursts
         if len(b.get('bnum')) == 0:
-            print('no bursts on this observation')
+            print('data cleaning:no bursts on this observation')
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
-            bst = (obs.bursts['time'] - obs.mjd.value[0])*86400
-            bet = bst + obs.bursts['dur']
+            bst = (obs.bursts['time'] - obs.mjd.value[0])*86400 - 2
+            bet = bst + obs.bursts['dur'] * 3
 #            bet = bst + 100
             barray = list()
             for i in range(len(b.get('bnum'))):
@@ -101,10 +133,10 @@ class Wave(object):
             pass
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
         if np.any(res) == True:
-            print('Gaps between data')
+            print('data cleaning:Gaps between data')
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
         else:
-            print('No gaps between data')
+            print('data cleaning:No gaps between data')
         self.t = t
         self.y = y
         self.dt = dt
@@ -163,8 +195,7 @@ class Wave(object):
         f = np.linspace(f1, f2, nf)
         self.f = f
 
-        self.an = Analysis()
-        p, s, lp, coi = self.an(self.t[ii], self.y[ii], self.f, sigma, self.dt, self.ag)
+        p, s, lp, coi = Analysis(self.t[ii], self.y[ii], self.f, sigma, self.dt, self.ag)
         self.coi=coi       
 
         ax[0].clear()
