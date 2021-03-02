@@ -23,8 +23,13 @@ class Cleaning(object): #Normalized light curves and fill spaces with zeors
         for i in ag[1:]:
             ta = np.arange(t[i] + dt, t[i+1], dt)
             tc = np.concatenate([tc, ta])
-        print(tc)
-        self.tc = tc       
+        yc = np.zeros(len(tc))
+        tc = np.concatenate([t, tc])
+        yc = np.concatenate([y_norm, yc])
+        y_c = [x for _,x in sorted(zip(tc, yc))]
+        t_c = np.sort(tc)
+        self.tc = t_c       
+        self.yc = y_c
 
 class Analysis(object):
     def __init__(self):
@@ -173,14 +178,23 @@ class Wave(object):
         plt.xlabel('Time (s)')
         plt.show()
  
+    def plot_c(
+               self,
+               f1 = 2e-3, 
+               f2 = 13e-3,
+               nf = 200,
+               ):
+        f = np.linspace(f1, f2, nf)
+        self.f = f
+        c = Cleaning(None, self.t, self.y, self.f, self.dt, self.ag)
+        plt.plot(c.tc, c.yc)
+        plt.xlabel('Time (s)')
+        plt.show()
 
     def plot(
             self,
             astart = None,
             aend = None,
-            f1 = 2e-3,
-            f2 = 13e-3,
-            nf = 200,
             sigma = 15,
             power = None 
 #            tstart = None,
@@ -192,8 +206,6 @@ class Wave(object):
         self.fig = fig
         self.ax = ax
 
-        f = np.linspace(f1, f2, nf)
-        self.f = f
 
         p, s, lp, coi = Analysis(self.t[ii], self.y[ii], self.f, sigma, self.dt, self.ag)
         self.coi=coi       
