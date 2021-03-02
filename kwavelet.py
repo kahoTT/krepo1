@@ -32,34 +32,18 @@ class Cleaning(object): #Normalized light curves and fill spaces with zeors
         self.yc = y_c
 
 class Analysis(object):
-    def __init__(self):
-        pass
-
     def __call__(self, t, y, f, sigma, dt, ag):
         mother = wavelet.Morlet(sigma)
-        p = np.polyfit(t, y, 3) # fit a 1-degree polynomial function
-        y_notrend = y - np.polyval(p, t)
-        std = y_notrend.std()  # Standard deviation
-        var = std ** 2  # Variance
-        y_norm = y_notrend / std  # Normalized dataset
-        alpha, _, _ = wavelet.ar1(y) # Model red noise
-        
-        res = [(sub2 - sub1 > f.max() * 3) for sub1, sub2 in zip(t[:-1], t[1:])]
-        if np.any(res) == True:
-            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(ag[:-1], ag[1:])], [slice(ag[-1]+1, None)]), axis=0)
-        else:
-            slices = 'null'
-
+        slices = 'n'
         powera = Liu_powera = None
         for s in slices:
-            if s == 'null':
-                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y_norm, dt, wavelet=mother,freqs=f)
+            if s == 'n':
+                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y, dt, wavelet=mother,freqs=f)
             else:
-                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y_norm[s], dt, wavelet=mother,freqs=f)
+                pass
+#                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y[s], dt, wavelet=mother,freqs=f)
             power = (np.abs(wave)) ** 2
             Liu_power = power / scales[:, None]
-            print(power.shape)
             if powera is None:
                 powera = power
             else:
@@ -128,15 +112,15 @@ class Wave(object):
                 barray.extend(np.r_[a:b])
             tb = t[barray]
             yb = y[barray]
-            t = np.delete(t, barray)
-            y = np.delete(y, barray)
+            tnb = np.delete(t, barray)
+            ynb = np.delete(y, barray)
 # dealing with bursts
 
         if dt is None:
             dt = t[1]-t[0]
         else:
             pass
-        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
+        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(tnb[:-1], tnb[1:])]
         if np.any(res) == True:
             print('data cleaning:Gaps between data')
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
@@ -149,6 +133,8 @@ class Wave(object):
         self.ag = ag
         self.tb = tb
         self.yb = yb
+        self.tnb = tnb
+        self.ynb = ynb
 
 #    def sig(arg):
 #        y, alpha, self.analysis = arg 
@@ -157,7 +143,7 @@ class Wave(object):
     def plot_nob(self):
         slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(self.ag[:-1], self.ag[1:])], [slice(self.ag[-1]+1, None)]), axis=0)
         for s in slices:
-            plt.plot(self.t[s],self.y[s])
+            plt.plot(self.tnb[s],self.ynb[s])
         plt.ylabel('Count/s')
         plt.xlabel('Time (s)')
         plt.show()
@@ -186,7 +172,7 @@ class Wave(object):
                ):
         f = np.linspace(f1, f2, nf)
         self.f = f
-        c = Cleaning(None, self.t, self.y, self.f, self.dt, self.ag)
+        c = Cleaning(None, self.tnb, self.ynb, self.f, self.dt, self.ag)
         plt.plot(c.tc, c.yc)
         plt.xlabel('Time (s)')
         plt.show()
@@ -196,7 +182,10 @@ class Wave(object):
             astart = None,
             aend = None,
             sigma = 15,
-            power = None 
+            power = None, 
+            f1 = 2e-3, 
+            f2 = 13e-3,
+            nf = 200,
 #            tstart = None,
 #            tend = None
             ):
@@ -206,11 +195,14 @@ class Wave(object):
         self.fig = fig
         self.ax = ax
 
-
-        p, s, lp, coi = Analysis(self.t[ii], self.y[ii], self.f, sigma, self.dt, self.ag)
+        f = np.linspace(f1, f2, nf)
+        self.f = f
+        c = Cleaning(None, self.tnb[ii], self.ynb[ii], self.f, self.dt, self.ag)
+        An = Analysis()
+        p, s, lp, coi = An(c.tc, c.yc, self.f, sigma, self.dt, self.ag)
         self.coi=coi       
 
-        ax[0].clear()
+#        ax[0].clear()
         ax[0].plot(self.t[ii], self.y[ii])
         ax[0].set_ylabel('Count/s')
         fig.subplots_adjust(hspace=0.05)
@@ -222,9 +214,9 @@ class Wave(object):
 #        else:
 #            ax[1].contourf(self.t[ii], self.f, lp, cmap=plt.cm.viridis)
         if power == 'normal':
-            ax[1].contourf(self.t[ii], self.f, p, cmap=plt.cm.viridis)
+            ax[1].contourf(c.tc, f, p, cmap=plt.cm.viridis)
         else:
-            ax[1].contourf(self.t[ii], self.f, lp, cmap=plt.cm.viridis)
+            ax[1].contourf(c.tc, f, lp, cmap=plt.cm.viridis)
 #        ax[1].fill(np.concatenate([self.t[:1], self.t, self.t[-1:]]),
 #                   np.concatenate([[f1], 1/self.coi, [f1]]), 'k', alpha=0.3, hatch='x')
         ax[1].set_ylim(f1,f2)
