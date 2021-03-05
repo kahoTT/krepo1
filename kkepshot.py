@@ -11,6 +11,7 @@ from heat.kappa import kappa as TabKappa_
 from matplotlib import pyplot as plt
 from starshot.kepnet import KepNet
 from heat.numeric import sqrt, cbrt, qqrt, GOLDEN
+import matplotlib.colors as colors
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -489,6 +490,7 @@ class Shot(object):
         xlnsv      = xlnsv[:j+3][::-1]
         abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
+        max_mass_no = max_mass_no[:j+3][::-1]
         y      = y[:j+3][::-1]
 
         y_m = np.zeros(j+3)
@@ -679,7 +681,7 @@ class Shot(object):
 
         plt.show()
 
-    def plot_map(self, start=None, end=None): # start from the most bottom zone
+    def plot_map(self, start=0, end=None): # start from the 2nd most bottom zone
         i1 = slice(1, None)
         i0 = slice(None, -1)
         ir = slice(None, None, -1)
@@ -694,39 +696,25 @@ class Shot(object):
         ax.set_ylabel('Mass number')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        max_mass_no = self.max_max_no[int(start+1):int(end)].max()
-        y = r_[1:max_mass_no+1]
+        max_mass_no = self.max_mass_no[int(start+1):end].max()
+        y = np.r_[1:max_mass_no+1]
         
-        x = self.y_m[int(start+1):int(end)]
-        z1 = self.abu[int(start+1):int(end)]
+        x = self.y_m[int(start+1):end]
+        zz = self.abu[int(start+1):end]
 
         for j in range(0, len(x), 1):
-            for i in y:
-                _int = np.where(i == ufunc_A(z1[j].iso))
-                if _int.size == 0:
-                    z1[i] = 0
+            z1 = np.zeros(len(y))
+            for ii in y:
+                i = int(ii)
+                _int = np.where(i == ufunc_A(zz[j].iso))
+                if _int[0].size == 0:
+                    z1[i-1] = 0
                 else:
-                    z1[i] = sum(z1[j].abu[_int])
-                if i == y[0]:
-                    z = z1[i][::-1]
-                else:
-                    z = np.vstack((z,z1[i][::-1]))
-            z = z.T
-
-        self.da = ufunc_idx(self.abu[self.maxions].iso)
-        self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
-     
-        for ai in self.da: 
-            for bi in range(0, len(self.abu)-1, 1): 
-                if ai in ufunc_idx(self.abu[bi+1].iso):
-                    k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
-                    self.pabu[bi] = self.abu[bi+1].abu[k][0]
-                else:
-                    self.pabu[bi] = 0
-
-                abuname = ufunc_ion_from_idx(ai).item(0)
-        ax.pcolorfast(x, y, z)
-#                maxabu = np.argmax(self.pabu)
-#                ax.text(
-#                    self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
-#                    ha='center', va='center', clip_on=True)
+                    z1[i-1] = sum(zz[j].abu[_int])
+            if j == 0:
+                z = z1
+            else:
+                z = np.vstack((z,z1))
+        print(x.shape, y.shape, z.T.shape)
+        pcm = ax.pcolor(x, y, z.T, cmap = 'cividis', norm=colors.LogNorm(vmin = 1e-3, vmax = max(map(max, z.T)))) 
+        fig.colorbar(pcm, ax=ax, extend='max')
