@@ -716,5 +716,5 @@ class Shot(object):
             else:
                 z = np.vstack((z,z1))
         print(x.shape, y.shape, z.T.shape)
-        pcm = ax.pcolor(x, y, z.T, cmap = 'cividis', norm=colors.LogNorm(vmin = 1e-3, vmax = max(map(max, z.T)))) 
+        pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
