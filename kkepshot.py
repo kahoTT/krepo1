@@ -679,7 +679,7 @@ class Shot(object):
 
         plt.show()
 
-    def plot_map(self, start=None, end=None):
+    def plot_map(self, start=None, end=None): # start from the most bottom zone
         i1 = slice(1, None)
         i0 = slice(None, -1)
         ir = slice(None, None, -1)
@@ -698,19 +698,21 @@ class Shot(object):
         y = r_[1:max_mass_no+1]
         
         x = self.y_m[int(start+1):int(end)]
+        z1 = self.abu[int(start+1):int(end)]
 
-        for j in range
-        for i in y:
-            _int = np.where(i == ufunc_A(z1.iso))
-            if _int.size == 0:
-                z1[i] = 0
-            else:
-                z1[i] = sum(z1.abu[_int])
-            if i == y[0]:
-                z = z1[i][::-1]
-            else:
-                z = np.vstack((z,z1[i][::-1]))
-        z = z.T
+        for j in range(0, len(x), 1):
+            for i in y:
+                _int = np.where(i == ufunc_A(z1[j].iso))
+                if _int.size == 0:
+                    z1[i] = 0
+                else:
+                    z1[i] = sum(z1[j].abu[_int])
+                if i == y[0]:
+                    z = z1[i][::-1]
+                else:
+                    z = np.vstack((z,z1[i][::-1]))
+            z = z.T
+
         self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
      
