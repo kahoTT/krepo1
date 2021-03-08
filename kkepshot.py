@@ -113,11 +113,11 @@ class Shot(object):
             xms=1e13, xmsf=1.2,
             net='',
             eos='',
-            kepler = 'process', # single | process
+            kepler = 'prcoess', # module | process | restart
             yfloorx = 1.e-3,
             safenet = True,
             eosmode = None, # static | burn | adapt , is NOT adaptive step size !!!
-            kaptab = None,
+            kaptab = 4,
             dtcp  = None,
             scale = 1,
             accuracy = 1.e-10,
