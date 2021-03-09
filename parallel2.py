@@ -1,13 +1,18 @@
 import os
 import io
-from multiprocessing import JoinableQueue, Process
+import itertools
+from multiprocessing import JoinableQueue, Process, cpu_count
+import multiprocessing
 from kkepshot import Shot
+from numpy import iterable
+
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19):
         super().__init__()
         self.qi = qi
         self.qo = qo
         self.nice = nice
+
     def run(self):
         os.nice(self.nice)
         while True:
@@ -15,22 +20,24 @@ class ParallelShot(Process):
             if data is None:
                 self.qi.task_done()
                 break
-            filename = data.pop('filename', None)
+#            filename = data.pop('filename', None)
+#            task = self.task(**data)
             s = Shot(**data)
-            if filename is not None:
-                s.save(filename)
-            elif self.qo is not None:
-                out = BytesIO()
-                s.save(out)
-                self.qo.put(out)
-            self.qi.task_done()
+#            if filename is not None:
+#                s.save(filename)
+#            elif self.qo is not None:
+#                out = BytesIO()
+#                s.save(out)
+#                self.qo.put(out)
+#            self.qi.task_done()
+
 class ParallelShooter(object):
     def __init__(self, nparallel=None, **kwargs):
         processes = list()
         qi = JoinableQueue()
         qo = JoinableQueue()
         if nparallel is None:
-            nparallel = multiprocessing.cpu_count()
+            nparallel = cpu_count()
         for i in range(nparallel):
             p = ParallelShot(qi, qo)
             p.daemon = True
@@ -41,7 +48,7 @@ class ParallelShooter(object):
         base = dict()
         data = list()
         values = list()
-        kesy = list()
+        keys = list()
         for k,v in kwargs.items():
             if iterable(v):
                 values.append(v)
@@ -59,8 +66,9 @@ class ParallelShooter(object):
         # we could collect up results
         results = list()
         while not qo.empty():
-            results.append(qo.get())
-            qo.done()
+            results.append(Result(*qo.get()))
+            qo.task_done()
+
         qo.join()
         self.data = data
-        self.results = results
+        self.results = sorted(results)

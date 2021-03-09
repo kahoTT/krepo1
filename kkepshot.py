@@ -113,7 +113,7 @@ class Shot(object):
             xms=1e13, xmsf=1.2,
             net='',
             eos='',
-            kepler = 'prcoess', # module | process | restart
+            kepler = 'process', # module | process | restart
             yfloorx = 1.e-3,
             safenet = True,
             eosmode = None, # static | burn | adapt , is NOT adaptive step size !!!
