@@ -5,6 +5,7 @@ from multiprocessing import JoinableQueue, Process, cpu_count
 import multiprocessing
 from kkepshot import Shot
 from numpy import iterable
+from kepler.code import make
 
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19):
@@ -29,22 +30,22 @@ class ParallelShot(Process):
 #                out = BytesIO()
 #                s.save(out)
 #                self.qo.put(out)
-#            self.qi.task_done()
+            self.qi.task_done()
 
-class ParallelShooter(object):
-    def __init__(self, nparallel=None, **kwargs):
+class ParallelProcessor(object):
+    def __init__(self, nparallel=None, task=Shot, **kwargs):
+        make() # only one Kepler make process before we start... WTF is that?
         processes = list()
         qi = JoinableQueue()
         qo = JoinableQueue()
         if nparallel is None:
             nparallel = cpu_count()
         for i in range(nparallel):
-            p = ParallelShot(qi, qo)
+            p = ParallelShot(qi, qo, task=task)
             p.daemon = True
             p.start()
             processes.append(p)
-        # here we need code to add tasks as dictionaries to qi
-        # what is still missing is fileames
+
         base = dict()
         data = list()
         values = list()
@@ -63,10 +64,12 @@ class ParallelShooter(object):
             qi.put(None)
         qi.close()
         qi.join()
+
         # we could collect up results
+
         results = list()
         while not qo.empty():
-            results.append(Result(*qo.get()))
+            results.append(*qo.get())
             qo.task_done()
 
         qo.join()

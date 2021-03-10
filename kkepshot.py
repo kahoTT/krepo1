@@ -452,6 +452,9 @@ class Shot(object):
                 break
 
         net.done()
+        Qb = xl0 / (MEV * mdot * NA)
+        self.Qb = Qb
+        print(f'Base heat flux Qb={Qb}')
 
 # phoney
         rn[j+2] = rm
