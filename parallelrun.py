@@ -8,32 +8,28 @@ from numpy import iterable
 from kepler.code import make
 
 class ParallelShot(Process):
-    def __init__(self, qi, qo, nice=19):
+    def __init__(self, qi, qo, nice=19, task=Shot, run=None):
         super().__init__()
         self.qi = qi
         self.qo = qo
         self.nice = nice
+        self.task = task
+        self.run = run
 
     def run(self):
         os.nice(self.nice)
-        while True:
+        while self.run:
             data = self.qi.get()
             if data is None:
                 self.qi.task_done()
                 break
-#            filename = data.pop('filename', None)
-#            task = self.task(**data)
-            s = Shot(**data)
-#            if filename is not None:
-#                s.save(filename)
-#            elif self.qo is not None:
-#                out = BytesIO()
-#                s.save(out)
-#                self.qo.put(out)
+            task = self.task(**data)
+            if self.qo is not None:
+                self.qo.put((data, task))
             self.qi.task_done()
 
 class ParallelProcessor(object):
-    def __init__(self, nparallel=None, task=Shot, **kwargs):
+    def __init__(self, nparallel=None, task=Shot, run=True, **kwargs):
         make() # only one Kepler make process before we start... WTF is that?
         processes = list()
         qi = JoinableQueue()
@@ -41,7 +37,7 @@ class ParallelProcessor(object):
         if nparallel is None:
             nparallel = cpu_count()
         for i in range(nparallel):
-            p = ParallelShot(qi, qo, task=task)
+            p = ParallelShot(qi, qo, task=task, run=run)
             p.daemon = True
             p.start()
             processes.append(p)
@@ -71,7 +67,6 @@ class ParallelProcessor(object):
         while not qo.empty():
             results.append(*qo.get())
             qo.task_done()
-
         qo.join()
-        self.data = data
+
         self.results = sorted(results)
