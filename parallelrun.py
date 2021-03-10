@@ -8,7 +8,7 @@ from numpy import iterable
 from kepler.code import make
 
 class ParallelShot(Process):
-    def __init__(self, qi, qo, nice=19, task=Shot, run=None):
+    def __init__(self, qi, qo, nice=19, task=Shot):
         super().__init__()
         self.qi = qi
         self.qo = qo
@@ -37,7 +37,8 @@ class ParallelProcessor(object):
         if nparallel is None:
             nparallel = cpu_count()
         for i in range(nparallel):
-            p = ParallelShot(qi, qo, task=task, run=run)
+            p = ParallelShot(qi, qo, task=task)
+            
             p.daemon = True
             p.start()
             processes.append(p)
