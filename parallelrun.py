@@ -6,6 +6,11 @@ import multiprocessing
 from kkepshot import Shot
 from numpy import iterable
 from kepler.code import make
+from abuset import AbuSet
+from isotope import ion as I
+from utils import cpickle
+from types import FunctionType
+from pathlib import Path
 
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19, task=Shot):
@@ -14,11 +19,10 @@ class ParallelShot(Process):
         self.qo = qo
         self.nice = nice
         self.task = task
-        self.run = run
 
     def run(self):
         os.nice(self.nice)
-        while self.run:
+        while True:
             data = self.qi.get()
             if data is None:
                 self.qi.task_done()
@@ -29,7 +33,7 @@ class ParallelShot(Process):
             self.qi.task_done()
 
 class ParallelProcessor(object):
-    def __init__(self, nparallel=None, task=Shot, run=True, **kwargs):
+    def __init__(self, nparallel=None, task=Shot, **kwargs):
         make() # only one Kepler make process before we start... WTF is that?
         processes = list()
         qi = JoinableQueue()
@@ -38,10 +42,14 @@ class ParallelProcessor(object):
             nparallel = cpu_count()
         for i in range(nparallel):
             p = ParallelShot(qi, qo, task=task)
-            
-            p.daemon = True
+#            p.run(run)
+            p.daemon = False
             p.start()
             processes.append(p)
+
+        for k,v in kwargs.items():
+            if isinstance(v, (str, dict, AbuSet, Path, FunctionType, type)):
+                kwargs[k] = (v,)
 
         base = dict()
         data = list()
@@ -66,8 +74,91 @@ class ParallelProcessor(object):
 
         results = list()
         while not qo.empty():
-            results.append(*qo.get())
+            results.append(Result(*qo.get()))
             qo.task_done()
         qo.join()
 
         self.results = sorted(results)
+
+class Results(object):
+    def __init__(self, results=None):
+        if results is None:
+            results = list()
+        self.results = sorted(results)
+        self.version = VERSION
+    def add(self, result):
+        self.results.append(result)
+        self.results.sort()
+    def __add__(self, other):
+        assert othert.__class__.__name__ == self.__class__.__name__
+        results = self.results + other.results
+        return self.__class__(results)
+    def __call__(self, **kwargs):
+        results = list()
+        for r in self.results:
+            ok = True
+            for k,v in kwargs.items():
+                vr = r.data[k]
+                try:
+                    if vr != v:
+                        ok = False
+                        break
+                except:
+                    vr = str(vr)
+                    v = str(v)
+                    if vr != v:
+                        ok = False
+                        break
+            if ok:
+                results.append(r)
+        return Results(results)
+    def __iter__(self):
+        for r in self.results:
+            yield r
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return self.__class__(self.results[key])
+        return self.results[key]
+    def to_list(self):
+        return self.results.copy()
+    def data(self):
+        return [r.data for r in self.results]
+    def result(self):
+        return [r.result for r in self.results]
+    def __repr__(self):
+        return (
+            f'{self.__class__.__name__}(\n' +
+            ',\n'.join(repr(r) for r in self.results) +
+            ')'
+            )
+
+class Result(object):
+    def __init__(self, data, result):
+        self.result = result
+        self.data = data
+    def __getattr__(self, attr):
+        if hasattr(self, 'data'):
+            if attr in self.data:
+                return self.data[attr]
+        raise AttributeError()
+    def __iter__(self):
+        yield self.data
+        yield self.result
+    def __repr__(self):
+        return f'{self.__class__.__name__}({repr(self.data).replace(" ","")} : {repr(self.result)})'
+    def __lt__(self, other):
+        for k,v in self.data.items():
+            vo = other.data[k]
+            try:
+                if v < vo:
+                    return True
+                elif v > vo:
+                    return False
+            except:
+                v = str(v)
+                vo = str(vo)
+                if v < vo:
+                    return True
+                elif v > vo:
+                    return False
+        return False
