@@ -217,6 +217,7 @@ class Wave(object):
             ax[1].contourf(c.tc, f, p, cmap=plt.cm.viridis)
         else:
             ax[1].contourf(c.tc, f, lp, cmap=plt.cm.viridis)
+#        ax[1].contour(c.tc, f, sig99, [-99,1], colors='r')
 #        ax[1].fill(np.concatenate([self.t[:1], self.t, self.t[-1:]]),
 #                   np.concatenate([[f1], 1/self.coi, [f1]]), 'k', alpha=0.3, hatch='x')
         ax[1].set_ylim(f1,f2)
