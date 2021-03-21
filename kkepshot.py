@@ -124,6 +124,7 @@ class Shot(object):
             accept = 1.e-8,
             Q = None,
             ymax = 1e14,
+            last_step = None,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -328,8 +329,8 @@ class Shot(object):
             while True:
                 restart = None
                 xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
-                dt0 = xm0 / mdot
                 p   = p1 +  0.5 * (xm0 + xm1) * g0 / (4 * np.pi * r0**2) 
+                dt0 = xm0 / mdot
                 dmx1 = 2 * mdot / (xm1 + xm2)
                 dmx0 = 2 * mdot / (xm0 + xm1)
                 dt0 = xm0 / mdot
@@ -448,13 +449,19 @@ class Shot(object):
             print(f'[SHOT] zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
-            if (d0 > 5e11 or t0 > 5e9 or y[j+1] > ymax):
+            y_last = y[j+1] + xm0 / (4 * np.pi * rm**2)
+            if y_last > ymax and last_step is None:
+                last_step = True
+                continue # for index j
+
+            if (d0 > 5e11 or t0 > 5e9 or last_step is True):
                 break
 
         net.done()
         Qb = xl0 / (MEV * mdot * NA)
         self.Qb = Qb
-        print(f'Base heat flux Qb={Qb}')
+        self.Lb = xl0
+        print(f'Base heat flux Qb={Qb} $\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$ / Lb={Lb:12.5e} erg/s')
 
 # phoney
         rn[j+2] = rm
@@ -718,6 +725,5 @@ class Shot(object):
                 z = z1
             else:
                 z = np.vstack((z,z1))
-        print(x.shape, y.shape, z.T.shape)
         pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
