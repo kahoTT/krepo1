@@ -11,6 +11,9 @@ from isotope import ion as I
 from utils import cpickle
 from types import FunctionType
 from pathlib import Path
+from matplotlib import pyplot as plt
+import matplotlib.colors as colors
+from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
 
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19, task=Shot):
@@ -79,6 +82,40 @@ class ParallelProcessor(object):
         qo.join()
 
         self.results = sorted(results)
+
+# may not necessarily do the following command if better understanding the parallel code
+        l_Qb = list()
+        l_mdot = list()        
+        l_scaled_sol_abu = list()
+        l_max_mass_no = list()
+        l_abu = list()
+        for i in range(0, len(self.results), 1):
+            l_Qb.append(results.Qb[1])
+            l_mdot.append(results.mdot)
+#            l_scaled_sol_abu.append(results.Qb)
+            l_max_masso_no.append(results.max_mass_no[1])
+            l_abu = results.abu[1]
+        self.l_Qb = l_Qb
+        self.l_mdot = l_mdot
+#        self.l_scaled_sol_abu = l_scaled_sol_abu
+        self.l_max_mass_no = np.max(l_max_mass_no)
+        y = np.r_[1:max_mass_no+1]
+        for j in range(0, len(l_max_mass_no), 1):
+            z1 = np.zeros(len(y))
+            for ii in y:
+                i = int(ii)
+                _int = np.where(i == ufunc_A(l_abu[j].iso))
+                if _int[0].size == 0:
+                    z1[i-1] = 0 
+                else:
+                    z1[i-1] = sum(l_abu[j].abu[_int])
+            if j == 0:
+                z = z1
+            else:
+                z = np.vstack((z,z1))
+
+    def plot_qb(self):
+        
 
 class Results(object):
     def __init__(self, results=None):
