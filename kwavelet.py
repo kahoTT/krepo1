@@ -107,7 +107,7 @@ class Wave(object):
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
-            bst = (obs.bursts['time'] - obs.mjd.value[0])*86400 - 2
+            bst = (obs.bursts['time'] - obs.mjd.value[0])*86400 - 5
             bet = bst + obs.bursts['dur'] * 3
 #            bet = bst + 100
             barray = list()
