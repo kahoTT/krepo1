@@ -3,7 +3,10 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt as wavelet
 
-class Cleaning(object): #Normalized light curves and fill spaces with zeors
+# Normalized light curves and fill spaces with zeors
+# The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
+
+class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
         p = np.polyfit(t, y, 3) # fit a 1-degree polynomial function
         y_notrend = y - np.polyval(p, t)
@@ -12,13 +15,15 @@ class Cleaning(object): #Normalized light curves and fill spaces with zeors
         y_norm = y_notrend / std  # Normalized dataset
         alpha, _, _ = wavelet.ar1(y) # Model red noise
         
-        res = [(sub2 - sub1 > f.max() * 3) for sub1, sub2 in zip(t[:-1], t[1:])]
+# for future development; split the array according to the size of the dead time
+#        res = [(sub2 - sub1 > (1 / f.min()) * 4) for sub1, sub2 in zip(t[ag][:-1], t[ag][1:])]
 #        if np.any(res) == True:
-#            pass
-#            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-#            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(ag[:-1], ag[1:])], [slice(ag[-1]+1, None)]), axis=0)
+#            l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+#            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
 #        else:
- #           slices = 'null'
+#            slices = 'null'
+#        for s in slices:
+            
         tc = np.array([])
         for i in ag[1:]:
             ta = np.arange(t[i] + dt, t[i+1], dt)
@@ -122,7 +127,7 @@ class Wave(object):
             pass
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(tnb[:-1], tnb[1:])]
         if np.any(res) == True:
-            print('data cleaning:Gaps between data')
+            print('data cleaning: Gaps between data')
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
         else:
             print('data cleaning:No gaps between data')
