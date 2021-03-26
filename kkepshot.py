@@ -123,7 +123,7 @@ class Shot(object):
             accuracy = 1.e-10,
             accept = 1.e-8,
             Q = None,
-            ymax = 1e14,
+            ymax = 1e12,
             last_step = None,
                  ): 
         if abu is None:
@@ -190,16 +190,14 @@ class Shot(object):
         xl0 = L
         z0 = M
         xm0 = xms
-        g0 = GRAV*z0/r0**2
+        g0 = GRAV * z0 / r0**2
         p1 = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
         u1 = u0
         d1 = d0
         dt0 = xm0 / mdot
-#        ppn0 = net._net.ppn.copy()
         ppn0 = net.abu()
         while True:
             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
-
             rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) # the density of the first half zone is the surface density and unchanged
             dr0 = r0 - rm # rm : curretly r at bottom
             ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3
@@ -299,36 +297,43 @@ class Shot(object):
         abulen[1] = len(abu[1])
         max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
         y[1] = xm1 / (4 * np.pi * R**2)
+        y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
 
 # starting from the second zone
         for j in range(1 , k , 1):
-            xm2 = xm1
-            xm1 = xm0
-            r1  = r0
-            r0  = rm
-            z1  = z0  # mass for computing gravity
-            z0  = z1 - xm1
-            g1  = g0
-            g0  = GRAV * z0 / r0**2
-    
-            ki1 = ki0
-            p2  = p1
-            p1  = p0
-            t1  = t0
-            d2  = d1
-            d1  = d0
-            u2  = u1
-            u1  = u0    
-            xl1 = xl0
-            sv2 = sv1
-            sv1 = sv0
-            s1  = s0
-            snu1  = snu0
-### adaptive network set in to change the xmsf ###
-            xmaf = 1
+            if last_step is True:
+                j = j - 1
+            else:
+                xm2 = xm1
+                xm1 = xm0
+                r1  = r0
+                r0  = rm
+                z1  = z0  # mass for computing gravity
+                z0  = z1 - xm1
+                g1  = g0
+                g0  = GRAV * z0 / r0**2
+        
+                ki1 = ki0
+                p2  = p1
+                p1  = p0
+                t1  = t0
+                d2  = d1
+                d1  = d0
+                u2  = u1
+                u1  = u0    
+                xl1 = xl0
+                sv2 = sv1
+                sv1 = sv0
+                s1  = s0
+                snu1  = snu0
+    ### adaptive network set in to change the xmsf ###
+                xmaf = 1
             while True:
                 restart = None
-                xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
+                if last_step is True:
+                    xm0 = xm0_last
+                else:
+                    xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
                 p   = p1 +  0.5 * (xm0 + xm1) * g0 / (4 * np.pi * r0**2) 
                 dt0 = xm0 / mdot
                 dmx1 = 2 * mdot / (xm1 + xm2)
@@ -401,10 +406,10 @@ class Shot(object):
                     b1 = np.array([p,xl0])
         
                     if np.abs(f0/p) < accuracy and np.abs(h0/xl1) < accuracy and dxmax > 1:
-                        break
+                        break # for finding t0 and d0
                     if jj >= 50:
                         if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
-                            break
+                            break # for finding t0 and d0
                     print(f'[SHOT] Iteration {jj}={f0/p , h0/xl1}')
                     f0bt0 = p0bt0
                     f0bd0 = p0bd0 
@@ -426,7 +431,7 @@ class Shot(object):
             print(f'[SHOT] dxmax = {dxmax}')
 
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
-            y0 = xm1 / (4 * np.pi * r0**2)
+            ym = xm0 / (4 * np.pi * r0**2)
 
             tn[j+1]  = t0
             dn[j+1]  = d0
@@ -444,32 +449,37 @@ class Shot(object):
             abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
             max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
-            y[j+1] = y[j] + y0
+            y[j+2] = y[j] + ym
 
             print(f'[SHOT] zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
 
-            y_last = y[j+1] + xm0 / (4 * np.pi * rm**2)
-            if y_last > ymax and last_step is None:
+            if y[j+2] > ymax and last_step is None:
                 last_step = True
+                print(f'last zone')
+                factor = (ymax - y[j]) / ym
+                xm0_last = xm0 * factor
                 continue # for index j
 
             if (d0 > 5e11 or t0 > 5e9 or last_step is True):
                 break
 
         net.done()
-        Qb = xl0 / (MEV * mdot * NA)
-        self.Qb = Qb
-        self.Lb = xl0
-        print(f'Base heat flux Qb={Qb} $\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$ / Lb={Lb:12.5e} erg/s')
 
 # phoney
         rn[j+2] = rm
         sv[j+1] = sv1**2 / sv2
         xlnsv[j+2] = sv[j+1] * xm0
         xl0 = xl0 - (s0 + sv[j+1]) * xm0
-        y[j+2] = y[j+1] + xm0 / (4 * np.pi * rm**2)
+#        y[j+2] = ym
 # phoney
+# bottom heat
+        Qb = xl0 / (MEV * mdot * NA)
+        Lb = xl0
+        self.Qb = Qb
+        self.Lb = Lb
+        print(f'Base heat flux Qb={Qb} MeV/nucleon or Lb={Lb:12.5e} erg/s')
+
         tn[j+2] = np.nan
         dn[j+2] = np.nan
         pn[j+2] = np.nan
@@ -505,7 +515,7 @@ class Shot(object):
 
         y_m = np.zeros(j+3)
         y_m[1:-1] = 0.5 * (y[:-2] + y[1:-1])
-        y_m[0] = y[0]
+        y_m[0] = np.nan
         y_m[-1] = y[-2]
 
         self.pn  = pn
