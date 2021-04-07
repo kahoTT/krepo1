@@ -14,6 +14,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 import matplotlib.colors as colors
 from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
+import numpy as np
 import matplotlib.pyplot as plt
 
 class ParallelShot(Process):
@@ -85,45 +86,59 @@ class ParallelProcessor(object):
         self.results = sorted(results)
 
 # may not necessarily do the following command if better understanding the parallel code
-#        l_Qb = list()
-#        l_mdot = list()        
-#        l_scaled_sol_abu = list()
-#        l_max_mass_no = list()
-#        l_abu = list()
-#        for i in range(0, len(self.results), 1):
-#            l_Qb.append(results.result.Qb)
-#            l_mdot.append(results.mdot)
-##            l_scaled_sol_abu.append(results.Qb)
-#            l_max_masso_no.append(results.max_mass_no[1])
-#            l_abu = results.abu[1]
-#        self.l_Qb = l_Qb
-#        self.l_mdot = l_mdot
-##        self.l_scaled_sol_abu = l_scaled_sol_abu
-#        self.l_max_mass_no = np.max(l_max_mass_no)
-#        y = np.r_[1:max_mass_no+1]
-#        self.y = y
-#        for j in range(0, len(l_max_mass_no), 1):
-#            z1 = np.zeros(len(y))
-#            for ii in y:
-#                i = int(ii)
-#                _int = np.where(i == ufunc_A(l_abu[j].iso))
-#                if _int[0].size == 0:
-#                    z1[i-1] = 0 
-#                else:
-#                    z1[i-1] = sum(l_abu[j].abu[_int])
-#            if j == 0:
-#                z = z1
-#            else:
-#                z = np.vstack((z,z1))
-#         self.z = z
-#
-#    def plot_lmap(self):
-#        fig, ax = plt.subplots()
-#        self.fig = fig
-#        self.ax = ax 
-#  
-#        pcm = ax.pcolor(self.l_Qb, self.y, self.z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T))))
-#        fig.colorbar(pcm, ax=ax, extend='max')
+#    def list_result(object):
+        l_Qb = list()
+        l_Lb = list()
+        l_mdot = list()        
+        l_scaled_sol_abu = list()
+        l_max_mass_no = list()
+        l_abu = list()
+        for i in range(0, len(results), 1):
+            l_Qb.append(results[i].result.Qb)
+            l_Lb.append(results[i].result.Lb)
+            l_mdot.append(results[i].mdot)
+#            l_scaled_sol_abu.append(results.Qb)
+            l_max_mass_no.append(results[i].result.max_mass_no[1])
+            l_abu.append(results[i].result.abu[1])
+        self.l_Qb = l_Qb
+        self.l_Lb = l_Lb
+        self.l_mdot = l_mdot
+        self.l_abu = l_abu
+#        self.l_scaled_sol_abu = l_scaled_sol_abu
+        self.l_max_mass_no = np.max(l_max_mass_no)
+        y = np.r_[1:self.l_max_mass_no+1]
+        self.y = y
+        for j in range(0, len(l_max_mass_no), 1):
+            z1 = np.zeros(len(y))
+            for ii in y:
+                i = int(ii)
+                _int = np.where(i == ufunc_A(l_abu[j].iso))
+                if _int[0].size == 0:
+                    z1[i-1] = 0 
+                else:
+                    z1[i-1] = sum(l_abu[j].abu[_int])
+            if j == 0:
+                z = z1
+            else:
+                z = np.vstack((z,z1))
+        self.z = z
+
+    def plot_lmap(self, unit=None):
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax 
+        ax.set_ylabel('Mass number')
+        if unit == 'q':
+            ax.set_xlabel('Bottom heat flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
+            pcm = ax.pcolor(self.l_Qb, self.y, self.z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, self.z.T))))
+        else:
+            ax.set_xlabel('Bottom heat flux ($\mathrm{erg\,s}^{-1}$)')
+            pcm = ax.pcolor(self.l_Lb, self.y, self.z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, self.z.T))))
+        fig.colorbar(pcm, ax=ax, extend='max')
+#        ytick_labels = ax.yaxis.get_ticklocs()
+#        yticks = ax.yaxis.get_ticklocs()
+#        ax.set_yticks(yticks+.5)
+#        ax.set_yticklabels(yticks)
 
 class Results(object):
     def __init__(self, results=None):
