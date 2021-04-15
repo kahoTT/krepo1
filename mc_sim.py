@@ -5,4 +5,3 @@ class simLC(object):
         c = lc * dt
         simlc = np.random.poisson(c) / dt
         self.lc = simlc
-
