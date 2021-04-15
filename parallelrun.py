@@ -90,16 +90,16 @@ class ParallelProcessor(object):
         l_Qb = list()
         l_Lb = list()
         l_mdot = list()        
-        l_scaled_sol_abu = list()
+#        l_scaled_sol_abu = list()
         l_max_mass_no = list()
         l_abu = list()
         for i in range(0, len(results), 1):
-            l_Qb.append(results[i].result.Qb)
-            l_Lb.append(results[i].result.Lb)
-            l_mdot.append(results[i].mdot)
+            l_Qb.append(self.results[i].result.Qb)
+            l_Lb.append(self.results[i].result.Lb)
+            l_mdot.append(self.results[i].mdot)
 #            l_scaled_sol_abu.append(results.Qb)
-            l_max_mass_no.append(results[i].result.max_mass_no[1])
-            l_abu.append(results[i].result.abu[1])
+            l_max_mass_no.append(self.results[i].result.max_mass_no[1])
+            l_abu.append(self.results[i].result.abu[1])
         self.l_Qb = l_Qb
         self.l_Lb = l_Lb
         self.l_mdot = l_mdot
@@ -145,12 +145,11 @@ class Results(object):
         if results is None:
             results = list()
         self.results = sorted(results)
-        self.version = VERSION
     def add(self, result):
         self.results.append(result)
         self.results.sort()
     def __add__(self, other):
-        assert othert.__class__.__name__ == self.__class__.__name__
+        assert other.__class__.__name__ == self.__class__.__name__
         results = self.results + other.results
         return self.__class__(results)
     def __call__(self, **kwargs):
@@ -172,19 +171,25 @@ class Results(object):
             if ok:
                 results.append(r)
         return Results(results)
+
     def __iter__(self):
         for r in self.results:
             yield r
+
     def __getitem__(self, key):
         if isinstance(key, slice):
             return self.__class__(self.results[key])
         return self.results[key]
+
     def to_list(self):
         return self.results.copy()
+
     def data(self):
         return [r.data for r in self.results]
+
     def result(self):
         return [r.result for r in self.results]
+        
     def __repr__(self):
         return (
             f'{self.__class__.__name__}(\n' +
