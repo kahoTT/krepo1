@@ -6,6 +6,32 @@ import pycwt as wavelet
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
 
+# This class is to fill the gap data with mean value
+class fill(object):
+    def __init__(self, t=None, y=None, dt=None):
+        if dt is None:
+            dt = t[1] - t[0]
+        mean = sum(y) / len(y)
+        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
+        if np.any(res) == True:
+            print('data cleaning: Gaps between data')
+            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+        else:
+            print('data cleaning:No gaps between data')
+        tc = np.array([])
+        for i in ag[1:]:
+            ta = np.arange(t[i] + dt, t[i+1], dt)
+            tc = np.concatenate([tc, ta])
+        yc = np.ones(len(tc)) * mean
+        tc = np.concatenate([t, tc])
+        yc = np.concatenate([y, yc])
+        y_c = np.array([x for _,x in sorted(zip(tc, yc))])
+        t_c = np.sort(tc)
+        self.tf = t_c       
+        self.yf = y_c.T
+        self.mean = mean
+        print('Data gaps filled with mean value')
+
 class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
         p = np.polyfit(t, y, 3) # fit a 1-degree polynomial function
@@ -107,7 +133,8 @@ class Wave(object):
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
-            bst = (obs.bursts['time'] - obs.mjd.value[0])*86400 - 5
+            bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
+            bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 3
 #            bet = bst + 100
             barray = list()
@@ -140,6 +167,7 @@ class Wave(object):
         self.yb = yb
         self.tnb = tnb
         self.ynb = ynb
+        self.bursttime = bursttime
 
 #    def sig(arg):
 #        y, alpha, self.analysis = arg 
@@ -178,6 +206,8 @@ class Wave(object):
         f = np.linspace(f1, f2, nf)
         self.f = f
         c = Cleaning(None, self.tnb, self.ynb, self.f, self.dt, self.ag)
+        self.tc = c.tc
+        self.yc = c.yc
         plt.plot(c.tc, c.yc)
         plt.xlabel('Time (s)')
         plt.show()
