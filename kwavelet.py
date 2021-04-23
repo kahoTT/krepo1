@@ -5,6 +5,7 @@ import pycwt as wavelet
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
+# An example from 1636 is obsid('60032-05-02-00')
 
 # This class is to fill the gap data with mean value
 class fill(object):
@@ -135,44 +136,55 @@ class Wave(object):
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
-            bet = bst + obs.bursts['dur'] * 3
-#            bet = bst + 100
+            bet = bst + obs.bursts['dur'] * 2 # two time of the duration
             barray = list()
+            a1 = None
             for i in range(len(b.get('bnum'))):
-                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0]
-                b = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0]
-                barray.extend(np.r_[a:b])
-            tb = t[barray]
-            yb = y[barray]
-            tnb = np.delete(t, barray)
-            ynb = np.delete(y, barray)
+                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0][0]
+                _a = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0][0]
+                barray.extend(np.r_[a:_a])
+                if i == 0: 
+                    if a != 0: # for the case of starting in the middle of a burst
+                        tnb = t[:a],
+                        ynb = y[:a],
+                    else:
+                        tnb = ()
+                        ynb = ()
+                elif i == len(b.get('bnum')) - 1: # for the case of ending in the middle of a burst
+                    if b == len(t) - 1:
+                        pass
+                    else:
+                        tnb += t[a1:],
+                        ynb += y[a1:],
+                else:
+                    tnb += t[a1:a],
+                    ynb += y[a1:a],
+                a1 = _a+1
+            self.tb = t[barray]
+            self.yb = y[barray]
+            self.tnb = tnb
+            self.ynb = ynb
+     
 # dealing with bursts
 
-        if dt is None:
-            dt = t[1]-t[0]
-        else:
-            pass
-        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(tnb[:-1], tnb[1:])]
-        if np.any(res) == True:
-            print('data cleaning: Gaps between data')
-            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-        else:
-            print('data cleaning:No gaps between data')
+#        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(tnb[:-1], tnb[1:])]
+#        if np.any(res) == True:
+#            print('data cleaning: Gaps between data')
+#            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+#        else:
+#            print('data cleaning:No gaps between data')
+#        self.ag = ag
+
         self.t = t
         self.y = y
-        self.dt = dt
+        if o['instr'][0] == 'XPj':
+            self.dt = 0.125
+        else:
+            self.dt = t[1] - t[0]
 #        self.gnum = i+1
-        self.ag = ag
-        self.tb = tb
-        self.yb = yb
-        self.tnb = tnb
-        self.ynb = ynb
         self.bursttime = bursttime
 
-#    def sig(arg):
-#        y, alpha, self.analysis = arg 
-#        signif, fft_theor = wavelet.significance(1.0, dt, scales, 0, alpha,significance_level=0.99,wavelet=mother)
-
+# plot only burst
     def plot_nob(self):
         slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(self.ag[:-1], self.ag[1:])], [slice(self.ag[-1]+1, None)]), axis=0)
         for s in slices:
