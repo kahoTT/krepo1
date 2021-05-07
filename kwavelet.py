@@ -5,10 +5,11 @@ import pycwt as wavelet
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
+# An example from 1636 is obsid('60032-05-02-00')
 
 # This class is to fill the gap data with mean value
 class fill(object):
-    def __init__(self, t=None, y=None, dt=None):
+    def __call__(self, t=None, y=None, dt=None):
         if dt is None:
             dt = t[1] - t[0]
         mean = sum(y) / len(y)
@@ -17,7 +18,7 @@ class fill(object):
             print('data cleaning: Gaps between data')
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
         else:
-            print('data cleaning:No gaps between data')
+            print('data cleaning: No gaps between data')
         tc = np.array([])
         for i in ag[1:]:
             ta = np.arange(t[i] + dt, t[i+1], dt)
@@ -27,10 +28,8 @@ class fill(object):
         yc = np.concatenate([y, yc])
         y_c = np.array([x for _,x in sorted(zip(tc, yc))])
         t_c = np.sort(tc)
-        self.tf = t_c       
-        self.yf = y_c.T
-        self.mean = mean
         print('Data gaps filled with mean value')
+        return t_c, y_c.T, mean
 
 class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
@@ -85,7 +84,7 @@ class Analysis(object):
                 Liu_powera = np.hstack((Liu_powera, Liu_power))
         return  powera, scales, Liu_powera, coi
 
-class Wave(object):
+class read_lc(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None):
 #read lc
         if t is not None and y is not None:
@@ -119,13 +118,13 @@ class Wave(object):
 #        break ###
 
         if np.any(np.isnan(y)) == True:
-            print('data cleaning:arrays contain nan data')
+            print('data cleaning: arrays contain nan data')
             _int = np.where(np.isnan(y) == False)
             t = t[_int]
             y = y[_int]
-            print('data cleaning:nan data are clean')
+            print('data cleaning: nan data are clean')
         else:
-            print('data cleaning:No nan data')
+            print('data cleaning: No nan data')
 
 # dealing with bursts
         if len(b.get('bnum')) == 0:
@@ -135,62 +134,51 @@ class Wave(object):
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
-            bet = bst + obs.bursts['dur'] * 3
-#            bet = bst + 100
+            bet = bst + obs.bursts['dur'] * 3 # two time of the duration
             barray = list()
+            a1 = None
             for i in range(len(b.get('bnum'))):
-                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0]
-                b = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0]
-                barray.extend(np.r_[a:b])
-            tb = t[barray]
-            yb = y[barray]
-            tnb = np.delete(t, barray)
-            ynb = np.delete(y, barray)
-# dealing with bursts
-
-        if dt is None:
-            dt = t[1]-t[0]
-        else:
-            pass
-        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(tnb[:-1], tnb[1:])]
-        if np.any(res) == True:
-            print('data cleaning: Gaps between data')
-            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-        else:
-            print('data cleaning:No gaps between data')
+                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0][0]
+                _a = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0][0]
+                barray.extend(np.r_[a:_a])
+                if i == 0: 
+                    if a != 0: # for the case of starting in the middle of a burst
+                        tnb = t[:a],
+                        ynb = y[:a],
+                    else:
+                        tnb = ()
+                        ynb = ()
+                else:
+                    tnb += t[a1:a],
+                    ynb += y[a1:a],
+                a1 = _a + 1
+            if _a == len(t) - 1: # for the case of ending in the middle of a burst
+                pass
+            else:
+                tnb += t[a1:],
+                ynb += y[a1:],
+            self.tb = t[barray]
+            self.yb = y[barray]
+            self.tnb = tnb
+            self.ynb = ynb
         self.t = t
         self.y = y
-        self.dt = dt
-#        self.gnum = i+1
-        self.ag = ag
-        self.tb = tb
-        self.yb = yb
-        self.tnb = tnb
-        self.ynb = ynb
+        if o['instr'][0] == 'XPj':
+            self.dt = 0.125
+        else:
+            self.dt = t[1] - t[0]
         self.bursttime = bursttime
 
-#    def sig(arg):
-#        y, alpha, self.analysis = arg 
-#        signif, fft_theor = wavelet.significance(1.0, dt, scales, 0, alpha,significance_level=0.99,wavelet=mother)
-
+# Plot without burst
     def plot_nob(self):
-        slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(self.ag[:-1], self.ag[1:])], [slice(self.ag[-1]+1, None)]), axis=0)
-        for s in slices:
+        for s in range(len(self.tnb)):
             plt.plot(self.tnb[s],self.ynb[s])
         plt.ylabel('Count/s')
         plt.xlabel('Time (s)')
         plt.show()
 
-    def plot_lc(self,
-                astart = None,
-                aend = None,
-                tstart = None,
-                tend = None
-               ):
-        ii = slice(astart, aend)
-        plt.plot(self.t[ii], self.y[ii],'.')
-        plt.show()
  
+# plot only burst
     def plot_b(self):
         plt.plot(self.tb, self.yb, 'rx')
         plt.ylabel('Count/s')
@@ -210,6 +198,16 @@ class Wave(object):
         self.yc = c.yc
         plt.plot(c.tc, c.yc)
         plt.xlabel('Time (s)')
+        plt.show()
+
+    def plot_lc(self,
+                astart = None,
+                aend = None,
+                tstart = None,
+                tend = None
+               ):
+        ii = slice(astart, aend)
+        plt.plot(self.t[ii], self.y[ii],'.')
         plt.show()
 
     def plot(
