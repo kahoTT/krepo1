@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt as wavelet
+import stingray
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
@@ -13,6 +14,7 @@ class fill(object):
         if dt is None:
             dt = t[1] - t[0]
         mean = sum(y) / len(y)
+        std = y.std()
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
         if np.any(res) == True:
             print('data cleaning: Gaps between data')
@@ -29,7 +31,30 @@ class fill(object):
         y_c = np.array([x for _,x in sorted(zip(tc, yc))])
         t_c = np.sort(tc)
         print('Data gaps filled with mean value')
-        return t_c, y_c.T, mean
+        return t_c, y_c.T, mean, std
+
+class sim(object):
+    def __init__(self, t=None, y=None, dt=None, input_counts=True, norm='None'):
+        self.norm = norm
+        if dt is None:
+            dt = t[1] - t[0]       
+        lc = stingray.Lightcurve(t, y, input_counts=input_counts)
+        spec = stingray.Powerspectrum(lc, norm=norm)   
+        spec.power = abs(spec.power)
+        self.spec_power = spec.power 
+        self.fre = spec.freq
+
+    def plot_spec(self):
+        fig, ax = plt.subplots()
+        ax.plot(self.fre, self.spec_power, ds='steps-mid')
+        plt.xscale('log')
+        plt.yscale('log')
+        if self.norm == 'None':
+            plt.ylabel('Abs power')
+        else:
+            plt.ylabel(self.norm + ' power')
+        plt.xlabel('Frequency (Hz)')
+        plt.show()
 
 class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
