@@ -10,7 +10,7 @@ import stingray
 
 # This class is to fill the gap data with mean value
 class fill(object):
-    def __call__(self, t=None, y=None, dt=None):
+    def __init__(self, t=None, y=None, dt=None):
         if dt is None:
             dt = t[1] - t[0]
         mean = sum(y) / len(y)
