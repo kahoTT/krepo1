@@ -7,8 +7,11 @@ class main_(object):
         t = threading.Thread(target=self.main_thread)
         t.daemon = True
         t.start()
-#        time.sleep(10)
-#        t.stop()
+        time.sleep(5)
+        self.a = 2
+        while True:
+            if t.is_alive() == False:
+                break
 
     def main_thread(self):
         for i in range(0,10,1):
@@ -32,4 +35,6 @@ class main_(object):
             print("1 finished!")
             break
 
+if __name__ == '__main__':
+    main_(1)
     
