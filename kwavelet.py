@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt as wavelet
 import stingray
+from mc_sim import simLC
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
@@ -10,7 +11,7 @@ import stingray
 
 # This class is to fill the gap data with mean value
 class fill(object):
-    def __init__(self, t=None, y=None, dt=None):
+    def __call__(self, t=None, y=None, dt=None):
         if dt is None:
             dt = t[1] - t[0]
         mean = sum(y) / len(y)
@@ -33,28 +34,9 @@ class fill(object):
         print('Data gaps filled with mean value')
         return t_c, y_c.T, mean, std
 
-class sim(object):
-    def __init__(self, t=None, y=None, dt=None, input_counts=True, norm='None'):
-        self.norm = norm
-        if dt is None:
-            dt = t[1] - t[0]       
-        lc = stingray.Lightcurve(t, y, input_counts=input_counts)
-        spec = stingray.Powerspectrum(lc, norm=norm)   
-        spec.power = abs(spec.power)
-        self.spec_power = spec.power 
-        self.fre = spec.freq
-
-    def plot_spec(self):
-        fig, ax = plt.subplots()
-        ax.plot(self.fre, self.spec_power, ds='steps-mid')
-        plt.xscale('log')
-        plt.yscale('log')
-        if self.norm == 'None':
-            plt.ylabel('Abs power')
-        else:
-            plt.ylabel(self.norm + ' power')
-        plt.xlabel('Frequency (Hz)')
-        plt.show()
+class sim(simLC):
+    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
+        super().__init__(t, y, dt, input_counts, norm)
 
 class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
@@ -139,8 +121,6 @@ class read_lc(object):
             t = t1 - t1[0]
         else:
             raise AttributeError(f'give me a light curve')
-# reading lc
-#        break ###
 
         if np.any(np.isnan(y)) == True:
             print('data cleaning: arrays contain nan data')
