@@ -36,7 +36,19 @@ class fill(object):
 
 class sim(simLC):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
-        super().__init__(t, y, dt, input_counts, norm)
+        # see if there any large data gaps. If so, have to simulate them one by one
+        res = [(sub2 - sub1 > 100) for sub1, sub2 in zip(t[:-1], t[1:])]
+        if np.any(res) == True:
+            l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
+            for s in slices:
+                _t = t[s]
+                _y = y[s]
+                super().__init__(_t, _y, dt, input_counts, norm)
+                plt.plot(self.fre, self.spec_power)
+                plt.yscale('log')
+                plt.xscale('log')
+#        else:
 
 class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
