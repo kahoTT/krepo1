@@ -186,7 +186,7 @@ class Shot(object):
         #dm = d0 * 4 * np.pi * (R**3 - (R-dr)**3) / 3  # solve directly , dm : change of mass
         t0 = T 
         r0 = R
-        xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass
+        xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass; total mass value used
         xl0 = L
         z0 = M
         xm0 = xms
@@ -299,7 +299,7 @@ class Shot(object):
         y[1] = xm1 / (4 * np.pi * R**2)
         y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
 
-# starting from the second zone
+# starting from the SECOND ZONE
         for j in range(1 , k , 1):
             if last_step is True:
                 j = j - 1
@@ -370,14 +370,14 @@ class Shot(object):
                     du0bt0 = - u0bt0
                     du0bd0 = - u0bd0
     
-                    if amode == 1: # Harmonic mean for pressure
+                    if amode == 1: # Harmonic mean for boundary pressure
                         pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
                         pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
                         pdv0bd0 = pdv0 / (1 / p1 + 1 / p0) * p0bd0 / p0**2 + 2 / (1 / p1 + 1 / p0) * (1 / d0**2)
                         dL0  = (du0 + pdv0) * dmx0
                         dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
-                        sv1  = 0.5 * (dL1 + dL0)
+                        sv1  = 0.5 * (dL1 + dL0) # why 0.5 * ? I think it should be for the xm1
     
                     else:
                         pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
@@ -397,7 +397,7 @@ class Shot(object):
                     dL   = (sv1 + s1) * xm1
                     xl0  = xl1 - dL
     
-                    acdr0 = ac * (ki0 + ki1)
+                    acdr0 = ac * (ki0 + ki1) # the boundary of opacity
                     l0 = (t0**4 - t1**4) * acdr0
                     f0 = p0 - p
                     h0 = l0 - xl0
