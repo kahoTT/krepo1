@@ -17,6 +17,20 @@ from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
 import numpy as np
 import matplotlib.pyplot as plt
 
+def abu_format(parameters):
+    parameters = parameters.copy()
+    abu = parameters.get('abu', None)
+    if abu is not None:
+        Abu = AbuSet(abu)
+        parameters['Abu'] = repr(Abu).replace(' ','')
+        abu = Abu.as_dict(massfrac=True)
+        parameters['ABU'] = (
+            '(' +
+            ','.join(f'{I(k).Name():s}={v:<8G}'.strip() for k,v in abu.items())
+            + ')'
+            )
+    return parameters
+
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19, task=Shot):
         super().__init__()
@@ -96,7 +110,7 @@ class ParallelProcessor(object):
         for i in range(0, len(results), 1):
             l_Qb.append(self.results[i].result.Qb)
             l_Lb.append(self.results[i].result.Lb)
-            l_mdot.append(self.results[i].mdot)
+            l_mdot.append(self.results[i].result.mdot)
 #            l_scaled_sol_abu.append(results.Qb)
             l_max_mass_no.append(self.results[i].result.max_mass_no[1])
             l_abu.append(self.results[i].result.abu[1])
