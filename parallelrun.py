@@ -1,6 +1,7 @@
 import os
-import io
 import itertools
+import uuid
+
 from multiprocessing import JoinableQueue, Process, cpu_count
 import multiprocessing
 from kkepshot import Shot
@@ -16,6 +17,8 @@ import matplotlib.colors as colors
 from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
 import numpy as np
 import matplotlib.pyplot as plt
+from utils import cpickle
+from starshot.base import Base
 
 def abu_format(parameters):
     parameters = parameters.copy()
@@ -31,6 +34,26 @@ def abu_format(parameters):
             )
     return parameters
 
+def save_model(data, task, filename, path):
+    data = abu_format(data)
+    if isinstance(filename, FunctionType):
+        filename = filename(**data)
+    elif isinstance(filename, str):
+        filename = filename.format(**data)
+    elif filename is Ellipsis:
+        filename = '_'.join(f'{k}={v:<5}'.replace(' ','') for k,v in data.items() if not k in ('abu','Abu')) +'.pickle.xz'
+    if hasattr(task, 'save'):
+        task.save(filename, path)
+    else:
+        if filename is None:
+            filename = uuid.uuid1().hex + '.pickle.xz'
+        if path is not None:
+            filename = Path(path) / filename
+        filename = Path(filename).expanduser()
+        cpickle(task, filename)
+
+
+
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19, task=Shot):
         super().__init__()
@@ -39,6 +62,7 @@ class ParallelShot(Process):
         self.nice = nice
         self.task = task
 
+
     def run(self):
         os.nice(self.nice)
         while True:
@@ -46,12 +70,18 @@ class ParallelShot(Process):
             if data is None:
                 self.qi.task_done()
                 break
+            path = data.pop('path', None)
+            filename = data.pop('filename', None)
+
             task = self.task(**data)
-            if self.qo is not None:
+
+            if filename is not None or path is not None:
+                save_model(data, task, filename, path)
+            elif self.qo is not None:
                 self.qo.put((data, task))
             self.qi.task_done()
 
-class ParallelProcessor(object):
+class ParallelProcessor(Base):
     def __init__(self, nparallel=None, task=Shot, **kwargs):
         make() # only one Kepler make process before we start... WTF is that?
         processes = list()
@@ -98,6 +128,10 @@ class ParallelProcessor(object):
         qo.join()
 
         self.results = sorted(results)
+
+    def __iter__(self):
+        for r in self.results:
+            yield r
 
 # may not necessarily do the following command if better understanding the parallel code
 #    def list_result(object):
@@ -154,7 +188,7 @@ class ParallelProcessor(object):
 #        ax.set_yticks(yticks+.5)
 #        ax.set_yticklabels(yticks)
 
-class Results(object):
+class Results(Base):
     def __init__(self, results=None):
         if results is None:
             results = list()
@@ -210,6 +244,24 @@ class Results(object):
             ',\n'.join(repr(r) for r in self.results) +
             ')'
             )
+
+    def save_results(self, filename=None, path=None):
+        """Bulk-save all completed results/tasks.
+
+        If you provide a 'path' then output files will be written into
+        that directory.
+
+        'filename' should be a string with format instructions so that
+        variables in there can be replaced from the keywords.
+        e.g., 'Q={Q:g}_Mdot={ymax:g}_{Abu}.xz'
+
+        If no filename is provided, the UUID will be used.
+
+        'Abu' will be replaced by AbuSet object representation
+        'ABU' will use nice dictionary representation
+        """
+        for p,r in self.results:
+            save_model(p, r, filename, path)
 
 class Result(object):
     def __init__(self, data, result):
