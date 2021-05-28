@@ -3,7 +3,6 @@ import itertools
 import uuid
 
 from multiprocessing import JoinableQueue, Process, cpu_count
-import multiprocessing
 from kkepshot import Shot
 from numpy import iterable
 from kepler.code import make
@@ -52,8 +51,6 @@ def save_model(data, task, filename, path):
         filename = Path(filename).expanduser()
         cpickle(task, filename)
 
-
-
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19, task=Shot):
         super().__init__()
@@ -61,7 +58,6 @@ class ParallelShot(Process):
         self.qo = qo
         self.nice = nice
         self.task = task
-
 
     def run(self):
         os.nice(self.nice)
@@ -91,7 +87,6 @@ class ParallelProcessor(Base):
             nparallel = cpu_count()
         for i in range(nparallel):
             p = ParallelShot(qi, qo, task=task)
-#            p.run(run)
             p.daemon = False
             p.start()
             processes.append(p)
@@ -128,10 +123,6 @@ class ParallelProcessor(Base):
         qo.join()
 
         self.results = sorted(results)
-
-    def __iter__(self):
-        for r in self.results:
-            yield r
 
 # may not necessarily do the following command if better understanding the parallel code
 #    def list_result(object):
@@ -187,6 +178,10 @@ class ParallelProcessor(Base):
 #        yticks = ax.yaxis.get_ticklocs()
 #        ax.set_yticks(yticks+.5)
 #        ax.set_yticklabels(yticks)
+
+    def __iter__(self):
+        for r in self.results:
+            yield r
 
 class Results(Base):
     def __init__(self, results=None):
@@ -268,7 +263,7 @@ class Result(object):
         self.result = result
         self.data = data
     def __getattr__(self, attr):
-        if hasattr(self, 'data'):
+        if attr != 'data' and hasattr(self, 'data'):
             if attr in self.data:
                 return self.data[attr]
         raise AttributeError()
