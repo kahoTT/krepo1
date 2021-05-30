@@ -43,13 +43,14 @@ class sim(simLC):
         if np.any(res) == True:
             l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
             slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
+            self.slices = slices
         else:
             slices = ((),)
-            for s in slices:
-                _t = t[s]
-                _y = y[s]
-                super().__init__(_t, _y, dt, input_counts, norm)
-                print(self.fre)
+        for s in slices:
+            _t = t[s]
+            _y = y[s]
+            super().__init__(_t, _y, dt, input_counts, norm)
+            self.plot_spec()
 
 class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
