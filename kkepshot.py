@@ -12,6 +12,8 @@ from matplotlib import pyplot as plt
 from starshot.kepnet import KepNet
 from heat.numeric import sqrt, cbrt, qqrt, GOLDEN
 import matplotlib.colors as colors
+from starshot.base import Base
+import re
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -82,7 +84,7 @@ class SimpleNet(object):
         self.sdot = self._net.sdot 
 
 
-class Shot(object):
+class Shot(Base):
 
 #    Shooting code.
 #    We use same grid variable naming scheme as in Kepler
@@ -125,6 +127,7 @@ class Shot(object):
             Q = None,
             ymax = 1e12,
             last_step = None,
+            endnet = True,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -464,7 +467,6 @@ class Shot(object):
             if (d0 > 5e11 or t0 > 5e9 or last_step is True):
                 break
 
-        net.done()
 
 # phoney
         rn[j+2] = rm
@@ -544,6 +546,9 @@ class Shot(object):
         self.maxions = self.abulen.argmax()
         self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
+        
+        if endnet:
+            net.done()
 
     def plot_l(self, escale=None):
         i1 = slice(1, None)
@@ -737,3 +742,7 @@ class Shot(object):
                 z = np.vstack((z,z1))
         pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
+
+    _pickle_exclude = Base._pickle_exclude + (
+        re.compile('B'),
+        )

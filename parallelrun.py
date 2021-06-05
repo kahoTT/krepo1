@@ -65,6 +65,7 @@ class ParallelShot(Process):
             data = self.qi.get()
             if data is None:
                 self.qi.task_done()
+                self.qo.close()
                 break
             path = data.pop('path', None)
             filename = data.pop('filename', None)
@@ -117,7 +118,7 @@ class ParallelProcessor(Base):
         # we could collect up results
 
         results = list()
-        while not qo.empty():
+        for _ in range(len(data)):
             results.append(Result(*qo.get()))
             qo.task_done()
         qo.join()
@@ -126,41 +127,41 @@ class ParallelProcessor(Base):
 
 # may not necessarily do the following command if better understanding the parallel code
 #    def list_result(object):
-        l_Qb = list()
-        l_Lb = list()
-        l_mdot = list()        
+#        l_Qb = list()
+#        l_Lb = list()
+#        l_mdot = list()        
 #        l_scaled_sol_abu = list()
-        l_max_mass_no = list()
-        l_abu = list()
-        for i in range(0, len(results), 1):
-            l_Qb.append(self.results[i].result.Qb)
-            l_Lb.append(self.results[i].result.Lb)
-            l_mdot.append(self.results[i].result.mdot)
+#        l_max_mass_no = list()
+#        l_abu = list()
+#        for i in range(0, len(results), 1):
+#            l_Qb.append(self.results[i].result.Qb)
+#            l_Lb.append(self.results[i].result.Lb)
+#            l_mdot.append(self.results[i].result.mdot)
 #            l_scaled_sol_abu.append(results.Qb)
-            l_max_mass_no.append(self.results[i].result.max_mass_no[1])
-            l_abu.append(self.results[i].result.abu[1])
-        self.l_Qb = l_Qb
-        self.l_Lb = l_Lb
-        self.l_mdot = l_mdot
-        self.l_abu = l_abu
+#            l_max_mass_no.append(self.results[i].result.max_mass_no[1])
+#            l_abu.append(self.results[i].result.abu[1])
+#        self.l_Qb = l_Qb
+#        self.l_Lb = l_Lb
+#        self.l_mdot = l_mdot
+#        self.l_abu = l_abu
 #        self.l_scaled_sol_abu = l_scaled_sol_abu
-        self.l_max_mass_no = np.max(l_max_mass_no)
-        y = np.r_[1:self.l_max_mass_no+1]
-        self.y = y
-        for j in range(0, len(l_max_mass_no), 1):
-            z1 = np.zeros(len(y))
-            for ii in y:
-                i = int(ii)
-                _int = np.where(i == ufunc_A(l_abu[j].iso))
-                if _int[0].size == 0:
-                    z1[i-1] = 0 
-                else:
-                    z1[i-1] = sum(l_abu[j].abu[_int])
-            if j == 0:
-                z = z1
-            else:
-                z = np.vstack((z,z1))
-        self.z = z
+#        self.l_max_mass_no = np.max(l_max_mass_no)
+#        y = np.r_[1:self.l_max_mass_no+1]
+#        self.y = y
+#        for j in range(0, len(l_max_mass_no), 1):
+#            z1 = np.zeros(len(y))
+#            for ii in y:
+#                i = int(ii)
+#                _int = np.where(i == ufunc_A(l_abu[j].iso))
+#                if _int[0].size == 0:
+#                    z1[i-1] = 0 
+#                else:
+#                    z1[i-1] = sum(l_abu[j].abu[_int])
+#            if j == 0:
+#                z = z1
+#            else:
+#                z = np.vstack((z,z1))
+#        self.z = z
 
     def plot_lmap(self, unit=None):
         fig, ax = plt.subplots()
@@ -192,7 +193,7 @@ class Results(Base):
         self.results.append(result)
         self.results.sort()
     def __add__(self, other):
-        assert other.__class__.__name__ == self.__class__.__name__
+        assert othert.__class__.__name__ == self.__class__.__name__
         results = self.results + other.results
         return self.__class__(results)
     def __call__(self, **kwargs):
@@ -214,10 +215,6 @@ class Results(Base):
             if ok:
                 results.append(r)
         return Results(results)
-
-    def __iter__(self):
-        for r in self.results:
-            yield r
 
     def __getitem__(self, key):
         if isinstance(key, slice):
