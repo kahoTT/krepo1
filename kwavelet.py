@@ -11,17 +11,13 @@ from mc_sim import simLC
 
 # This class is to fill the gap data with mean value
 class fill(object):
-    def __call__(self, t=None, y=None, dt=None):
+    def __init__(self, t=None, y=None, dt=None):
         if dt is None:
             dt = t[1] - t[0]
         mean = sum(y) / len(y)
-        std = y.std()
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
         if np.any(res) == True:
-            print('data cleaning: Gaps between data')
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-        else:
-            print('data cleaning: No gaps between data')
         tc = np.array([])
         for i in ag[1:]:
             ta = np.arange(t[i] + dt, t[i+1], dt)
@@ -31,24 +27,33 @@ class fill(object):
         yc = np.concatenate([y, yc])
         y_c = np.array([x for _,x in sorted(zip(tc, yc))])
         t_c = np.sort(tc)
-        print('Data gaps filled with mean value')
-        return t_c, y_c.T, mean, std
+        self.tc = t_c
+        self.yc = y_c
 
 class sim(simLC):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
         # see if there any large data gaps. If so, have to simulate them one by one
-        res = [(sub2 - sub1 > 100) for sub1, sub2 in zip(t[:-1], t[1:])]
+        if dt is None:
+            dt = t[1] - t[0]
+        res = [(sub2 - sub1 > 100) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? For example, < 100, the data point
         if np.any(res) == True:
             l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
             slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
-            for s in slices:
-                _t = t[s]
-                _y = y[s]
-                super().__init__(_t, _y, dt, input_counts, norm)
-                plt.plot(self.fre, self.spec_power)
-                plt.yscale('log')
-                plt.xscale('log')
-#        else:
+            self.slices = slices
+        else:
+            slices = ((),)
+        lct = np.array([])
+        lcy = np.array([])
+        for s in slices:
+            _t = t[s]
+            _y = y[s]
+            super().__init__(_t, _y, dt, input_counts, norm)
+            lct = np.concatenate((lct, _t), axis=0)
+            lcy = np.concatenate((lcy, self.counts), axis=0)
+#            self.plot_lc()
+        self.lct = lct
+        self.lcy = lcy
+            
 
 class Cleaning(object): 
     def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
@@ -103,7 +108,7 @@ class Analysis(object):
                 Liu_powera = np.hstack((Liu_powera, Liu_power))
         return  powera, scales, Liu_powera, coi
 
-class read_lc(object):
+class analysis(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None):
 #read lc
         if t is not None and y is not None:
@@ -151,7 +156,7 @@ class read_lc(object):
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
-            bet = bst + obs.bursts['dur'] * 3 # two time of the duration
+            bet = bst + obs.bursts['dur'] * 3 # scaling the time of the duration
             barray = list()
             a1 = None
             for i in range(len(b.get('bnum'))):
@@ -181,10 +186,15 @@ class read_lc(object):
         self.t = t
         self.y = y
         if o['instr'][0] == 'XPj':
-            self.dt = 0.125
+            dt = self.dt = 0.125
         else:
             self.dt = t[1] - t[0]
         self.bursttime = bursttime
+
+        for i2 in range(len(tnb)):
+            s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
+            plt.plot(s.lct, s.lcy)
+        plt.show()    
 
 # Plot without burst
     def plot_nob(self):
