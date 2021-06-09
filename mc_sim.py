@@ -22,7 +22,7 @@ class simLC(object):
         x0 = np.array([3, -2, guess_horizontal])
         result = least_squares(partial(G, self.logfre, self.logpow), x0)
         lmodel = F(spec.freq, *result.x)
-        sim = simulator.Simulator(N=len(t), mean=y.mean(), dt=dt, rms=y.std()/y.mean())
+        sim = simulator.Simulator(N=len(t), mean=y.mean(), dt=dt, rms=y.std()/y.mean()) #!!! may be skip the check !!!
         lc = sim.simulate(lmodel)
         self.time = t 
         self.counts = lc.counts

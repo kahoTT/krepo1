@@ -1,9 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
-import pycwt as wavelet
+import pycwt 
 import stingray
 from mc_sim import simLC
+import minbar
+b = minbar.Bursts()
+o = minbar.Observations()
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
@@ -18,17 +21,21 @@ class fill(object):
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
         if np.any(res) == True:
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-        tc = np.array([])
-        for i in ag[1:]:
-            ta = np.arange(t[i] + dt, t[i+1], dt)
-            tc = np.concatenate([tc, ta])
-        yc = np.ones(len(tc)) * mean
-        tc = np.concatenate([t, tc])
-        yc = np.concatenate([y, yc])
-        y_c = np.array([x for _,x in sorted(zip(tc, yc))])
-        t_c = np.sort(tc)
-        self.tc = t_c
-        self.yc = y_c
+            tc = np.array([])
+            for i in ag[1:]:
+                ta = np.arange(t[i] + dt, t[i+1], dt)
+                tc = np.concatenate([tc, ta])
+            yc = np.ones(len(tc)) * mean
+            tc = np.concatenate([t, tc])
+            yc = np.concatenate([y, yc])
+            y_c = np.array([x for _,x in sorted(zip(tc, yc))])
+            t_c = np.sort(tc)
+            self.tc = t_c
+            self.yc = y_c
+        else:
+            self.tc = t
+            self.yc = y
+
 
 class sim(simLC):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
@@ -85,31 +92,21 @@ class Cleaning(object):
         self.tc = t_c       
         self.yc = y_c
 
-class Analysis(object):
-    def __call__(self, t, y, f, sigma, dt, ag):
-        mother = wavelet.Morlet(sigma)
-        slices = 'n'
-        powera = Liu_powera = None
-        for s in slices:
-            if s == 'n':
-                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y, dt, wavelet=mother,freqs=f)
-            else:
-                pass
-#                wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(y[s], dt, wavelet=mother,freqs=f)
-            power = (np.abs(wave)) ** 2
-            Liu_power = power / scales[:, None]
-            if powera is None:
-                powera = power
-            else:
-                powera = np.hstack((powera, power))
-            if Liu_powera is None:
-                Liu_powera = Liu_power
-            else:
-                Liu_powera = np.hstack((Liu_powera, Liu_power))
-        return  powera, scales, Liu_powera, coi
+class wavelet_spec(object):
+    def __init__(self, y, f, sigma, dt, powera):
+        mother = pycwt.Morlet(sigma)
+        wave, scales, freqs, coi, fft, fftfreqs = pycwt.wavelet.cwt(y, dt, wavelet=mother, freqs=f)
+        power = (np.abs(wave)) ** 2
+        Liu_power = power / scales[:, None]
+        if powera is None:
+            _pow = power
+        elif powera == 'Liu':
+            _pow = Liu_power
+        self.power = _pow
+
 
 class analysis(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200):
 #read lc
         if t is not None and y is not None:
             pass
@@ -125,9 +122,6 @@ class analysis(object):
                 t = t1 - t1[0]
                 y = self.lc[1].data['RATE']
         elif obsid:
-            import minbar
-            b = minbar.Bursts()
-            o = minbar.Observations()
             b.obsid(obsid)
             o.obsid(obsid)
             obs = minbar.Observation(o[o['entry']]) 
@@ -191,10 +185,17 @@ class analysis(object):
             self.dt = t[1] - t[0]
         self.bursttime = bursttime
 
-        for i2 in range(len(tnb)):
+        f = np.linspace(f1, f2, nf)
+        self.f = f
+
+        for i2 in range(len(tnb)-3):
             s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
-            plt.plot(s.lct, s.lcy)
-        plt.show()    
+            _f = fill(s.lct, s.lcy, dt=dt)
+            ws = wavelet_spec(y=(_f.yc, f=f, sigma=10, dt=dt, powera=None)
+            plt.contourf(_f.tc, f, 2*ws.power/sum(_f.yc), cmap=plt.cm.viridis)
+            plt.colorbar()
+            plt.show()    
+#            plt.plot(_f.tc, _f.yc, 'b')
 
 # Plot without burst
     def plot_nob(self):
@@ -244,7 +245,7 @@ class analysis(object):
             sigma = 15,
             power = None, 
             f1 = 2e-3, 
-            f2 = 13e-3,
+            f2 = 15e-3,
             nf = 200,
 #            tstart = None,
 #            tend = None
