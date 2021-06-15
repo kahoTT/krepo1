@@ -103,6 +103,7 @@ class wavelet_spec(object):
         elif powera == 'Liu':
             _pow = Liu_power
         self.power = _pow
+        self.coi = coi
 
 
 class analysis(object):
@@ -191,11 +192,21 @@ class analysis(object):
         for i2 in range(len(tnb)-3):
             s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
             _f = fill(s.lct, s.lcy, dt=dt)
-            ws = wavelet_spec(y=(_f.yc, f=f, sigma=10, dt=dt, powera=None)
-            plt.contourf(_f.tc, f, 2*ws.power/sum(_f.yc), cmap=plt.cm.viridis)
-            plt.colorbar()
+            ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
+            norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+            for i3 in range(len(ws.power[0])):
+                _int = np.where(f < 1/ws.coi[i3])
+                norm_pow[:,i3][_int] = np.nan
+#            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
+#           plt.colorbar()
+#            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
+#                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
+#            plt.ylim(f1, f2)
+            plt.hist(norm_pow.flatten(), bins=50)
             plt.show()    
 #            plt.plot(_f.tc, _f.yc, 'b')
+        self.pow = norm_pow
+        self.coi = ws.coi
 
 # Plot without burst
     def plot_nob(self):
