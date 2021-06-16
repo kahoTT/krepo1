@@ -202,11 +202,14 @@ class analysis(object):
 #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
 #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
 #            plt.ylim(f1, f2)
-            plt.hist(norm_pow.flatten(), bins=50)
+            plt.hist(norm_pow.flatten(), bins=50, density=True)
             plt.show()    
 #            plt.plot(_f.tc, _f.yc, 'b')
         self.pow = norm_pow
         self.coi = ws.coi
+
+#    def plot_hist(self):
+
 
 # Plot without burst
     def plot_nob(self):
@@ -249,46 +252,36 @@ class analysis(object):
         plt.plot(self.t[ii], self.y[ii],'.')
         plt.show()
 
-    def plot(
+    def plot_spec(
             self,
             astart = None,
             aend = None,
-            sigma = 15,
+            sigma = 10,
             power = None, 
-            f1 = 2e-3, 
-            f2 = 15e-3,
-            nf = 200,
 #            tstart = None,
 #            tend = None
             ):
     
-        ii = slice(astart, aend)
         fig, ax = plt.subplots(2, sharex=True)
         self.fig = fig
         self.ax = ax
+        f = self.f 
+        t = self.tnb
+        y = self.ynb
+        dt = self.dt
 
-        f = np.linspace(f1, f2, nf)
-        self.f = f
-        c = Cleaning(None, self.tnb[ii], self.ynb[ii], self.f, self.dt, self.ag)
-        An = Analysis()
-        p, s, lp, coi = An(c.tc, c.yc, self.f, sigma, self.dt, self.ag)
-        self.coi=coi       
+        for i in range(len(t)):
+            _f = fill(t[i], y[i], dt=dt)
+            ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
+            norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+            for i1 in range(len(ws.power[0])):
+                _int = np.where(f < 1/ws.coi[i1])
+                norm_pow[:,i1][_int] = np.nan
+            ax[0].plot(t[i], y[i])
+            ax[1].contourf(t[i], f, norm_pow, cmap=plt.cm.viridis)
 
-#        ax[0].clear()
-        ax[0].plot(self.t[ii], self.y[ii])
-        ax[0].set_ylabel('Count/s')
+        ax.set_ylabel('Count/s')
         fig.subplots_adjust(hspace=0.05)
-#        ax[0].set_xticks([])
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
-#        if power == 'normal':
-#            ax[1].contourf(self.t[ii], self.f, p, cmap=plt.cm.viridis)
-#        else:
-#            ax[1].contourf(self.t[ii], self.f, lp, cmap=plt.cm.viridis)
-        if power == 'normal':
-            ax[1].contourf(c.tc, f, p, cmap=plt.cm.viridis)
-        else:
-            ax[1].contourf(c.tc, f, lp, cmap=plt.cm.viridis)
-#        ax[1].fill(np.concatenate([self.t[:1], self.t, self.t[-1:]]),
-#                   np.concatenate([[f1], 1/self.coi, [f1]]), 'k', alpha=0.3, hatch='x')
-        ax[1].set_ylim(f1,f2)
+        ax.colorbar()
