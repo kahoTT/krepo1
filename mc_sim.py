@@ -13,7 +13,7 @@ class simLC(object):
         lc = stingray.Lightcurve(t, y, input_counts=input_counts)
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
-        logspec = spec.rebin_log(0.001)  
+        logspec = spec.rebin_log(0.01)  
         _ind = np.where((logspec.freq <= 4e-3) | (logspec.freq >= 15e-3))
         _ind2 = np.where(logspec.freq >= 1e-2)
         self.logfre = logspec.freq[_ind]

@@ -57,41 +57,11 @@ class sim(simLC):
             super().__init__(_t, _y, dt, input_counts, norm)
             lct = np.concatenate((lct, _t), axis=0)
             lcy = np.concatenate((lcy, self.counts), axis=0)
-#            self.plot_lc()
+# plot all spectra
+            self.plot_spec()
         self.lct = lct
         self.lcy = lcy
             
-
-class Cleaning(object): 
-    def __init__(self, telescope=None, t=None, y=None, f=None, dt=None, ag=None):
-        p = np.polyfit(t, y, 3) # fit a 1-degree polynomial function
-        y_notrend = y - np.polyval(p, t)
-        std = y_notrend.std()  # Standard deviation
-        var = std ** 2  # Variance
-        y_norm = y_notrend / std  # Normalized dataset
-        alpha, _, _ = wavelet.ar1(y) # Model red noise
-        
-# for future development; split the array according to the size of the dead time
-#        res = [(sub2 - sub1 > (1 / f.min()) * 4) for sub1, sub2 in zip(t[ag][:-1], t[ag][1:])]
-#        if np.any(res) == True:
-#            l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-#            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
-#        else:
-#            slices = 'null'
-#        for s in slices:
-            
-        tc = np.array([])
-        for i in ag[1:]:
-            ta = np.arange(t[i] + dt, t[i+1], dt)
-            tc = np.concatenate([tc, ta])
-        yc = np.zeros(len(tc))
-        tc = np.concatenate([t, tc])
-        yc = np.concatenate([y_norm, yc])
-        y_c = [x for _,x in sorted(zip(tc, yc))]
-        t_c = np.sort(tc)
-        self.tc = t_c       
-        self.yc = y_c
-
 class wavelet_spec(object):
     def __init__(self, y, f, sigma, dt, powera):
         mother = pycwt.Morlet(sigma)
@@ -107,7 +77,7 @@ class wavelet_spec(object):
 
 
 class analysis(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
         if t is not None and y is not None:
             pass
@@ -190,22 +160,26 @@ class analysis(object):
         self.f = f
 
         for i2 in range(len(tnb)-3):
-            s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
-            _f = fill(s.lct, s.lcy, dt=dt)
-            ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
-            norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
-            for i3 in range(len(ws.power[0])):
-                _int = np.where(f < 1/ws.coi[i3])
-                norm_pow[:,i3][_int] = np.nan
-#            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
-#           plt.colorbar()
-#            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
-#                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
-#            plt.ylim(f1, f2)
-            plt.hist(norm_pow.flatten(), bins=50, density=True)
-            plt.show()    
-#            plt.plot(_f.tc, _f.yc, 'b')
+            maxp = list()
+            for i4 in range(test):
+                s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
+                _f = fill(s.lct, s.lcy, dt=dt)
+                plt.plot(_f.tc, _f.yc, alpha=0.6)
+                plt.show()
+                ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
+                norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+                for i3 in range(len(ws.power[0])):
+                    _int = np.where(f < 1/ws.coi[i3])
+                    norm_pow[:,i3][_int] = np.nan
+                maxp.append(np.nanmax(norm_pow))
+    #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
+    #           plt.colorbar()
+    #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
+    #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
+    #            plt.ylim(f1, f2)
+    #            plt.plot(_f.tc, _f.yc, 'b')
         self.pow = norm_pow
+        self.maxp = maxp
         self.coi = ws.coi
 
 #    def plot_hist(self):
@@ -227,21 +201,6 @@ class analysis(object):
         plt.xlabel('Time (s)')
         plt.show()
  
-    def plot_c(
-               self,
-               f1 = 2e-3, 
-               f2 = 13e-3,
-               nf = 200,
-               ):
-        f = np.linspace(f1, f2, nf)
-        self.f = f
-        c = Cleaning(None, self.tnb, self.ynb, self.f, self.dt, self.ag)
-        self.tc = c.tc
-        self.yc = c.yc
-        plt.plot(c.tc, c.yc)
-        plt.xlabel('Time (s)')
-        plt.show()
-
     def plot_lc(self,
                 astart = None,
                 aend = None,
@@ -269,19 +228,26 @@ class analysis(object):
         t = self.tnb
         y = self.ynb
         dt = self.dt
+        ta = self.t
+        ya = self.y
 
-        for i in range(len(t)):
+        for i in range(len(t)-3):
             _f = fill(t[i], y[i], dt=dt)
             ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
             norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+            sig = np.ones(norm_pow.shape) * 17.649476428307167
+            sig = norm_pow / sig
             for i1 in range(len(ws.power[0])):
                 _int = np.where(f < 1/ws.coi[i1])
                 norm_pow[:,i1][_int] = np.nan
-            ax[0].plot(t[i], y[i])
-            ax[1].contourf(t[i], f, norm_pow, cmap=plt.cm.viridis)
+            ax[0].plot(_f.tc, _f.yc)
+            ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
+            ax[1].contour(_f.tc, f, sig, [-99,1], colors='k')
 
-        ax.set_ylabel('Count/s')
+        ax[0].set_ylabel('Count/s')
+        ax[1].set_ylabel('Frequency Hz')
         fig.subplots_adjust(hspace=0.05)
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
-        ax.colorbar()
+#        fig.colorbar()
+        self.rpow = norm_pow
