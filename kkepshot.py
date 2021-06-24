@@ -742,7 +742,3 @@ class Shot(Base):
                 z = np.vstack((z,z1))
         pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
-
-    _pickle_exclude = Base._pickle_exclude + (
-        re.compile('B'),
-        )

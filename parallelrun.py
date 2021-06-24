@@ -62,9 +62,9 @@ class ParallelShot(Process):
     def run(self):
         os.nice(self.nice)
         while True:
-            data = self.qi.get()
+            data = self.qi.get() # remove and reture an item from the queue
             if data is None:
-                self.qi.task_done()
+                self.qi.task_done() # indicate tasks are completed
                 self.qo.close()
                 break
             path = data.pop('path', None)
@@ -120,7 +120,7 @@ class ParallelProcessor(Base):
         results = list()
         for _ in range(len(data)):
             results.append(Result(*qo.get()))
-            qo.task_done()
+        qo.task_done()
         qo.join()
 
         self.results = sorted(results)
@@ -163,18 +163,18 @@ class ParallelProcessor(Base):
 #                z = np.vstack((z,z1))
 #        self.z = z
 
-    def plot_lmap(self, unit=None):
-        fig, ax = plt.subplots()
-        self.fig = fig
-        self.ax = ax 
-        ax.set_ylabel('Mass number')
-        if unit == 'q':
-            ax.set_xlabel('Bottom heat flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
-            pcm = ax.pcolor(self.l_Qb, self.y, self.z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, self.z.T))))
-        else:
-            ax.set_xlabel('Bottom heat flux ($\mathrm{erg\,s}^{-1}$)')
-            pcm = ax.pcolor(self.l_Lb, self.y, self.z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, self.z.T))))
-        fig.colorbar(pcm, ax=ax, extend='max')
+#    def plot_lmap(self, unit=None):
+#        fig, ax = plt.subplots()
+#        self.fig = fig
+#        self.ax = ax 
+#        ax.set_ylabel('Mass number')
+#        if unit == 'q':
+#            ax.set_xlabel('Bottom heat flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
+#            pcm = ax.pcolor(self.l_Qb, self.y, self.z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, self.z.T))))
+#        else:
+#            ax.set_xlabel('Bottom heat flux ($\mathrm{erg\,s}^{-1}$)')
+#            pcm = ax.pcolor(self.l_Lb, self.y, self.z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, self.z.T))))
+#        fig.colorbar(pcm, ax=ax, extend='max')
 #        ytick_labels = ax.yaxis.get_ticklocs()
 #        yticks = ax.yaxis.get_ticklocs()
 #        ax.set_yticks(yticks+.5)
