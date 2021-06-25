@@ -84,7 +84,7 @@ class SimpleNet(object):
         self.sdot = self._net.sdot 
 
 
-class Shot(Base):
+class Shot(object):
 
 #    Shooting code.
 #    We use same grid variable naming scheme as in Kepler
@@ -127,7 +127,7 @@ class Shot(Base):
             Q = None,
             ymax = 1e12,
             last_step = None,
-            endnet = True,
+#            endnet = True,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -547,8 +547,8 @@ class Shot(Base):
         self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
         
-        if endnet:
-            net.done()
+#        if endnet:
+#            net.done()
 
     def plot_l(self, escale=None):
         i1 = slice(1, None)

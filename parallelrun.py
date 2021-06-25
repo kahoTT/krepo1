@@ -78,7 +78,7 @@ class ParallelShot(Process):
                 self.qo.put((data, task))
             self.qi.task_done()
 
-class ParallelProcessor(Base):
+class ParallelProcessor(object):
     def __init__(self, nparallel=None, task=Shot, **kwargs):
         make() # only one Kepler make process before we start... WTF is that?
         processes = list()
@@ -184,7 +184,7 @@ class ParallelProcessor(Base):
         for r in self.results:
             yield r
 
-class Results(Base):
+class Results(object):
     def __init__(self, results=None):
         if results is None:
             results = list()
