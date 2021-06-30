@@ -17,10 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class ParallelShot(Process):
-    def __init__(self, qi, nice=19, task=Shot):
+    def __init__(self, qi, qo, nice=19, task=Shot):
         super().__init__()
         self.qi = qi
-#        self.qo = qo
+        self.qo = qo
         self.nice = nice
         self.task = task
 
@@ -30,23 +30,25 @@ class ParallelShot(Process):
             data = self.qi.get() # remove and reture an item from the queue
             if data is None:
                 self.qi.task_done() # indicate tasks are completed
-#                self.qo.close()
+                self.qo.close()
                 break
             task = self.task(**data)
+            if self.qo is not None:
+                self.qo.put((data, task))
             self.qi.task_done()
 
-#            self.qo.put((data, task))
 
 class ParallelProcessor(object):
     def __init__(self, nparallel=None, task=Shot, **kwargs):
         make() # only one Kepler make process before we start... WTF is that?
         processes = list()
         qi = JoinableQueue()
-#        qo = JoinableQueue()
+        qo = JoinableQueue()
         if nparallel is None:
-            nparallel = cpu_count()
+#            nparallel = cpu_count()
+            nparallel = 20
         for i in range(nparallel):
-            p = ParallelShot(qi, task=task)
+            p = ParallelShot(qi, qo, task=task)
             p.daemon = False
             p.start()
             processes.append(p)
@@ -71,8 +73,9 @@ class ParallelProcessor(object):
             qi.put(d)
         for _ in range(nparallel):
             qi.put(None)
-
-#        qi.close()
+        qi.close()
         qi.join()
-        
-#        qo.join()
+
+#        for _ in range(len(data)):
+#            qo.task_done()
+        qo.join()
