@@ -179,7 +179,7 @@ class Shot(object):
             p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
             f = p0 - g / 1.5 * ki0
             if np.abs(f) < 1e-12 * p0:
-                break
+               break
             df = p0bd0 - g / 1.5 * ki0bd0           # ki0bd0 has to be divided by 
             dd0 = f/df
             d0n = d0 - dd0  
@@ -214,6 +214,7 @@ class Shot(object):
             b = np.array([f0,h0]) # by Alex
             b1 = np.array([p1,xl0])
 
+            print(f'[SHOT] Iteration {f/p1, h0/xl0}')
             if np.abs(f0/p1) < accuracy and np.abs(h0/xl0) < accuracy:
                 break
 
