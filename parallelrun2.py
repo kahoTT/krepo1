@@ -4,6 +4,7 @@ import uuid
 
 from multiprocessing import JoinableQueue, Process, cpu_count
 from kkepshot import Shot
+#from starshot.kepshot import Shot
 from numpy import iterable
 from kepler.code import make
 from abuset import AbuSet
@@ -27,26 +28,32 @@ class ParallelShot(Process):
     def run(self):
         os.nice(self.nice)
         while True:
+#            breakpoint()
+#            print(data)
             data = self.qi.get() # remove and reture an item from the queue
             if data is None:
                 self.qi.task_done() # indicate tasks are completed
                 self.qo.close()
                 break
-            task = self.task(**data)
-            if self.qo is not None:
-                self.qo.put((data, task))
+            try:
+                task = self.task(**data, kepler='restart', silent=True)
+            except Exception as e:
+                task = e
+#            if self.qo is not None:
+            self.qo.put((data, task))
             self.qi.task_done()
+            
 
 
 class ParallelProcessor(object):
     def __init__(self, nparallel=None, task=Shot, **kwargs):
-        make() # only one Kepler make process before we start... WTF is that?
+        make() # just once
         processes = list()
         qi = JoinableQueue()
         qo = JoinableQueue()
         if nparallel is None:
 #            nparallel = cpu_count()
-            nparallel = 20
+            nparallel = 10
         for i in range(nparallel):
             p = ParallelShot(qi, qo, task=task)
             p.daemon = False
@@ -54,7 +61,7 @@ class ParallelProcessor(object):
             processes.append(p)
 
         for k,v in kwargs.items():
-            if isinstance(v, (str, dict, AbuSet, Path, FunctionType, type, float)):
+            if isinstance(v, (str, dict, AbuSet, Path, FunctionType, type)):
                 kwargs[k] = (v,)
 
         base = dict()
@@ -76,6 +83,9 @@ class ParallelProcessor(object):
         qi.close()
         qi.join()
 
-#        for _ in range(len(data)):
-#            qo.task_done()
+        results = list()
+        for _ in range(len(data)):
+            results.append(qo.get())
+            qo.task_done()
         qo.join()
+        self.results = results

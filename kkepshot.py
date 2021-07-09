@@ -127,7 +127,8 @@ class Shot(object):
             Q = None,
             ymax = 1e12,
             last_step = None,
-#            endnet = True,
+            endnet = True,
+            silent = None,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -234,7 +235,7 @@ class Shot(object):
 # third step: include energy generation, we have t0 d0 p0 at the zone center
 # for pdv : using the boundary pressure
         p1  = p_surf
-        s0, snu0, dxmax = net.sdot(t0, d0, dt0)
+        s0, snu0, dxmax = sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
@@ -430,7 +431,7 @@ class Shot(object):
                 if restart == True:
                     continue
                 break # break for the adaptive step size
-            s0, snu0, dxmax  = net.sdot(t0, d0, dt0)
+            s0, snu0, dxmax  = sdot(t0, d0, dt0)
             print(f'[SHOT] dxmax = {dxmax}')
 
             rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
@@ -547,8 +548,8 @@ class Shot(object):
         self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
         
-#        if endnet:
-#            net.done()
+        if endnet:
+            net.done()
 
     def plot_l(self, escale=None):
         i1 = slice(1, None)
@@ -742,3 +743,19 @@ class Shot(object):
                 z = np.vstack((z,z1))
         pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
+
+    def kepgen(self, *args, **kwargs):
+        """
+        Make KEPLER generator from shot file.
+
+        maybe typically provide run name (first argument)
+        and specify base directory (base=...)
+        along with other parameters
+
+        Example:
+
+           s = Shot()
+           s.kepgen('test3', base='~/kepler/xrb/shot')
+
+        """
+        ShotGen(self, *args, **kwargs)
