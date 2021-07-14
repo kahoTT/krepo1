@@ -184,7 +184,8 @@ class Shot(object):
             dd0 = f/df
             d0n = d0 - dd0  
             d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
-### 1st zone        
+
+### 1st zone ###        
         p_surf = p0
         t_surf = T
         #dm = d0 * 4 * np.pi * (R**3 - (R-dr)**3) / 3  # solve directly , dm : change of mass
@@ -200,6 +201,8 @@ class Shot(object):
         d1 = d0
         dt0 = xm0 / mdot
         ppn0 = net.abu()
+        jj = 1
+        ri = 1
         while True:
             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
             rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) # the density of the first half zone is the surface density and unchanged
@@ -212,10 +215,10 @@ class Shot(object):
             h0 = l0 - xl0
 
             b = np.array([f0,h0]) # by Alex
-            b1 = np.array([p1,xl0])
+#            b1 = np.array([p1,xl0])
 
-            print(f'[SHOT] Iteration {f/p1, h0/xl0}')
-            if np.abs(f0/p1) < accuracy and np.abs(h0/xl0) < accuracy:
+            print(f'[SHOT] Iteration {f0/p1, h0/xl0}')
+            if np.abs(f0/p1) < 1e12 and np.abs(h0/xl0) < 1e12:
                 break
 
             dr0bd0 = - xm0 / (rm**2 * 4 * np.pi * d0**2)
@@ -228,7 +231,9 @@ class Shot(object):
             A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]]) # by Alex
             c = np.linalg.solve(A,b) # by Alex
             v = np.array([t0, d0]) # by Alex
-            t0, d0 = v - c # by Alex
+            if (jj/20) % 1 == 0:
+                ri *= .9
+            t0, d0 = v - c * ri # by Alex
 # goes to center of the zone
 # P,T defined by center except the surface, 
 # 'kappa' function return ki and 2x its logarithmic derivatives
@@ -428,7 +433,7 @@ class Shot(object):
                     if (jj/20) % 1 == 0:
                         ri *= .9
                         print(f'[SHOT] {ri} reduction for the correction of temperature and density')
-                    t0, d0 = v - c*(ri)
+                    t0, d0 = v - c * ri
                 if restart == True:
                     continue
                 break # break for the adaptive step size
