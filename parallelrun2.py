@@ -35,16 +35,10 @@ class ParallelShot(Process):
                 self.qi.task_done() # indicate tasks are completed
                 self.qo.close()
                 break
-            try:
-                task = self.task(**data, kepler='restart', silent=True)
-            except Exception as e:
-                task = e
-#            if self.qo is not None:
+            task = self.task(**data)
             self.qo.put((data, task))
             self.qi.task_done()
             
-
-
 class ParallelProcessor(object):
     def __init__(self, nparallel=None, task=Shot, **kwargs):
         make() # just once
@@ -52,8 +46,7 @@ class ParallelProcessor(object):
         qi = JoinableQueue()
         qo = JoinableQueue()
         if nparallel is None:
-#            nparallel = cpu_count()
-            nparallel = 10
+            nparallel = cpu_count()
         for i in range(nparallel):
             p = ParallelShot(qi, qo, task=task)
             p.daemon = False
@@ -85,7 +78,16 @@ class ParallelProcessor(object):
 
         results = list()
         for _ in range(len(data)):
-            results.append(qo.get())
+            results.append(Result(qo.get()))
             qo.task_done()
         qo.join()
+        
         self.results = results
+
+class Result(object):
+    def __init__(self, data):
+        self.result = data[1]
+        self.data = data[0] = d
+    
+    def __getitem__(self, d):
+        print(d)

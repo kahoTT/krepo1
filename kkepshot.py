@@ -141,8 +141,8 @@ class Shot(object):
             kappa = net._kappai
         else:
             if eosmode is None:
-                eosmode = 'adapt'
-            net = KepNet(
+                eosmode = 'adapt' # default
+            net = KepNet( # default
                 abu,
                 kepler=kepler,
                 eosmode=eosmode,
@@ -156,7 +156,9 @@ class Shot(object):
             eos = net.eos
             sdot = net.sdot
 
-        xledd = 4 * np.pi * CLIGHT * GRAV * M * AMU / abu.mue() / SIGT
+# check !
+        xledd = 4 * np.pi * CLIGHT * GRAV * M * AMU * abu.mue() / SIGT
+# check !
         xaccedd = xledd * R / (GRAV * M)
         if mdot < 10:
             mdot = xaccedd * mdot
@@ -177,11 +179,11 @@ class Shot(object):
         dt0 = 1.
         while True:
             p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
-            f = p0 - g / 1.5 * ki0
-            if np.abs(f) < 1e-12 * p0:
+            h = p0 - g / 1.5 * ki0 # ki = 1/kappa
+            if np.abs(h) < 1e-12 * p0:
                break
-            df = p0bd0 - g / 1.5 * ki0bd0           # ki0bd0 has to be divided by 
-            dd0 = f/df
+            dh = p0bd0 - g / 1.5 * ki0bd0     
+            dd0 = h/dh
             d0n = d0 - dd0  
             d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
 
@@ -191,7 +193,7 @@ class Shot(object):
         #dm = d0 * 4 * np.pi * (R**3 - (R-dr)**3) / 3  # solve directly , dm : change of mass
         t0 = T 
         r0 = R
-        xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass; total mass value used
+        xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass
         xl0 = L
         z0 = M
         xm0 = xms
@@ -205,35 +207,37 @@ class Shot(object):
         ri = 1
         while True:
             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
-            rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) # the density of the first half zone is the surface density and unchanged
-            dr0 = r0 - rm # rm : curretly r at bottom
+            rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) 
+            dr0 = r0 - rm # rm : curretly r at zone bottom
+            rmc = np.cbrt(r0**3 - 3 * xm0 / (8 * np.pi * d0)) 
+            drc0 = r0 - rmc # goes to center of zone
             ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3
-            acdr0 = ac * ki0 / (d0 * 0.5 * dr0) # 0.5 comes from going to a half of the zone
+            acdr0 = ac * ki0 / (d0 * drc0) 
             l0 = (t0**4 - t_surf**4) * acdr0
             
-            f0 = p0 - p1
-            h0 = l0 - xl0
+            h0 = p0 - p1
+            f0 = l0 - xl0
 
-            b = np.array([f0,h0]) # by Alex
+            b = np.array([h0,f0]) # by Alex
 #            b1 = np.array([p1,xl0])
 
-            print(f'[SHOT] Iteration {f0/p1, h0/xl0}')
-            if np.abs(f0/p1) < 1e12 and np.abs(h0/xl0) < 1e12:
+            print(f'[SHOT] Iteration {h0/p1, f0/xl0}')
+            if np.abs(h0/p1) < 1e12 and np.abs(f0/xl0) < 1e12:
                 break
 
-            dr0bd0 = - xm0 / (rm**2 * 4 * np.pi * d0**2)
-            f0bt0 = p0bt0
-            f0bd0 = p0bd0 
+            drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
+            h0bt0 = p0bt0
+            h0bd0 = p0bd0 
 
-            h0bt0 = l0 * ki0bt0 / ki0 + acdr0 * 4 * t0 ** 3
-            h0bd0 = l0 * (ki0bd0 / ki0 - 1 / d0 - dr0bd0 / dr0)
+            f0bt0 = l0 * ki0bt0 / ki0 + acdr0 * 4 * t0 ** 3
+            f0bd0 = l0 * (ki0bd0 / ki0 - 1 / d0 - drc0bd0 / drc0)
 
-            A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]]) # by Alex
-            c = np.linalg.solve(A,b) # by Alex
-            v = np.array([t0, d0]) # by Alex
+            A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]]) 
+            c = np.linalg.solve(A,b) 
+            v = np.array([t0, d0]) 
             if (jj/20) % 1 == 0:
-                ri *= .9
-            t0, d0 = v - c * ri # by Alex
+                ri *= .95
+            t0, d0 = v - c * ri 
 # goes to center of the zone
 # P,T defined by center except the surface, 
 # 'kappa' function return ki and 2x its logarithmic derivatives
@@ -306,11 +310,11 @@ class Shot(object):
         abu[1] = net.abu()
         abulen[1] = len(abu[1])
         max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
-        y[1] = xm1 / (4 * np.pi * R**2)
+        y[1] = xm1 / (4 * np.pi * R**2)             
         y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
 
 # starting from the SECOND ZONE
-        for j in range(1 , k , 1):
+        for j in range(1 , k , 1): # k = 2000
             if last_step is True:
                 j = j - 1
             else:
@@ -351,7 +355,7 @@ class Shot(object):
                 dt0 = xm0 / mdot
                 du1 = u2 - u1
     
-                if amode == 1:
+                if amode == 1: # harmonic mean, the accurate one. Currently just amode == 1 is used
                     pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
                     dL1 = (du1 + pdv1) * dmx1
     
@@ -466,13 +470,13 @@ class Shot(object):
 
             if y[j+2] > ymax and last_step is None:
                 last_step = True
-                print(f'last zone')
+                print(f'[SHOT] last zone')
                 factor = (ymax - y[j]) / ym
                 xm0_last = xm0 * factor
                 continue # for index j
 
-            if (d0 > 5e11 or t0 > 5e9 or last_step is True):
-                break
+            if (d0 > 5e11 or t0 > 5e10 or last_step is True):
+                break # for while loop
 
 
 # phoney
