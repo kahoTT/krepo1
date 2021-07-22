@@ -391,7 +391,7 @@ class Shot(object):
                         dL0  = (du0 + pdv0) * dmx0
                         dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
-                        sv1  = 0.5 * (dL1 + dL0) # why 0.5 * ? I think it should be for the xm1
+                        sv1  = 0.5 * (dL1 + dL0) # 0.5 should be better to put on line 411
     
                     else:
                         pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
@@ -408,30 +408,30 @@ class Shot(object):
     #                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
     #                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
     
-                    dL   = (sv1 + s1) * xm1
-                    xl0  = xl1 - dL
+                    dL   = (sv1 + s1) * xm1 # move outside the amode conditions, maybe better to put them back
+                    xl0  = xl1 - dL # move outside the amode conditions, maybe better to put them back
     
                     acdr0 = ac * (ki0 + ki1) # the boundary of opacity
                     l0 = (t0**4 - t1**4) * acdr0
-                    f0 = p0 - p
-                    h0 = l0 - xl0
+                    h0 = p0 - p
+                    f0 = l0 - xl0
         
-                    b = np.array([f0,h0])
+                    b = np.array([h0,f0])
                     b1 = np.array([p,xl0])
         
-                    if np.abs(f0/p) < accuracy and np.abs(h0/xl1) < accuracy and dxmax > 1:
+                    if np.abs(h0/p) < accuracy and np.abs(f0/xl1) < accuracy and dxmax > 1:
                         break # for finding t0 and d0
                     if jj >= 50:
-                        if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
+                        if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept:
                             break # for finding t0 and d0
-                    print(f'[SHOT] Iteration {jj}={f0/p , h0/xl1}')
-                    f0bt0 = p0bt0
-                    f0bd0 = p0bd0 
+                    print(f'[SHOT] Iteration {jj}={h0/p , f0/xl1}')
+                    h0bt0 = p0bt0
+                    h0bd0 = p0bd0 
         
-                    h0bt0 = (t0**4 - t1**4) * ac * ki0bt0 + acdr0 * 4 * t0 ** 3 - dxl0bt0
-                    h0bd0 = (t0**4 - t1**4) * ac * ki0bd0 - dxl0bd0
+                    f0bt0 = (t0**4 - t1**4) * ac * ki0bt0 + acdr0 * 4 * t0 ** 3 - dxl0bt0
+                    f0bd0 = (t0**4 - t1**4) * ac * ki0bd0 - dxl0bd0
         
-                    A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]])
+                    A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]])
                     c = np.linalg.solve(A,b)
                     v = np.array([t0, d0])
                     if (jj/20) % 1 == 0:
@@ -440,7 +440,7 @@ class Shot(object):
                     t0, d0 = v - c * ri
                 if restart == True:
                     continue
-                break # break for the adaptive step size
+                break # break for loop j finished
             s0, snu0, dxmax  = sdot(t0, d0, dt0)
             print(f'[SHOT] dxmax = {dxmax}')
 
@@ -476,7 +476,7 @@ class Shot(object):
                 continue # for index j
 
             if (d0 > 5e11 or t0 > 5e10 or last_step is True):
-                break # for while loop
+                break # for index j
 
 
 # phoney
