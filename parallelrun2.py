@@ -87,7 +87,5 @@ class ParallelProcessor(object):
 class Result(object):
     def __init__(self, data):
         self.result = data[1]
-        self.data = data[0] = d
+        self.data = data[0] 
     
-    def __getitem__(self, d):
-        print(d)

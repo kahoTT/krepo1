@@ -371,7 +371,7 @@ class Shot(object):
                     jj += 1
                     p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
     ### check whether change of abundance is too large
-                    if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
+                    if np.abs(h0/p) < accuracy and np.abs(f0/xl1) < accuracy:
                         if np.min(dxmax) < 1:
                             print(f'[SHOT] Time step reduced as it is too large')
                             xmaf *= (GOLDEN - 1)  
@@ -422,8 +422,9 @@ class Shot(object):
                     if np.abs(h0/p) < accuracy and np.abs(f0/xl1) < accuracy and dxmax > 1:
                         break # for finding t0 and d0
                     if jj >= 50:
-                        if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept:
+                        if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept and dxmax > 1:
                             break # for finding t0 and d0
+
                     print(f'[SHOT] Iteration {jj}={h0/p , f0/xl1}')
                     h0bt0 = p0bt0
                     h0bd0 = p0bd0 
@@ -434,11 +435,11 @@ class Shot(object):
                     A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]])
                     c = np.linalg.solve(A,b)
                     v = np.array([t0, d0])
-                    if (jj/20) % 1 == 0:
-                        ri *= .9
+                    if (jj/10) % 1 == 0:
+                        ri *= .95
                         print(f'[SHOT] {ri} reduction for the correction of temperature and density')
                     t0, d0 = v - c * ri
-                if restart == True:
+                if restart == True: # for adaptive network
                     continue
                 break # break for loop j finished
             s0, snu0, dxmax  = sdot(t0, d0, dt0)
