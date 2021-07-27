@@ -12,8 +12,7 @@ from matplotlib import pyplot as plt
 from starshot.kepnet import KepNet
 from heat.numeric import sqrt, cbrt, qqrt, GOLDEN
 import matplotlib.colors as colors
-from starshot.base import Base
-import re
+from serialising import Serialising
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -84,7 +83,7 @@ class SimpleNet(object):
         self.sdot = self._net.sdot 
 
 
-class Shot(object):
+class Shot(Serialising):
 
 #    Shooting code.
 #    We use same grid variable naming scheme as in Kepler
@@ -754,19 +753,3 @@ class Shot(object):
                 z = np.vstack((z,z1))
         pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
-
-    def kepgen(self, *args, **kwargs):
-        """
-        Make KEPLER generator from shot file.
-
-        maybe typically provide run name (first argument)
-        and specify base directory (base=...)
-        along with other parameters
-
-        Example:
-
-           s = Shot()
-           s.kepgen('test3', base='~/kepler/xrb/shot')
-
-        """
-        ShotGen(self, *args, **kwargs)

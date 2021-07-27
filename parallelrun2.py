@@ -16,6 +16,7 @@ import matplotlib.colors as colors
 from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
 import numpy as np
 import matplotlib.pyplot as plt
+from serialising import Serialising
 
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19, task=Shot):
@@ -39,7 +40,7 @@ class ParallelShot(Process):
             self.qo.put((data, task))
             self.qi.task_done()
             
-class ParallelProcessor(object):
+class ParallelProcessor(Serialising):
     def __init__(self, nparallel=None, task=Shot, **kwargs):
         make() # just once
         processes = list()
