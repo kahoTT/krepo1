@@ -11,11 +11,8 @@ from abuset import AbuSet
 from isotope import ion as I
 from types import FunctionType
 from pathlib import Path
-from matplotlib import pyplot as plt
-import matplotlib.colors as colors
 from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
 import numpy as np
-import matplotlib.pyplot as plt
 from serialising import Serialising
 
 class ParallelShot(Process):
@@ -85,8 +82,10 @@ class ParallelProcessor(Serialising):
         
         self.results = results
 
-class Result(object):
+class Result(Serialising):
     def __init__(self, data):
         self.result = data[1]
         self.data = data[0] 
     
+    def __repr__(self):
+        return f'{self.data}'

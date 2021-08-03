@@ -369,15 +369,6 @@ class Shot(Serialising):
                 while True:
                     jj += 1
                     p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
-    ### check whether change of abundance is too large
-                    if np.abs(h0/p) < accuracy and np.abs(f0/xl1) < accuracy:
-                        if np.min(dxmax) < 1:
-                            print(f'[SHOT] Time step reduced as it is too large')
-                            xmaf *= (GOLDEN - 1)  
-                            restart = True
-                            break
-                        else:
-                            pass
     
                     du0    = u1 - u0
                     du0bt0 = - u0bt0
@@ -417,12 +408,67 @@ class Shot(Serialising):
         
                     b = np.array([h0,f0])
                     b1 = np.array([p,xl0])
-        
-                    if np.abs(h0/p) < accuracy and np.abs(f0/xl1) < accuracy and dxmax > 1:
-                        break # for finding t0 and d0
-                    if jj >= 50:
-                        if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept and dxmax > 1:
-                            break # for finding t0 and d0
+
+# for finding t0 and d0
+    ### check whether change of abundance is too large
+                    if jj <= 10:
+                        if np.abs(h0/p) < 1e-12 and np.abs(f0/xl1) < 1e-12: 
+                            if dxmax > 1:
+                                break                                    
+                            else:
+                                print(f'[SHOT] Time step reduced as it is too large')
+                                xmaf *= (GOLDEN - 1)  
+                                restart = True
+                                break
+                        elif jj >= 5:
+                            ri *= .95
+                            print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+                            
+                    elif jj > 10 and jj <= 20:
+                        if jj == 11:
+                            ri = 1
+                        if np.abs(h0/p) < accuracy and np.abs(f0/xl1) < accuracy: 
+                            if dxmax > 1:
+                                break                                    
+                            else:
+                                print(f'[SHOT] Time step reduced as it is too large')
+                                xmaf *= (GOLDEN - 1)  
+                                restart = True
+                                break
+                        elif jj >= 15:
+                            ri *= .95
+                            print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+
+                    elif jj > 20 and jj <= 30:
+                        if jj == 21:
+                            ri = 1
+                        if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept: 
+                            if dxmax > 1:
+                                break                                    
+                            else:
+                                print(f'[SHOT] Time step reduced as it is too large')
+                                xmaf *= (GOLDEN - 1)  
+                                restart = True
+                                break
+                        elif jj >= 25:
+                            ri *= .95
+                            print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+
+                    elif jj > 30:
+                        if jj == 31:
+                            ri = 1
+                        if dxmax > 1:
+                            if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept: 
+                                break                                    
+                            elif (jj - 10)%10 == 0:
+                                ri *= .98
+                                print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+                        elif dxmax < 1:
+                            print(f'[SHOT] Time step reduced as it is too large')
+                            xmaf *= (GOLDEN - 1)  
+                            restart = True
+                            break
+
 
                     print(f'[SHOT] Iteration {jj}={h0/p , f0/xl1}')
                     h0bt0 = p0bt0
@@ -434,9 +480,6 @@ class Shot(Serialising):
                     A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]])
                     c = np.linalg.solve(A,b)
                     v = np.array([t0, d0])
-                    if (jj/10) % 1 == 0:
-                        ri *= .95
-                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
                     t0, d0 = v - c * ri
                 if restart == True: # for adaptive network
                     continue
