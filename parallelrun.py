@@ -75,11 +75,15 @@ class ParallelProcessor(Serialising):
         qi.join()
 
         results = list()
+        sortre = list()
         for _ in range(len(data)):
-            results.append(Result(qo.get()))
+            allresults = Result(qo.get())
+            results.append(allresults)
+            sortre.append(allresults.data.get('Q'))
             qo.task_done()
         qo.join()
         
+        results = [x for _,x in sorted(zip(sortre, results))]
         self.results = results
 
 class Result(Serialising):

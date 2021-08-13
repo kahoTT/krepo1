@@ -125,9 +125,10 @@ class Shot(Serialising):
             accept = 1.e-8,
             Q = None,
             ymax = 1e12,
-            last_step = None,
             endnet = True,
             silent = None,
+            burn = True,
+            par = None,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -141,6 +142,12 @@ class Shot(Serialising):
         else:
             if eosmode is None:
                 eosmode = 'adapt' # default
+            if par is None:
+                par = dict()
+            else:
+                par = dict(par)
+            if burn == False:
+                par.setdefault('tnucmin', 1.e99)
             net = KepNet( # default
                 abu,
                 kepler=kepler,
@@ -150,6 +157,7 @@ class Shot(Serialising):
                 yfloorx=yfloorx,
                 dtcp=dtcp,
                 scale=scale,
+                **par,
                 )
             self.net = net
             eos = net.eos
@@ -207,10 +215,10 @@ class Shot(Serialising):
         while True:
             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
             rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) 
-            dr0 = r0 - rm # rm : curretly r at zone bottom
+#            dr0 = r0 - rm # rm : curretly r at zone bottom
             rmc = np.cbrt(r0**3 - 3 * xm0 / (8 * np.pi * d0)) 
             drc0 = r0 - rmc # goes to center of zone
-            ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3
+            ac = 16 * np.pi * r0**2 * ARAD * CLIGHT / 3
             acdr0 = ac * ki0 / (d0 * drc0) 
             l0 = (t0**4 - t_surf**4) * acdr0
             
@@ -234,7 +242,7 @@ class Shot(Serialising):
             A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]]) 
             c = np.linalg.solve(A,b) 
             v = np.array([t0, d0]) 
-            if (jj/20) % 1 == 0:
+            if (jj - 10) % 10 == 0:
                 ri *= .95
             t0, d0 = v - c * ri 
 # goes to center of the zone
@@ -300,7 +308,6 @@ class Shot(Serialising):
         dn[1]  = d0
         xm[1]  = xm0
         pn[1]  = p0
-        rn[1]  = R
         sn[1]  = s0
         snun[1]  = snu0
         smn[1]  = s0 * xm0
@@ -309,12 +316,15 @@ class Shot(Serialising):
         abu[1] = net.abu()
         abulen[1] = len(abu[1])
         max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
+        rn[1]  = R
+        rn[2]  = rm
         y[1] = xm1 / (4 * np.pi * R**2)             
         y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
 
 # starting from the SECOND ZONE
+        second_last_step = None
         for j in range(1 , k , 1): # k = 2000
-            if last_step is True:
+            if second_last_step is True:
                 j = j - 1
             else:
                 xm2 = xm1
@@ -343,8 +353,8 @@ class Shot(Serialising):
                 xmaf = 1
             while True:
                 restart = None
-                if last_step is True:
-                    xm0 = xm0_last
+                if second_last_step is True:
+                    xm0 = xm0_2last
                 else:
                     xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
                 p   = p1 +  0.5 * (xm0 + xm1) * g0 / (4 * np.pi * r0**2) 
@@ -364,7 +374,7 @@ class Shot(Serialising):
     #            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
                 ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
                 jj = 1
-                ri = 1
+                fmin = 1
     ### main loop ###
                 while True:
                     jj += 1
@@ -408,11 +418,13 @@ class Shot(Serialising):
         
                     b = np.array([h0,f0])
                     b1 = np.array([p,xl0])
+                    dvr = b / b1
 
 # for finding t0 and d0
     ### check whether change of abundance is too large
-                    if jj <= 10:
-                        if np.abs(h0/p) < 1e-12 and np.abs(f0/xl1) < 1e-12: 
+
+                    if jj <= 5:
+                        if np.max(np.abs(dvr)) < 1e-12:
                             if dxmax > 1:
                                 break                                    
                             else:
@@ -420,14 +432,9 @@ class Shot(Serialising):
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
-                        elif jj >= 5:
-                            ri *= .95
-                            print(f'[SHOT] {ri} reduction for the correction of temperature and density')
                             
-                    elif jj > 10 and jj <= 20:
-                        if jj == 11:
-                            ri = 1
-                        if np.abs(h0/p) < accuracy and np.abs(f0/xl1) < accuracy: 
+                    elif jj >= 5 and jj < 10:
+                        if np.max(np.abs(dvr)) < accuracy:
                             if dxmax > 1:
                                 break                                    
                             else:
@@ -435,14 +442,9 @@ class Shot(Serialising):
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
-                        elif jj >= 15:
-                            ri *= .95
-                            print(f'[SHOT] {ri} reduction for the correction of temperature and density')
 
-                    elif jj > 20 and jj <= 30:
-                        if jj == 21:
-                            ri = 1
-                        if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept: 
+                    else:
+                        if np.max(np.abs(dvr)) < accept:
                             if dxmax > 1:
                                 break                                    
                             else:
@@ -450,25 +452,6 @@ class Shot(Serialising):
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
-                        elif jj >= 25:
-                            ri *= .95
-                            print(f'[SHOT] {ri} reduction for the correction of temperature and density')
-
-                    elif jj > 30:
-                        if jj == 31:
-                            ri = 1
-                        if dxmax > 1:
-                            if np.abs(h0/p) < accept and np.abs(f0/xl1) < accept: 
-                                break                                    
-                            elif (jj - 10)%10 == 0:
-                                ri *= .98
-                                print(f'[SHOT] {ri} reduction for the correction of temperature and density')
-                        elif dxmax < 1:
-                            print(f'[SHOT] Time step reduced as it is too large')
-                            xmaf *= (GOLDEN - 1)  
-                            restart = True
-                            break
-
 
                     print(f'[SHOT] Iteration {jj}={h0/p , f0/xl1}')
                     h0bt0 = p0bt0
@@ -480,7 +463,20 @@ class Shot(Serialising):
                     A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]])
                     c = np.linalg.solve(A,b)
                     v = np.array([t0, d0])
+                    dfr = c / v
+                    dfrm = np.max(np.abs(dfr))
+                    if dfrm > GOLDEN - 1:
+                        ri = fmin / (dfrm * GOLDEN)
+                    if ri != fmin:
+                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
                     t0, d0 = v - c * ri
+
+                    if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
+                        print(f'[SHOT] Time step reduced as it is too large')
+                        xmaf *= (GOLDEN - 1)  
+                        restart = True
+                        break
+
                 if restart == True: # for adaptive network
                     continue
                 break # break for loop j finished
@@ -501,40 +497,45 @@ class Shot(Serialising):
             snun[j+1]  = snu0
             smn[j+1]  = s0 * xm0
             smnun[j+1]  = snu0 * xm0
-            rn[j+1]  = r0
             xlnsv[j+1] = sv1 * xm1
             abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
             max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
-            y[j+2] = y[j] + ym
+            rn[j+2]  = rm
+            y[j+2] = y[j+1] + ym
 
+            print('-----------------------------------------------------------------------')
             print(f'[SHOT] zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
+            print('-----------------------------------------------------------------------')
 
-            if y[j+2] > ymax and last_step is None:
-                last_step = True
-                print(f'[SHOT] last zone')
-                factor = (ymax - y[j]) / ym
-                xm0_last = xm0 * factor
+            if y[j+2] > ymax and second_last_step is None:
+                second_last_step = True
+                print(f'[SHOT]------------------\n[SHOT] penultimate zone\n[SHOT]------------------')
+                xm0_2last = (ymax - y[j+1]) * (4 * np.pi * r0**2) 
+                k = j + 1
                 continue # for index j
 
-            if (d0 > 5e11 or t0 > 5e10 or last_step is True):
+            if j == k:
                 break # for index j
 
+            if ymax is None:
+                if (d0 > 5e11 or t0 > 5e10):
+                    break # for index j
 
-# phoney
-        rn[j+2] = rm
-        sv[j+1] = sv1**2 / sv2
-        xlnsv[j+2] = sv[j+1] * xm0
-        xl0 = xl0 - (s0 + sv[j+1]) * xm0
-#        y[j+2] = ym
-# phoney
 # bottom heat
         Qb = xl0 / (MEV * mdot * NA)
         Lb = xl0
         self.Qb = Qb
         self.Lb = Lb
         print(f'Base heat flux Qb={Qb} MeV/nucleon or Lb={Lb:12.5e} erg/s')
+
+# phoney
+        sv[j+1] = sv1**2 / sv2
+        xlnsv[j+2] = sv[j+1] * xm0
+        xl0 = xl0 - (s0 + sv[j+1]) * xm0
+# phoney
+
 
         tn[j+2] = np.nan
         dn[j+2] = np.nan
