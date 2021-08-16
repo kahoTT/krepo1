@@ -1,9 +1,9 @@
 from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA, SIGT, AMU 
-from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
+from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx, ioncacheza, ufunc_idx_ZA
 from heat.net import Net3aC12 as Net
 from heat.eos import eos as Eos
 from heat.kappa import kappa as Kappa
-from abuset import AbuSet
+from abuset import AbuSet, AbuDump
 from heat.numeric import *
 import numpy as np
 from functools import partial
@@ -13,6 +13,7 @@ from starshot.kepnet import KepNet
 from heat.numeric import sqrt, cbrt, qqrt, GOLDEN
 import matplotlib.colors as colors
 from serialising import Serialising
+from utils import index1d
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -114,7 +115,7 @@ class Shot(Serialising):
             xms=1e13, xmsf=1.2,
             net='',
             eos='',
-            kepler = 'process', # module | process | restart
+            kepler = 'restart', # module | process | restart
             yfloorx = 1.e-3,
             safenet = True,
             eosmode = None, # static | burn | adapt , is NOT adaptive step size !!!
@@ -129,6 +130,7 @@ class Shot(Serialising):
             silent = None,
             burn = True,
             par = None,
+            track_abu = True,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -163,9 +165,7 @@ class Shot(Serialising):
             eos = net.eos
             sdot = net.sdot
 
-# check !
         xledd = 4 * np.pi * CLIGHT * GRAV * M * AMU * abu.mue() / SIGT
-# check !
         xaccedd = xledd * R / (GRAV * M)
         if mdot < 10:
             mdot = xaccedd * mdot
@@ -205,7 +205,7 @@ class Shot(Serialising):
         z0 = M
         xm0 = xms
         g0 = GRAV * z0 / r0**2
-        p1 = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
+        p = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
         u1 = u0
         d1 = d0
         dt0 = xm0 / mdot
@@ -222,14 +222,14 @@ class Shot(Serialising):
             acdr0 = ac * ki0 / (d0 * drc0) 
             l0 = (t0**4 - t_surf**4) * acdr0
             
-            h0 = p0 - p1
+            h0 = p0 - p
             f0 = l0 - xl0
 
             b = np.array([h0,f0]) # by Alex
 #            b1 = np.array([p1,xl0])
 
-            print(f'[SHOT] Iteration {h0/p1, f0/xl0}')
-            if np.abs(h0/p1) < 1e12 and np.abs(f0/xl0) < 1e12:
+            print(f'[SHOT] Iteration {h0/p, f0/xl0}')
+            if np.abs(h0/p) < 1e-12 and np.abs(f0/xl0) < 1e-12:
                 break
 
             drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
@@ -269,6 +269,7 @@ class Shot(Serialising):
         dn  = np.ndarray(k)
         xm  = np.ndarray(k)
         pn  = np.ndarray(k)
+        zm  = np.ndarray(k)
         sv  = np.ndarray(k)
         xln = np.ndarray(k)
         sn  = np.ndarray(k)
@@ -279,7 +280,8 @@ class Shot(Serialising):
         rn  = np.ndarray(k)
         dln = np.ndarray(k) 
         xlnsv  = np.ndarray(k)
-        abu = np.ndarray(k, dtype=np.object)
+        if track_abu:
+            abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
         max_mass_no = np.ndarray(k)
 #        gn  = np.ndarray(k) 
@@ -289,6 +291,7 @@ class Shot(Serialising):
         dn[0]  = d1
         xm[0]  = xm1
         pn[0]  = p1
+        zm[0]  = M
         sv[0]  = 0
         xln[0] = xln[1] = xl0
         dln[0] = 0
@@ -299,7 +302,8 @@ class Shot(Serialising):
         scn[0] = 0
         rn[0]  = np.inf
         xlnsv[0]  = 0
-        abu[0] = ppn0
+        if track_abu:
+            abu[0] = ppn0
         abulen[0] = len(abu[0])
         max_mass_no[0] = np.max(ufunc_A(abu[0].iso))
         y[0] = 0
@@ -308,12 +312,14 @@ class Shot(Serialising):
         dn[1]  = d0
         xm[1]  = xm0
         pn[1]  = p0
+        zm[1]  = z0
         sn[1]  = s0
         snun[1]  = snu0
         smn[1]  = s0 * xm0
         smnun[1]  = snu0 * xm0
         xlnsv[1]  = 0
-        abu[1] = net.abu()
+        if track_abu:
+            abu[1] = net.abu()
         abulen[1] = len(abu[1])
         max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
         rn[1]  = R
@@ -324,33 +330,30 @@ class Shot(Serialising):
 # starting from the SECOND ZONE
         second_last_step = None
         for j in range(1 , k , 1): # k = 2000
-            if second_last_step is True:
-                j = j - 1
-            else:
-                xm2 = xm1
-                xm1 = xm0
-                r1  = r0
-                r0  = rm
-                z1  = z0  # mass for computing gravity
-                z0  = z1 - xm1
-                g1  = g0
-                g0  = GRAV * z0 / r0**2
-        
-                ki1 = ki0
-                p2  = p1
-                p1  = p0
-                t1  = t0
-                d2  = d1
-                d1  = d0
-                u2  = u1
-                u1  = u0    
-                xl1 = xl0
-                sv2 = sv1
-                sv1 = sv0
-                s1  = s0
-                snu1  = snu0
+            xm2 = xm1
+            xm1 = xm0
+            r1  = r0
+            r0  = rm
+            z1  = z0  # mass for computing gravity
+            z0  = z1 - xm1
+            g1  = g0
+            g0  = GRAV * z0 / r0**2
+    
+            ki1 = ki0
+            p2  = p1
+            p1  = p0
+            t1  = t0
+            d2  = d1
+            d1  = d0
+            u2  = u1
+            u1  = u0    
+            xl1 = xl0
+            sv2 = sv1
+            sv1 = sv0
+            s1  = s0
+            snu1  = snu0
     ### adaptive network set in to change the xmsf ###
-                xmaf = 1
+            xmaf = 1
             while True:
                 restart = None
                 if second_last_step is True:
@@ -479,17 +482,27 @@ class Shot(Serialising):
 
                 if restart == True: # for adaptive network
                     continue
+
+                rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
+                ym = xm0 / (4 * np.pi * r0**2)
+                y[j+2] = y[j+1] + ym
+                if y[j+2] > ymax and second_last_step is None:
+                    second_last_step = True
+                    print(f'[SHOT]------------------\n[SHOT] penultimate zone\n[SHOT]------------------')
+                    xm0_2last = (ymax - y[j+1]) * (4 * np.pi * r0**2) 
+                    k = j + 1
+                    continue # for index j
+
                 break # break for loop j finished
             s0, snu0, dxmax  = sdot(t0, d0, dt0)
             print(f'[SHOT] dxmax = {dxmax}')
 
-            rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
-            ym = xm0 / (4 * np.pi * r0**2)
 
             tn[j+1]  = t0
             dn[j+1]  = d0
             xm[j+1]  = xm0
             pn[j+1]  = p0
+            zm[j+1]  = z0
             xln[j+1] = xl0
             sv[j] = sv1
             dln[j] = dL * xm0
@@ -498,23 +511,16 @@ class Shot(Serialising):
             smn[j+1]  = s0 * xm0
             smnun[j+1]  = snu0 * xm0
             xlnsv[j+1] = sv1 * xm1
-            abu[j+1] = net.abu()
+            if track_abu:
+                abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
             max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
             rn[j+2]  = rm
-            y[j+2] = y[j+1] + ym
 
             print('-----------------------------------------------------------------------')
             print(f'[SHOT] zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
             print('-----------------------------------------------------------------------')
-
-            if y[j+2] > ymax and second_last_step is None:
-                second_last_step = True
-                print(f'[SHOT]------------------\n[SHOT] penultimate zone\n[SHOT]------------------')
-                xm0_2last = (ymax - y[j+1]) * (4 * np.pi * r0**2) 
-                k = j + 1
-                continue # for index j
 
             if j == k:
                 break # for index j
@@ -540,14 +546,16 @@ class Shot(Serialising):
         tn[j+2] = np.nan
         dn[j+2] = np.nan
         pn[j+2] = np.nan
+        zm[j+2] = z0 - xm0
         sv[j+2] = np.nan
-        xm[j+2] = M
+        xm[j+2] = zm[j+2]
         xln[j+2] = xl0
         sn[j+2] = np.nan
         snun[j+2] = np.nan
         smn[j+2] = np.nan
         smnun[j+2] = np.nan
-        abu[j+2] = np.array([0,0,0])
+        if track_abu:
+            abu[j+2] = AbuSet(dict())
         abulen[j+2] = len(abu[j+2])
         max_mass_no[j+2] = 0
 
@@ -565,7 +573,8 @@ class Shot(Serialising):
         xlnn = np.append(smn[1:], 0) 
         xlnun = np.append(smnun[1:], 0) 
         xlnsv      = xlnsv[:j+3][::-1]
-        abu      = abu[:j+3][::-1]
+        if track_abu:
+            abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
         max_mass_no = max_mass_no[:j+3][::-1]
         y      = y[:j+3][::-1]
@@ -576,6 +585,7 @@ class Shot(Serialising):
         y_m[-1] = y[-2]
 
         self.pn  = pn
+        self.zm  = zm
         self.tn  = tn
         self.dn  = dn
         self.sv  = sv
@@ -593,11 +603,39 @@ class Shot(Serialising):
         self.xlnsv = xlnsv
         self.xlnn = xlnn
         self.xlnun = xlnun
-        self.abu = abu
+        if track_abu:
+            self.abu = abu
         self.abulen = abulen
         self.max_mass_no = max_mass_no
 
 # mapping ions
+        if track_abu:
+            # map all ions
+            print(f'[{self.__class__.__name__}] Mapping ions....')
+            ions = set()
+            ionsa = list()
+            for a in abu:
+                idx = ufunc_idx(a.iso)
+                ions |= set(idx)
+                ionsa.append(idx)
+            ions = np.array(sorted(ions))
+            nions = len(ions)
+            abub = np.zeros((nions, j + 3))
+            for i, a in enumerate(abu):
+                ii = index1d(ionsa[i], ions)
+                abub[ii,i] = a.abu
+            # ions = ufunc_ion_from_idx(ions)
+            ions = ioncacheza(*ufunc_idx_ZA(ions))
+            self.abub = AbuDump(
+                abub,
+                ions,
+                molfrac = False,
+                bottom = 1,
+                top = j + 3,
+                xm = self.xm,
+                zm = self.zm,
+                )
+
         self.maxions = self.abulen.argmax()
         self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
@@ -682,24 +720,6 @@ class Shot(Serialising):
         ax.legend(loc='best')
         plt.show()
 
-#    def plot_abu(self):
-#        i1 = slice(1, None)
-#        i0 = slice(None, -1)
-#        ir = slice(None, None, -1)
-#
-#        fig, ax = plt.subplots()
-#        self.fig = fig
-#        self.ax = ax
-#
-#        ax.set_xscale('log')
-#        ax.set_ylabel('Mass fraction')
-#        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
-#
-#        for j,i in enumerate(self.net._net.ions):
-#            ax.plot(self.y_m[i1], self.ppn[i1, j] * i.A, label=i.mpl)
-#        ax.legend(loc='best')
-#        plt.show()
-
     def plot_abu(self, mmin = 1.e-3, array=None):
         i1 = slice(1, None)
         i0 = slice(None, -1)
@@ -732,11 +752,27 @@ class Shot(Serialising):
                     self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
                     ha='center', va='center', clip_on=True)
 
-#        for a in range(0,len(self.y_m[i1]),1):
-#            print(len(self.abu[a]))
-#            for j,i in enumerate(self.abu[i1][a]):
-#                ax.plot(self.y_m[i1][a], i[1])
-#        plt.show()
+    def plot_abu2(self, lim = 1e-3):
+        i1 = slice(1, None)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel('Mass fraction')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        ax.set_ylim(1.e-3, 1.5)
+
+        for i,a in self.abub:
+            am = np.max(a[i1])
+            if am > lim:
+                ax.plot(self.y_m[i1], a[i1], label=i.mpl)
+                maxabu = np.argmax(a[i1])
+                ax.text(
+                    self.y_m[i1][maxabu], a[i1][maxabu], i.mpl,
+                    ha='center', va='center', clip_on=True)
 
     def plot_s(self):
         i1 = slice(1, -1)
@@ -752,6 +788,7 @@ class Shot(Serialising):
 
         ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
         ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+#        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
         ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')
 
         ax.legend(loc='best')
