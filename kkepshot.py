@@ -376,7 +376,7 @@ class Shot(Serialising):
       
     #            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
                 ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
-                jj = 1
+                jj = 0
                 fmin = 1
     ### main loop ###
                 while True:
@@ -431,17 +431,18 @@ class Shot(Serialising):
                             if dxmax > 1:
                                 break                                    
                             else:
-                                print(f'[SHOT] Time step reduced as it is too large')
-                                xmaf *= (GOLDEN - 1)  
-                                restart = True
-                                break
+                                pass
+#                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+#                                xmaf *= (GOLDEN - 1)  
+#                                restart = True
+#                                break
                             
                     elif jj >= 5 and jj < 10:
                         if np.max(np.abs(dvr)) < accuracy:
                             if dxmax > 1:
                                 break                                    
                             else:
-                                print(f'[SHOT] Time step reduced as it is too large')
+                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
@@ -451,7 +452,7 @@ class Shot(Serialising):
                             if dxmax > 1:
                                 break                                    
                             else:
-                                print(f'[SHOT] Time step reduced as it is too large')
+                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
@@ -475,7 +476,7 @@ class Shot(Serialising):
                     t0, d0 = v - c * ri
 
                     if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
-                        print(f'[SHOT] Time step reduced as it is too large')
+                        print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
                         xmaf *= (GOLDEN - 1)  
                         restart = True
                         break
