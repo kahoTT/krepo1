@@ -210,9 +210,11 @@ class Shot(Serialising):
         d1 = d0
         dt0 = xm0 / mdot
         ppn0 = net.abu()
-        jj = 1
+        jj = 0
         ri = 1
+        fmin = 1
         while True:
+            jj += 1
             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
             rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) 
 #            dr0 = r0 - rm # rm : curretly r at zone bottom
@@ -226,10 +228,19 @@ class Shot(Serialising):
             f0 = l0 - xl0
 
             b = np.array([h0,f0]) # by Alex
-#            b1 = np.array([p1,xl0])
+            b1 = np.array([p,xl0])
+            dvr = b / b1
 
             print(f'[SHOT] Iteration {h0/p, f0/xl0}')
-            if np.abs(h0/p) < 1e-12 and np.abs(f0/xl0) < 1e-12:
+            if jj <= 5:
+                if np.max(np.abs(dvr)) < 1e-12:
+                    break
+
+            elif jj > 5 and jj <= 10:
+                if np.max(np.abs(dvr)) < accuracy:
+                    break
+
+            elif np.max(np.abs(dvr)) < accept:
                 break
 
             drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
@@ -242,9 +253,13 @@ class Shot(Serialising):
             A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]]) 
             c = np.linalg.solve(A,b) 
             v = np.array([t0, d0]) 
-            if (jj - 10) % 10 == 0:
-                ri *= .95
-            t0, d0 = v - c * ri 
+            dfr = c / v
+            dfrm = np.max(np.abs(dfr))
+            if dfrm > GOLDEN - 1:
+                ri = fmin / (dfrm * GOLDEN)
+            if ri != fmin:
+                print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+            t0, d0 = v - c * ri
 # goes to center of the zone
 # P,T defined by center except the surface, 
 # 'kappa' function return ki and 2x its logarithmic derivatives
@@ -437,7 +452,7 @@ class Shot(Serialising):
 #                                restart = True
 #                                break
                             
-                    elif jj >= 5 and jj < 10:
+                    elif jj > 5 and jj <= 10:
                         if np.max(np.abs(dvr)) < accuracy:
                             if dxmax > 1:
                                 break                                    
@@ -721,39 +736,7 @@ class Shot(Serialising):
         ax.legend(loc='best')
         plt.show()
 
-    def plot_abu(self, mmin = 1.e-3, array=None):
-        i1 = slice(1, None)
-        i0 = slice(None, -1)
-        ir = slice(None, None, -1)
-
-        fig, ax = plt.subplots()
-        self.fig = fig
-        self.ax = ax
-
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_ylabel('Mass fraction')
-        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
-        ax.set_ylim(1.e-3, 1.5)
-     
-        for ai in self.da[:array]: 
-            for bi in range(0, len(self.abu)-1, 1): 
-                if ai in ufunc_idx(self.abu[bi+1].iso):
-                    k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
-                    self.pabu[bi] = self.abu[bi+1].abu[k][0]
-                else:
-                    self.pabu[bi] = 0
-            if all(self.pabu < mmin):
-                pass
-            else:
-                abuname = ufunc_ion_from_idx(ai).item(0)
-                ax.plot(self.y_m[i1], self.pabu)
-                maxabu = np.argmax(self.pabu)
-                ax.text(
-                    self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
-                    ha='center', va='center', clip_on=True)
-
-    def plot_abu2(self, lim = 1e-3):
+    def plot_abu(self, lim = 1e-3):
         i1 = slice(1, None)
 
         fig, ax = plt.subplots()

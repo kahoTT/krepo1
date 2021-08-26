@@ -8,15 +8,16 @@ from kkepshot import Shot
 #from starshot.kepshot import Shot
 from numpy import iterable
 from kepler.code import make
-from abuset import AbuSet
+from abuset import AbuSet, AbuData
 from isotope import ion as I
 from types import FunctionType
 from pathlib import Path
-from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
+from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx, ioncacheza, ufunc_idx_ZA
 import numpy as np
 from serialising import Serialising
 import matplotlib.pyplot as plt
 from ioncolor import IonColor
+from utils import index1d
 
 class ParallelShot(Process):
     def __init__(self, qi, qo, nice=19, task=Shot):
@@ -75,7 +76,6 @@ class ParallelProcessor(Serialising):
         for _ in range(nparallel):
             qi.put(None)
         qi.close()
-        qi.join()
 
         results = list()
         sortre1 = list()
@@ -86,11 +86,34 @@ class ParallelProcessor(Serialising):
             sortre1.append(allresults.data.get('Q'))
             sortre2.append(allresults.data.get('mdot'))
             qo.task_done()
+        qi.join()
         qo.join()
         
         results = [x for _,_,x in sorted(zip(sortre1, sortre2, results))]
         self.results = results
+        self.Q = sorted(sortre1)
 
+        # map all ions (from Shot)
+        print(f'[{self.__class__.__name__}] Mapping ions....')
+        ions = set()
+        ionsa = list()
+        for b in self.results:
+            idx = ufunc_idx(b.result.abub.ions)
+            ions |= set(idx)
+            ionsa.append(idx)
+        ions = np.array(sorted(ions))
+        nions = len(ions)
+        abub = np.zeros((len(self.results), nions))
+        for i, b in enumerate(self.results):
+            ii = index1d(ionsa[i], ions)
+            abub[i,ii] = b.result.abub.data[1]
+        # ions = ufunc_ion_from_idx(ions)
+        ions = ioncacheza(*ufunc_idx_ZA(ions))
+        self.abub = AbuData(
+            abub,
+            ions,
+            molfrac = False,
+            )
     def plot_abu(self, lim = 1e-3, mdot=None):
         i1 = slice(1, None)
 
@@ -98,7 +121,6 @@ class ParallelProcessor(Serialising):
         self.fig = fig
         self.ax = ax
 
-        ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_ylabel('Mass fraction')
         ax.set_ylim(1.e-3, 1.5)
@@ -116,16 +138,16 @@ class ParallelProcessor(Serialising):
 #                           self.y_m[i1][maxabu], a[i1][maxabu], i.mpl,
 #                          ha='center', va='center', clip_on=True)
         else:
-            ax.set_xlabel('Surface Flux ($\mathrm{MeV nucleon}^{-1}$)')
-            for j in range(0, len(self.results), 1):
-                for i,a in self.results[j].result.abub:
-                    am = np.max(a[1])
-                    if am > lim:
-                        ax.plot(self.results[j].data.get('Q'), a[1],'.', color=c(i)) 
-#                        maxabu = np.argmax(a[1])
-#                        ax.text(
-#                           self.results[j].data.get('Q'), a[1], i.mpl,
-#                          ha='center', va='center', clip_on=True)
+            ax.set_xlabel('Surface Flux ($\mathrm{MeV\,nucleon}^{-1}$)')
+            for i,a in self.abub:
+                am = np.max(a)
+                if am > lim:
+                    ax.plot(self.Q, a, color=c(i)) 
+                    maxabu = np.argmax(a)
+                    ax.text(
+                       self.Q[maxabu], a[maxabu], i.mpl, color=c(i),
+                      ha='center', va='center', clip_on=True, size=15)
+
 
 class Result(Serialising):
     def __init__(self, data):
