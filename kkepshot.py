@@ -13,6 +13,7 @@ from starshot.kepnet import KepNet
 from heat.numeric import sqrt, cbrt, qqrt, GOLDEN
 import matplotlib.colors as colors
 from serialising import Serialising
+from ioncolor import IonColor
 from utils import index1d
 
 class TabKappa(object):
@@ -176,6 +177,9 @@ class Shot(Serialising):
             L = mdot * Q * NA * MEV
         else:
             Q = L / (mdot * NA * MEV)
+        self.Q = Q
+        self.L = L
+        self.Ledd = L/xledd
         print(f'[SHOT] Mdot = {mdot:12g} g/s ({mdot/xaccedd:12g} Edd.)')
         print(f'[SHOT] L    = {L:12g} erg/s ({L/xledd:12g} Edd.)')
 
@@ -208,6 +212,7 @@ class Shot(Serialising):
         p = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
         u1 = u0
         d1 = d0
+        ki1 = ki0 
         dt0 = xm0 / mdot
         ppn0 = net.abu()
         jj = 0
@@ -279,9 +284,10 @@ class Shot(Serialising):
         sv1 = sv0 = 0
 
 #        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
-        k   = 2000 
+        k   = 5000 
         tn  = np.ndarray(k)
         dn  = np.ndarray(k)
+        ki  = np.ndarray(k)
         xm  = np.ndarray(k)
         pn  = np.ndarray(k)
         zm  = np.ndarray(k)
@@ -298,12 +304,14 @@ class Shot(Serialising):
         if track_abu:
             abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
+        mue = np.ndarray(k)
         max_mass_no = np.ndarray(k)
 #        gn  = np.ndarray(k) 
         y  = np.ndarray(k)
 
         tn[0]  = t_surf
         dn[0]  = d1
+        ki[0]  = 1/ki1
         xm[0]  = xm1
         pn[0]  = p1
         zm[0]  = M
@@ -320,11 +328,13 @@ class Shot(Serialising):
         if track_abu:
             abu[0] = ppn0
         abulen[0] = len(abu[0])
+        mue[0] = abu[0].mue()
         max_mass_no[0] = np.max(ufunc_A(abu[0].iso))
         y[0] = 0
 
         tn[1]  = t0
         dn[1]  = d0
+        ki[1]  = 1/ki0
         xm[1]  = xm0
         pn[1]  = p0
         zm[1]  = z0
@@ -336,6 +346,7 @@ class Shot(Serialising):
         if track_abu:
             abu[1] = net.abu()
         abulen[1] = len(abu[1])
+        mue[1] = abu[1].mue()
         max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
         rn[1]  = R
         rn[2]  = rm
@@ -516,6 +527,7 @@ class Shot(Serialising):
 
             tn[j+1]  = t0
             dn[j+1]  = d0
+            ki[j+1]  = 1/ki0
             xm[j+1]  = xm0
             pn[j+1]  = p0
             zm[j+1]  = z0
@@ -530,6 +542,7 @@ class Shot(Serialising):
             if track_abu:
                 abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
+            mue[j+1] = abu[j+1].mue()
             max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
             rn[j+2]  = rm
 
@@ -561,6 +574,7 @@ class Shot(Serialising):
 
         tn[j+2] = np.nan
         dn[j+2] = np.nan
+        ki[j+2] = np.nan
         pn[j+2] = np.nan
         zm[j+2] = z0 - xm0
         sv[j+2] = np.nan
@@ -573,10 +587,12 @@ class Shot(Serialising):
         if track_abu:
             abu[j+2] = AbuSet(dict())
         abulen[j+2] = len(abu[j+2])
+        mue[j+2] = np.nan
         max_mass_no[j+2] = 0
 
         tn      = tn[:j+3][::-1]
         dn      = dn[:j+3][::-1]
+        ki      = ki[:j+3][::-1]
         pn      = pn[:j+3][::-1]
         sv      = sv[:j+3][::-1]
         xm      = xm[:j+3][::-1]
@@ -592,6 +608,7 @@ class Shot(Serialising):
         if track_abu:
             abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
+        mue = mue[:j+3][::-1]
         max_mass_no = max_mass_no[:j+3][::-1]
         y      = y[:j+3][::-1]
 
@@ -604,6 +621,7 @@ class Shot(Serialising):
         self.zm  = zm
         self.tn  = tn
         self.dn  = dn
+        self.ki  = ki
         self.sv  = sv
         self.xm  = xm
         self.xln = xln
@@ -622,6 +640,7 @@ class Shot(Serialising):
         if track_abu:
             self.abu = abu
         self.abulen = abulen
+        self.mue = mue
         self.max_mass_no = max_mass_no
 
 # mapping ions
@@ -748,14 +767,15 @@ class Shot(Serialising):
         ax.set_ylabel('Mass fraction')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
         ax.set_ylim(1.e-3, 1.5)
+        c = IonColor()
 
         for i,a in self.abub:
             am = np.max(a[i1])
             if am > lim:
-                ax.plot(self.y_m[i1], a[i1], label=i.mpl)
+                ax.plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
                 maxabu = np.argmax(a[i1])
                 ax.text(
-                    self.y_m[i1][maxabu], a[i1][maxabu], i.mpl,
+                    self.y_m[i1][maxabu], a[i1][maxabu], i.mpl, color=c(i),
                     ha='center', va='center', clip_on=True)
 
     def plot_s(self):
@@ -818,3 +838,33 @@ class Shot(Serialising):
                 z = np.vstack((z,z1))
         pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
+        
+    def plot_mue(self):
+        i1 = slice(1, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+#        ax.set_yscale('log')
+#        ax.set_ylabel('Opacity ($cm^2\,g^{-1}$)')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        
+        ax.plot(self.y_m[i1], self.mue[i1], label='$\mu_e$')
+        ax.legend(loc='best')
+
+    def plot_ki(self):
+        i1 = slice(1, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel('Opacity ($\mathrm{cm}^2\,\mathrm{g}^{-1}$)')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        
+        ax.plot(self.y_m[i1], self.ki[i1], label='$\kappa$')
+        ax.legend(loc='best')
