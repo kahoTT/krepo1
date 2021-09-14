@@ -113,7 +113,7 @@ class Shot(Serialising):
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # default mdot = 1 Eddington accretion rate
             abu = None, 
             amode = 1,
-            xms=1e13, xmsf=1.2,
+            xms=1e13, xmsf=1.15,
             net='',
             eos='',
             kepler = 'restart', # module | process | restart
