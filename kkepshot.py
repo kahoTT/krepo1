@@ -113,7 +113,7 @@ class Shot(Serialising):
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # default mdot = 1 Eddington accretion rate
             abu = None, 
             amode = 1,
-            xms=1e13, xmsf=1.15,
+            xms=1e13, xmsf=1.2,
             net='',
             eos='',
             kepler = 'restart', # module | process | restart
@@ -453,17 +453,6 @@ class Shot(Serialising):
     ### check whether change of abundance is too large
 
                     if jj <= 5:
-                        if np.max(np.abs(dvr)) < 1e-12:
-                            if dxmax > 1:
-                                break                                    
-                            else:
-                                pass
-#                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
-#                                xmaf *= (GOLDEN - 1)  
-#                                restart = True
-#                                break
-                            
-                    elif jj > 5 and jj <= 10:
                         if np.max(np.abs(dvr)) < accuracy:
                             if dxmax > 1:
                                 break                                    
@@ -472,8 +461,8 @@ class Shot(Serialising):
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
-
-                    else:
+                            
+                    elif jj > 5: 
                         if np.max(np.abs(dvr)) < accept:
                             if dxmax > 1:
                                 break                                    
@@ -482,8 +471,12 @@ class Shot(Serialising):
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
+                        else:
+                            xmaf *= (GOLDEN - 1)
+                            restart = True
+                            break
 
-                    print(f'[SHOT] Iteration {jj}={h0/p , f0/xl1}')
+                    print(f'[SHOT] Iteration {jj}: dvr = [{dvr[0], dvr[1]}]: dxmax = {dxmax}')
                     h0bt0 = p0bt0
                     h0bd0 = p0bd0 
         
@@ -495,6 +488,7 @@ class Shot(Serialising):
                     v = np.array([t0, d0])
                     dfr = c / v
                     dfrm = np.max(np.abs(dfr))
+                    print(f'[SHOT] dfrm = {dfrm}')
                     if dfrm > GOLDEN - 1:
                         ri = fmin / (dfrm * GOLDEN)
                     if ri != fmin:
