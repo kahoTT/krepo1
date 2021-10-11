@@ -188,15 +188,19 @@ class Shot(Serialising):
         g = GRAV*M/R**2
         d0 = 1.
         dt0 = 1.
+        jj = 0
         while True:
+            jj += 1
             p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
             h = p0 - g / 1.5 * ki0 # ki = 1/kappa
+            print(f'[SHOT] Iteration {jj} {h/p0}')
             if np.abs(h) < 1e-12 * p0:
                break
             dh = p0bd0 - g / 1.5 * ki0bd0     
             dd0 = h/dh
             d0n = d0 - dd0  
             d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
+        print(f'[SHOT] surface zone , tn={T:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc')
 
 ### 1st zone ###        
         p_surf = p0
@@ -236,16 +240,8 @@ class Shot(Serialising):
             b1 = np.array([p,xl0])
             dvr = b / b1
 
-            print(f'[SHOT] Iteration {h0/p, f0/xl0}')
-            if jj <= 5:
-                if np.max(np.abs(dvr)) < 1e-12:
-                    break
-
-            elif jj > 5 and jj <= 10:
-                if np.max(np.abs(dvr)) < accuracy:
-                    break
-
-            elif np.max(np.abs(dvr)) < accept:
+            print(f'[SHOT] Iteration {jj} {h0/p, f0/xl0}')
+            if np.max(np.abs(dvr)) < 1e-12:
                 break
 
             drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
@@ -262,8 +258,9 @@ class Shot(Serialising):
             dfrm = np.max(np.abs(dfr))
             if dfrm > GOLDEN - 1:
                 ri = fmin / (dfrm * GOLDEN)
-            if ri != fmin:
-                print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+#            if ri != fmin:
+#                print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+            ri = 1
             t0, d0 = v - c * ri
 # goes to center of the zone
 # P,T defined by center except the surface, 
@@ -491,8 +488,9 @@ class Shot(Serialising):
                     print(f'[SHOT] dfrm = {dfrm}')
                     if dfrm > GOLDEN - 1:
                         ri = fmin / (dfrm * GOLDEN)
-                    if ri != fmin:
-                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+#                    if ri != fmin:
+#                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+                    ri = 1
                     t0, d0 = v - c * ri
 
                     if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
