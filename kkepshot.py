@@ -1,9 +1,10 @@
+from logging import raiseExceptions
 from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA, SIGT, AMU 
-from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx
+from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx, ioncacheza, ufunc_idx_ZA
 from heat.net import Net3aC12 as Net
 from heat.eos import eos as Eos
 from heat.kappa import kappa as Kappa
-from abuset import AbuSet
+from abuset import AbuSet, AbuDump
 from heat.numeric import *
 import numpy as np
 from functools import partial
@@ -12,8 +13,9 @@ from matplotlib import pyplot as plt
 from starshot.kepnet import KepNet
 from heat.numeric import sqrt, cbrt, qqrt, GOLDEN
 import matplotlib.colors as colors
-from starshot.base import Base
-import re
+from serialising import Serialising
+from ioncolor import IonColor
+from utils import index1d
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -84,7 +86,7 @@ class SimpleNet(object):
         self.sdot = self._net.sdot 
 
 
-class Shot(Base):
+class Shot(Serialising):
 
 #    Shooting code.
 #    We use same grid variable naming scheme as in Kepler
@@ -115,7 +117,7 @@ class Shot(Base):
             xms=1e13, xmsf=1.2,
             net='',
             eos='',
-            kepler = 'process', # module | process | restart
+            kepler = 'restart', # module | process | restart
             yfloorx = 1.e-3,
             safenet = True,
             eosmode = None, # static | burn | adapt , is NOT adaptive step size !!!
@@ -126,8 +128,11 @@ class Shot(Base):
             accept = 1.e-8,
             Q = None,
             ymax = 1e12,
-            last_step = None,
             endnet = True,
+            silent = None,
+            burn = True,
+            par = None,
+            track_abu = True,
                  ): 
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
@@ -140,8 +145,14 @@ class Shot(Base):
             kappa = net._kappai
         else:
             if eosmode is None:
-                eosmode = 'adapt'
-            net = KepNet(
+                eosmode = 'adapt' # default
+            if par is None:
+                par = dict()
+            else:
+                par = dict(par)
+            if burn == False:
+                par.setdefault('tnucmin', 1.e99)
+            net = KepNet( # default
                 abu,
                 kepler=kepler,
                 eosmode=eosmode,
@@ -150,12 +161,13 @@ class Shot(Base):
                 yfloorx=yfloorx,
                 dtcp=dtcp,
                 scale=scale,
+                **par,
                 )
             self.net = net
             eos = net.eos
             sdot = net.sdot
 
-        xledd = 4 * np.pi * CLIGHT * GRAV * M * AMU / abu.mue() / SIGT
+        xledd = 4 * np.pi * CLIGHT * GRAV * M * AMU * abu.mue() / SIGT
         xaccedd = xledd * R / (GRAV * M)
         if mdot < 10:
             mdot = xaccedd * mdot
@@ -166,6 +178,9 @@ class Shot(Base):
             L = mdot * Q * NA * MEV
         else:
             Q = L / (mdot * NA * MEV)
+        self.Q = Q
+        self.L = L
+        self.Ledd = L/xledd
         print(f'[SHOT] Mdot = {mdot:12g} g/s ({mdot/xaccedd:12g} Edd.)')
         print(f'[SHOT] L    = {L:12g} erg/s ({L/xledd:12g} Edd.)')
 
@@ -174,59 +189,84 @@ class Shot(Base):
         g = GRAV*M/R**2
         d0 = 1.
         dt0 = 1.
+        jj = 0
         while True:
+            jj += 1
             p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
-            f = p0 - g / 1.5 * ki0
-            if np.abs(f) < 1e-12 * p0:
-                break
-            df = p0bd0 - g / 1.5 * ki0bd0           # ki0bd0 has to be divided by 
-            dd0 = f/df
+            h = p0 - g / 1.5 * ki0 # ki = 1/kappa
+            print(f'[SHOT] Iteration {jj} {h/p0}')
+            if np.abs(h) < 1e-12 * p0:
+               break
+            dh = p0bd0 - g / 1.5 * ki0bd0     
+            dd0 = h/dh
             d0n = d0 - dd0  
             d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
-### 1st zone        
+        print(f'[SHOT] surface zone , tn={T:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc')
+
+### 1st zone ###        
         p_surf = p0
         t_surf = T
         #dm = d0 * 4 * np.pi * (R**3 - (R-dr)**3) / 3  # solve directly , dm : change of mass
         t0 = T 
         r0 = R
-        xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass; total mass value used
+        xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass
         xl0 = L
         z0 = M
         xm0 = xms
         g0 = GRAV * z0 / r0**2
-        p1 = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
+        p = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
         u1 = u0
         d1 = d0
+        ki1 = ki0 
         dt0 = xm0 / mdot
         ppn0 = net.abu()
+        jj = 0
+        ri = 1
+        fmin = 1
         while True:
+            jj += 1
             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
-            rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) # the density of the first half zone is the surface density and unchanged
-            dr0 = r0 - rm # rm : curretly r at bottom
-            ac = 4 * np.pi * r0**2 * ARAD * CLIGHT / 3
-            acdr0 = ac * ki0 / (d0 * 0.5 * dr0) # 0.5 comes from going to a half of the zone
+            rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) 
+#            dr0 = r0 - rm # rm : curretly r at zone bottom
+            rmc = np.cbrt(r0**3 - 3 * xm0 / (8 * np.pi * d0)) 
+            drc0 = r0 - rmc # goes to center of zone
+            ac = 16 * np.pi * r0**2 * ARAD * CLIGHT / 3
+            acdr0 = ac * ki0 / (d0 * drc0) 
             l0 = (t0**4 - t_surf**4) * acdr0
             
-            f0 = p0 - p1
-            h0 = l0 - xl0
+            h0 = p0 - p
+            f0 = l0 - xl0
 
-            b = np.array([f0,h0]) # by Alex
-            b1 = np.array([p1,xl0])
+            b = np.array([h0,f0]) # by Alex
+            b1 = np.array([p,xl0])
+            dvr = b / b1
 
-            if np.abs(f0/p1) < accuracy and np.abs(h0/xl0) < accuracy:
+            print(f'[SHOT] Iteration {jj} {h0/p, f0/xl0}')
+            if np.max(np.abs(dvr)) < 1e-12:
                 break
 
-            dr0bd0 = - xm0 / (rm**2 * 4 * np.pi * d0**2)
-            f0bt0 = p0bt0
-            f0bd0 = p0bd0 
+            if jj >= 5:
+                if np.max(np.abs(dvr)) < accuracy:
+                    break
 
-            h0bt0 = l0 * ki0bt0 / ki0 + acdr0 * 4 * t0 ** 3
-            h0bd0 = l0 * (ki0bd0 / ki0 - 1 / d0 - dr0bd0 / dr0)
+            drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
+            h0bt0 = p0bt0
+            h0bd0 = p0bd0 
 
-            A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]]) # by Alex
-            c = np.linalg.solve(A,b) # by Alex
-            v = np.array([t0, d0]) # by Alex
-            t0, d0 = v - c # by Alex
+            f0bt0 = l0 * ki0bt0 / ki0 + acdr0 * 4 * t0 ** 3
+            f0bd0 = l0 * (ki0bd0 / ki0 - 1 / d0 - drc0bd0 / drc0)
+
+            A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]]) 
+            c = np.linalg.solve(A,b) 
+            v = np.array([t0, d0]) 
+            dfr = c / v
+            dfrm = np.max(np.abs(dfr))
+            if dfrm > GOLDEN - 1:
+                ri = fmin / (dfrm * GOLDEN)
+#            if ri != fmin:
+#                print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+            ri = 1
+            t0, d0 = v - c * ri
 # goes to center of the zone
 # P,T defined by center except the surface, 
 # 'kappa' function return ki and 2x its logarithmic derivatives
@@ -234,7 +274,7 @@ class Shot(Base):
 # third step: include energy generation, we have t0 d0 p0 at the zone center
 # for pdv : using the boundary pressure
         p1  = p_surf
-        s0, snu0, dxmax = net.sdot(t0, d0, dt0)
+        s0, snu0, dxmax = sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
@@ -246,12 +286,17 @@ class Shot(Base):
         sv1 = sv0 = 0
 
 #        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
-        k   = 2000 
+        k   = 100000 
         tn  = np.ndarray(k)
         dn  = np.ndarray(k)
+        ki  = np.ndarray(k)
         xm  = np.ndarray(k)
         pn  = np.ndarray(k)
+        zm  = np.ndarray(k)
         sv  = np.ndarray(k)
+        un = np.ndarray(k)
+        mec = np.ndarray(k)
+        phi = np.ndarray(k)
         xln = np.ndarray(k)
         sn  = np.ndarray(k)
         snun  = np.ndarray(k)
@@ -261,17 +306,27 @@ class Shot(Base):
         rn  = np.ndarray(k)
         dln = np.ndarray(k) 
         xlnsv  = np.ndarray(k)
-        abu = np.ndarray(k, dtype=np.object)
+        xlnint  = np.ndarray(k)
+        xlnmec  = np.ndarray(k)
+        xlnphi  = np.ndarray(k)
+        if track_abu:
+            abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
+        mue = np.ndarray(k)
         max_mass_no = np.ndarray(k)
-#        gn  = np.ndarray(k) 
+        gn  = np.ndarray(k) 
         y  = np.ndarray(k)
 
         tn[0]  = t_surf
         dn[0]  = d1
+        ki[0]  = 1/ki1
         xm[0]  = xm1
         pn[0]  = p1
+        zm[0]  = M
         sv[0]  = 0
+        un[0]  = 0
+        mec[0] = 0
+        phi[0] = 0
         xln[0] = xln[1] = xl0
         dln[0] = 0
         sn[0]  = 0
@@ -281,60 +336,71 @@ class Shot(Base):
         scn[0] = 0
         rn[0]  = np.inf
         xlnsv[0]  = 0
-        abu[0] = ppn0
+        xlnint[0] = 0
+        xlnmec[0] = 0
+        if track_abu:
+            abu[0] = ppn0
         abulen[0] = len(abu[0])
+        mue[0] = abu[0].mue()
         max_mass_no[0] = np.max(ufunc_A(abu[0].iso))
         y[0] = 0
+        gn[0] = g
 
         tn[1]  = t0
         dn[1]  = d0
+        ki[1]  = 1/ki0
         xm[1]  = xm0
         pn[1]  = p0
-        rn[1]  = R
+        zm[1]  = z0
         sn[1]  = s0
         snun[1]  = snu0
         smn[1]  = s0 * xm0
         smnun[1]  = snu0 * xm0
         xlnsv[1]  = 0
-        abu[1] = net.abu()
+        xlnint[1] = 0
+        xlnmec[1] = 0
+        if track_abu:
+            abu[1] = net.abu()
         abulen[1] = len(abu[1])
+        mue[1] = abu[1].mue()
         max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
-        y[1] = xm1 / (4 * np.pi * R**2)
+        rn[1]  = R
+        rn[2]  = rm
+        y[1] = xm1 / (4 * np.pi * R**2)             
         y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
+        gn[1] = g0
 
 # starting from the SECOND ZONE
-        for j in range(1 , k , 1):
-            if last_step is True:
-                j = j - 1
-            else:
-                xm2 = xm1
-                xm1 = xm0
-                r1  = r0
-                r0  = rm
-                z1  = z0  # mass for computing gravity
-                z0  = z1 - xm1
-                g1  = g0
-                g0  = GRAV * z0 / r0**2
-        
-                ki1 = ki0
-                p2  = p1
-                p1  = p0
-                t1  = t0
-                d2  = d1
-                d1  = d0
-                u2  = u1
-                u1  = u0    
-                xl1 = xl0
-                sv2 = sv1
-                sv1 = sv0
-                s1  = s0
-                snu1  = snu0
+        second_last_step = None
+        for j in range(1 , k , 1): 
+            xm2 = xm1
+            xm1 = xm0
+            r1  = r0
+            r0  = rm
+            z1  = z0  # mass for computing gravity
+            z0  = z1 - xm1
+            g1  = g0
+            g0  = GRAV * z0 / r0**2
+    
+            ki1 = ki0
+            p2  = p1
+            p1  = p0
+            t1  = t0
+            d2  = d1
+            d1  = d0
+            u2  = u1
+            u1  = u0    
+            xl1 = xl0
+            sv2 = sv1
+            sv1 = sv0
+            s1  = s0
+            snu1  = snu0
     ### adaptive network set in to change the xmsf ###
-                xmaf = 1
+            xmaf = 1
             while True:
                 restart = None
-                if last_step is True:
-                    xm0 = xm0_last
+                if second_last_step is True:
+                    xm0 = xm0_2last
                 else:
                     xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
                 p   = p1 +  0.5 * (xm0 + xm1) * g0 / (4 * np.pi * r0**2) 
@@ -344,30 +410,28 @@ class Shot(Base):
                 dt0 = xm0 / mdot
                 du1 = u2 - u1
     
-                if amode == 1:
+                if amode == 1: # harmonic mean, the accurate one. Currently just amode == 1 is used
                     pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
                     dL1 = (du1 + pdv1) * dmx1
     
+                elif amode == 2: # geometric mean
+                    pdv1 = np.sqrt(p1*p2) * (1 / d2 - 1 / d1)
+                    dL1 = (du1 + pdv1) * dmx1
+
+                elif amode == 3: # Arithmetic mean
+                    pdv1 = 0.5 * (p1 + p0) * (1 / d2 - 1 / d1)
+                    dL1 = (du1 + pdv1) * dmx1
+
                 else:
-                    dL1 = du1 * dmx1
+                    raise AttributeError(f'Need to define a way to manage pressure between zones')
       
-    #            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
+                jj = 0
+                fmin = 1
                 ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
-                jj = 1
-                ri = 1
     ### main loop ###
                 while True:
                     jj += 1
                     p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
-    ### check whether change of abundance is too large
-                    if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
-                        if np.min(dxmax) < 1:
-                            print(f'[SHOT] Time step reduced as it is too large')
-                            xmaf *= (GOLDEN - 1)  
-                            restart = True
-                            break
-                        else:
-                            pass
     
                     du0    = u1 - u0
                     du0bt0 = - u0bt0
@@ -380,8 +444,26 @@ class Shot(Base):
                         dL0  = (du0 + pdv0) * dmx0
                         dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
-                        sv1  = 0.5 * (dL1 + dL0) # why 0.5 * ? I think it should be for the xm1
+                        sv1  = 0.5 * (dL1 + dL0) # 0.5 should be better to put on line 411
     
+                    elif amode == 2: # geometic mean
+                        pdv0 = np.sqrt(p0 * p1) * (1 / d1 - 1 / d0)
+                        pdv0bt0 = 0.5 * pdv0 * p0bt0 / p0
+                        pdv0bd0 = 0.5 * pdv0 * p0bd0 / p0 + np.sqrt(p0 * p1) / d0**2
+                        dL0  = (du0 + pdv0) * dmx0
+                        dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
+                        dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
+                        sv1  = 0.5 * (dL1 + dL0) 
+
+                    elif amode == 3: # Arithmetic mean
+                        pdv0 = 0.5 * (p0 + p1) * (1 / d1 - 1 / d0)
+                        pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
+                        pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p0 + p1) / d0**2
+                        dL0  = (du0 + pdv0) * dmx0
+                        dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
+                        dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
+                        sv1  = 0.5 * (dL1 + dL0) 
+
                     else:
                         pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
                         pdv0bt0 = -  p0bt0 / (d1 + d0)
@@ -397,84 +479,129 @@ class Shot(Base):
     #                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
     #                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
     
-                    dL   = (sv1 + s1) * xm1
-                    xl0  = xl1 - dL
+                    dL   = (sv1 + s1) * xm1 # move outside the amode conditions, maybe better to put them back
+                    xl0  = xl1 - dL # move outside the amode conditions, maybe better to put them back
     
                     acdr0 = ac * (ki0 + ki1) # the boundary of opacity
                     l0 = (t0**4 - t1**4) * acdr0
-                    f0 = p0 - p
-                    h0 = l0 - xl0
+                    h0 = p0 - p
+                    f0 = l0 - xl0
         
-                    b = np.array([f0,h0])
+                    b = np.array([h0,f0])
                     b1 = np.array([p,xl0])
+                    dvr = b / b1
+
+# for finding t0 and d0
+    ### check whether change of abundance is too large
+
+                    if jj <= 5:
+                        if np.max(np.abs(dvr)) < accuracy:
+                            if dxmax > 1:
+                                break                                    
+                            else:
+                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                                xmaf *= (GOLDEN - 1)  
+                                restart = True
+                                break
+                            
+                    elif jj > 5: 
+                        if np.max(np.abs(dvr)) < accept:
+                            if dxmax > 1:
+                                break                                    
+                            else:
+                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                                xmaf *= (GOLDEN - 1)  
+                                restart = True
+                                break
+                        else:
+                            xmaf *= (GOLDEN - 1)
+                            restart = True
+                            break
+
+                    print(f'[SHOT] Iteration {jj}: dvr = [{dvr[0], dvr[1]}]: dxmax = {dxmax}')
+                    h0bt0 = p0bt0
+                    h0bd0 = p0bd0 
         
-                    if np.abs(f0/p) < accuracy and np.abs(h0/xl1) < accuracy and dxmax > 1:
-                        break # for finding t0 and d0
-                    if jj >= 50:
-                        if np.abs(f0/p) < accept and np.abs(h0/xl1) < accept:
-                            break # for finding t0 and d0
-                    print(f'[SHOT] Iteration {jj}={f0/p , h0/xl1}')
-                    f0bt0 = p0bt0
-                    f0bd0 = p0bd0 
+                    f0bt0 = (t0**4 - t1**4) * ac * ki0bt0 + acdr0 * 4 * t0 ** 3 - dxl0bt0
+                    f0bd0 = (t0**4 - t1**4) * ac * ki0bd0 - dxl0bd0
         
-                    h0bt0 = (t0**4 - t1**4) * ac * ki0bt0 + acdr0 * 4 * t0 ** 3 - dxl0bt0
-                    h0bd0 = (t0**4 - t1**4) * ac * ki0bd0 - dxl0bd0
-        
-                    A = np.array([[f0bt0, f0bd0],[h0bt0, h0bd0]])
+                    A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]])
                     c = np.linalg.solve(A,b)
                     v = np.array([t0, d0])
-                    if (jj/20) % 1 == 0:
-                        ri *= .9
-                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
-                    t0, d0 = v - c*(ri)
-                if restart == True:
+                    dfr = c / v
+                    dfrm = np.max(np.abs(dfr))
+                    print(f'[SHOT] dfrm = {dfrm}')
+                    if dfrm > GOLDEN - 1:
+                        ri = fmin / (dfrm * GOLDEN)
+#                    if ri != fmin:
+#                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+                    ri = 1
+                    t0, d0 = v - c * ri
+
+                    if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
+                        print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                        xmaf *= (GOLDEN - 1)  
+                        restart = True
+                        break
+
+                if restart == True: # for adaptive network
                     continue
-                break # break for the adaptive step size
-            s0, snu0, dxmax  = net.sdot(t0, d0, dt0)
+
+                rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
+                ym = xm0 / (4 * np.pi * r0**2)
+                y[j+2] = y[j+1] + ym
+                if y[j+2] > ymax and second_last_step is None:
+                    second_last_step = True
+                    print(f'[SHOT]------------------\n[SHOT] penultimate zone\n[SHOT]------------------')
+                    xm0_2last = (ymax - y[j+1]) * (4 * np.pi * r0**2) 
+                    k = j + 1
+                    continue # for index j
+
+                break # break for loop j finished
+            s0, snu0, dxmax  = sdot(t0, d0, dt0)
             print(f'[SHOT] dxmax = {dxmax}')
 
-            rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
-            ym = xm0 / (4 * np.pi * r0**2)
 
             tn[j+1]  = t0
             dn[j+1]  = d0
+            ki[j+1]  = 1/ki0
             xm[j+1]  = xm0
             pn[j+1]  = p0
+            zm[j+1]  = z0
             xln[j+1] = xl0
             sv[j] = sv1
+            un[j] = 0.5 * (du0 * dmx0 + du1 * dmx1)
+            mec[j]= 0.5 * (pdv0 * dmx0 + pdv1 * dmx1)
+            phi[j] = (g0 * r0 - g1 * r1) * dmx0
             dln[j] = dL * xm0
             sn[j+1]  = s0
             snun[j+1]  = snu0
             smn[j+1]  = s0 * xm0
             smnun[j+1]  = snu0 * xm0
-            rn[j+1]  = r0
             xlnsv[j+1] = sv1 * xm1
-            abu[j+1] = net.abu()
+            xlnint[j+1] = un[j] * xm1
+            xlnmec[j+1] = mec[j] * xm1
+            xlnphi[j+1] = phi[j] * xm1
+            if track_abu:
+                abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
+            mue[j+1] = abu[j+1].mue()
             max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
-            y[j+2] = y[j] + ym
+            rn[j+2]  = rm
+            gn[j+1]  = g0
 
+            print('-----------------------------------------------------------------------')
             print(f'[SHOT] zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
             print(f'current zone mass={xm0:12.5e}, next zone mass={xm0*xmsf:12.5e}')
+            print('-----------------------------------------------------------------------')
 
-            if y[j+2] > ymax and last_step is None:
-                last_step = True
-                print(f'last zone')
-                factor = (ymax - y[j]) / ym
-                xm0_last = xm0 * factor
-                continue # for index j
+            if j == k:
+                break # for index j
 
-            if (d0 > 5e11 or t0 > 5e9 or last_step is True):
-                break
+            if ymax is None:
+                if (d0 > 5e11 or t0 > 5e10):
+                    break # for index j
 
-
-# phoney
-        rn[j+2] = rm
-        sv[j+1] = sv1**2 / sv2
-        xlnsv[j+2] = sv[j+1] * xm0
-        xl0 = xl0 - (s0 + sv[j+1]) * xm0
-#        y[j+2] = ym
-# phoney
 # bottom heat
         Qb = xl0 / (MEV * mdot * NA)
         Lb = xl0
@@ -482,27 +609,49 @@ class Shot(Base):
         self.Lb = Lb
         print(f'Base heat flux Qb={Qb} MeV/nucleon or Lb={Lb:12.5e} erg/s')
 
+# phoney
+        sv[j+1] = sv1**2 / sv2
+        un[j+1] = un[j]
+        mec[j+1] = mec[j]
+        xlnsv[j+2] = sv[j+1] * xm0
+        xlnint[j+2] = un[j+1] * xm0
+        xlnmec[j+2] = mec[j+1] * xm0
+        xlnphi[j+2] = phi[j+1] * xm0
+        xl0 = xl0 - (s0 + sv[j+1]) * xm0
+#
+
         tn[j+2] = np.nan
         dn[j+2] = np.nan
+        ki[j+2] = np.nan
         pn[j+2] = np.nan
+        zm[j+2] = z0 - xm0
+        gn[j+2] = GRAV * zm[j+2] / rn[j+2]**2
         sv[j+2] = np.nan
-        xm[j+2] = M
+        un[j+2] = np.nan
+        mec[j+2] = np.nan
+        phi[j+2] = np.nan
+        xm[j+2] = zm[j+2]
         xln[j+2] = xl0
         sn[j+2] = np.nan
         snun[j+2] = np.nan
         smn[j+2] = np.nan
         smnun[j+2] = np.nan
-        abu[j+2] = np.array([0,0,0])
+        if track_abu:
+            abu[j+2] = AbuSet(dict())
         abulen[j+2] = len(abu[j+2])
+        mue[j+2] = np.nan
         max_mass_no[j+2] = 0
 
         tn      = tn[:j+3][::-1]
         dn      = dn[:j+3][::-1]
+        ki      = ki[:j+3][::-1]
         pn      = pn[:j+3][::-1]
         sv      = sv[:j+3][::-1]
+        un      = un[:j+3][::-1]
         xm      = xm[:j+3][::-1]
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
+        gn      = gn[:j+3][::-1]
         sn      = sn[:j+3][::-1]
         snun      = snun[:j+3][::-1]
         smn      = smn[:j+3][::-1]
@@ -510,8 +659,13 @@ class Shot(Base):
         xlnn = np.append(smn[1:], 0) 
         xlnun = np.append(smnun[1:], 0) 
         xlnsv      = xlnsv[:j+3][::-1]
-        abu      = abu[:j+3][::-1]
+        xlnint      = xlnint[:j+3][::-1]
+        xlnmec      = xlnmec[:j+3][::-1]
+        xlnphi      = xlnphi[:j+3][::-1]
+        if track_abu:
+            abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
+        mue = mue[:j+3][::-1]
         max_mass_no = max_mass_no[:j+3][::-1]
         y      = y[:j+3][::-1]
 
@@ -521,13 +675,17 @@ class Shot(Base):
         y_m[-1] = y[-2]
 
         self.pn  = pn
+        self.zm  = zm
         self.tn  = tn
         self.dn  = dn
+        self.ki  = ki
         self.sv  = sv
+        self.un  = un
         self.xm  = xm
         self.xln = xln
         self.dln = dln
         self.rn  = rn
+        self.gn  = gn
         self.sn  = sn
         self.snun  = snun
         self.mdot  = mdot
@@ -536,13 +694,45 @@ class Shot(Base):
         self.y  = y
         self.y_m = y_m
         self.xlnsv = xlnsv
+        self.xlnint = xlnint
+        self.xlnmec = xlnmec
+        self.xlnphi = xlnphi
         self.xlnn = xlnn
         self.xlnun = xlnun
-        self.abu = abu
+        if track_abu:
+            self.abu = abu
         self.abulen = abulen
+        self.mue = mue
         self.max_mass_no = max_mass_no
 
 # mapping ions
+        if track_abu:
+            # map all ions
+            print(f'[{self.__class__.__name__}] Mapping ions....')
+            ions = set()
+            ionsa = list()
+            for a in abu:
+                idx = ufunc_idx(a.iso)
+                ions |= set(idx)
+                ionsa.append(idx)
+            ions = np.array(sorted(ions))
+            nions = len(ions)
+            abub = np.zeros((nions, j + 3))
+            for i, a in enumerate(abu):
+                ii = index1d(ionsa[i], ions)
+                abub[ii,i] = a.abu
+            # ions = ufunc_ion_from_idx(ions)
+            ions = ioncacheza(*ufunc_idx_ZA(ions))
+            self.abub = AbuDump(
+                abub,
+                ions,
+                molfrac = False,
+                bottom = 1,
+                top = j + 3,
+                xm = self.xm,
+                zm = self.zm,
+                )
+
         self.maxions = self.abulen.argmax()
         self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
@@ -599,12 +789,17 @@ class Shot(Base):
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
+        xlnint = -np.cumsum(self.xlnint[ir])[ir]
+        xlnmec = np.cumsum(self.xlnmec[ir])[ir]
+        xlnphi = np.cumsum(self.xlnphi[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
-        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
-        ax.plot(self.y_m[i1], xlsum[i1] / scale, '--', label='sum')
+#        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
+#        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, '--', label = 'Sum')
+        ax.plot(self.y_m[i1], xlnint[i1] / scale, label='$L_{\mathrm{int}}$')
+        ax.plot(self.y_m[i1], xlnmec[i1] / scale, label='$L_{\mathrm{mec}}$')
+        ax.plot(self.y_m[i1], xlnphi[i1] / scale, label='$L_{\mathrm{grav}}$')
         ax.legend(loc='best')
         plt.show()
        
@@ -627,28 +822,8 @@ class Shot(Base):
         ax.legend(loc='best')
         plt.show()
 
-#    def plot_abu(self):
-#        i1 = slice(1, None)
-#        i0 = slice(None, -1)
-#        ir = slice(None, None, -1)
-#
-#        fig, ax = plt.subplots()
-#        self.fig = fig
-#        self.ax = ax
-#
-#        ax.set_xscale('log')
-#        ax.set_ylabel('Mass fraction')
-#        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
-#
-#        for j,i in enumerate(self.net._net.ions):
-#            ax.plot(self.y_m[i1], self.ppn[i1, j] * i.A, label=i.mpl)
-#        ax.legend(loc='best')
-#        plt.show()
-
-    def plot_abu(self, mmin = 1.e-3, array=None):
+    def plot_abu(self, lim = 1e-3):
         i1 = slice(1, None)
-        i0 = slice(None, -1)
-        ir = slice(None, None, -1)
 
         fig, ax = plt.subplots()
         self.fig = fig
@@ -659,29 +834,16 @@ class Shot(Base):
         ax.set_ylabel('Mass fraction')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
         ax.set_ylim(1.e-3, 1.5)
-     
-        for ai in self.da[:array]: 
-            for bi in range(0, len(self.abu)-1, 1): 
-                if ai in ufunc_idx(self.abu[bi+1].iso):
-                    k = np.where(ai == ufunc_idx(self.abu[bi+1].iso))
-                    self.pabu[bi] = self.abu[bi+1].abu[k][0]
-                else:
-                    self.pabu[bi] = 0
-            if all(self.pabu < mmin):
-                pass
-            else:
-                abuname = ufunc_ion_from_idx(ai).item(0)
-                ax.plot(self.y_m[i1], self.pabu)
-                maxabu = np.argmax(self.pabu)
-                ax.text(
-                    self.y_m[i1][maxabu], self.pabu[maxabu], abuname.mpl,
-                    ha='center', va='center', clip_on=True)
+        c = IonColor()
 
-#        for a in range(0,len(self.y_m[i1]),1):
-#            print(len(self.abu[a]))
-#            for j,i in enumerate(self.abu[i1][a]):
-#                ax.plot(self.y_m[i1][a], i[1])
-#        plt.show()
+        for i,a in self.abub:
+            am = np.max(a[i1])
+            if am > lim:
+                ax.plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
+                maxabu = np.argmax(a[i1])
+                ax.text(
+                    self.y_m[i1][maxabu], a[i1][maxabu], i.mpl, color=c(i),
+                    ha='center', va='center', clip_on=True)
 
     def plot_s(self):
         i1 = slice(1, -1)
@@ -697,6 +859,7 @@ class Shot(Base):
 
         ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
         ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+#        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
         ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')
 
         ax.legend(loc='best')
@@ -742,7 +905,33 @@ class Shot(Base):
                 z = np.vstack((z,z1))
         pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
+        
+    def plot_mue(self):
+        i1 = slice(1, -1)
 
-    _pickle_exclude = Base._pickle_exclude + (
-        re.compile('B'),
-        )
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+#        ax.set_yscale('log')
+#        ax.set_ylabel('Opacity ($cm^2\,g^{-1}$)')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        
+        ax.plot(self.y_m[i1], self.mue[i1], label='$\mu_e$')
+        ax.legend(loc='best')
+
+    def plot_ki(self):
+        i1 = slice(1, -1)
+
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel('Opacity ($\mathrm{cm}^2\,\mathrm{g}^{-1}$)')
+        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        
+        ax.plot(self.y_m[i1], self.ki[i1], label='$\kappa$')
+        ax.legend(loc='best')
