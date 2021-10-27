@@ -1,3 +1,4 @@
+from logging import raiseExceptions
 from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA, SIGT, AMU 
 from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx, ioncacheza, ufunc_idx_ZA
 from heat.net import Net3aC12 as Net
@@ -244,6 +245,10 @@ class Shot(Serialising):
             if np.max(np.abs(dvr)) < 1e-12:
                 break
 
+            if jj >= 5:
+                if np.max(np.abs(dvr)) < accuracy:
+                    break
+
             drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
             h0bt0 = p0bt0
             h0bd0 = p0bd0 
@@ -281,7 +286,7 @@ class Shot(Serialising):
         sv1 = sv0 = 0
 
 #        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
-        k   = 5000 
+        k   = 100000 
         tn  = np.ndarray(k)
         dn  = np.ndarray(k)
         ki  = np.ndarray(k)
@@ -289,6 +294,9 @@ class Shot(Serialising):
         pn  = np.ndarray(k)
         zm  = np.ndarray(k)
         sv  = np.ndarray(k)
+        un = np.ndarray(k)
+        mec = np.ndarray(k)
+        phi = np.ndarray(k)
         xln = np.ndarray(k)
         sn  = np.ndarray(k)
         snun  = np.ndarray(k)
@@ -298,12 +306,15 @@ class Shot(Serialising):
         rn  = np.ndarray(k)
         dln = np.ndarray(k) 
         xlnsv  = np.ndarray(k)
+        xlnint  = np.ndarray(k)
+        xlnmec  = np.ndarray(k)
+        xlnphi  = np.ndarray(k)
         if track_abu:
             abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
         mue = np.ndarray(k)
         max_mass_no = np.ndarray(k)
-#        gn  = np.ndarray(k) 
+        gn  = np.ndarray(k) 
         y  = np.ndarray(k)
 
         tn[0]  = t_surf
@@ -313,6 +324,9 @@ class Shot(Serialising):
         pn[0]  = p1
         zm[0]  = M
         sv[0]  = 0
+        un[0]  = 0
+        mec[0] = 0
+        phi[0] = 0
         xln[0] = xln[1] = xl0
         dln[0] = 0
         sn[0]  = 0
@@ -322,12 +336,15 @@ class Shot(Serialising):
         scn[0] = 0
         rn[0]  = np.inf
         xlnsv[0]  = 0
+        xlnint[0] = 0
+        xlnmec[0] = 0
         if track_abu:
             abu[0] = ppn0
         abulen[0] = len(abu[0])
         mue[0] = abu[0].mue()
         max_mass_no[0] = np.max(ufunc_A(abu[0].iso))
         y[0] = 0
+        gn[0] = g
 
         tn[1]  = t0
         dn[1]  = d0
@@ -340,6 +357,8 @@ class Shot(Serialising):
         smn[1]  = s0 * xm0
         smnun[1]  = snu0 * xm0
         xlnsv[1]  = 0
+        xlnint[1] = 0
+        xlnmec[1] = 0
         if track_abu:
             abu[1] = net.abu()
         abulen[1] = len(abu[1])
@@ -349,10 +368,11 @@ class Shot(Serialising):
         rn[2]  = rm
         y[1] = xm1 / (4 * np.pi * R**2)             
         y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
+        gn[1] = g0
 
 # starting from the SECOND ZONE
         second_last_step = None
-        for j in range(1 , k , 1): # k = 2000
+        for j in range(1 , k , 1): 
             xm2 = xm1
             xm1 = xm0
             r1  = r0
@@ -394,13 +414,20 @@ class Shot(Serialising):
                     pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
                     dL1 = (du1 + pdv1) * dmx1
     
+                elif amode == 2: # geometric mean
+                    pdv1 = np.sqrt(p1*p2) * (1 / d2 - 1 / d1)
+                    dL1 = (du1 + pdv1) * dmx1
+
+                elif amode == 3: # Arithmetic mean
+                    pdv1 = 0.5 * (p1 + p0) * (1 / d2 - 1 / d1)
+                    dL1 = (du1 + pdv1) * dmx1
+
                 else:
-                    dL1 = du1 * dmx1
+                    raise AttributeError(f'Need to define a way to manage pressure between zones')
       
-    #            pdv1 = 0.5 * (p2 +  p1) * (1 / d2 - 1 / d1)
-                ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
                 jj = 0
                 fmin = 1
+                ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
     ### main loop ###
                 while True:
                     jj += 1
@@ -419,6 +446,24 @@ class Shot(Serialising):
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
                         sv1  = 0.5 * (dL1 + dL0) # 0.5 should be better to put on line 411
     
+                    elif amode == 2: # geometic mean
+                        pdv0 = np.sqrt(p0 * p1) * (1 / d1 - 1 / d0)
+                        pdv0bt0 = 0.5 * pdv0 * p0bt0 / p0
+                        pdv0bd0 = 0.5 * pdv0 * p0bd0 / p0 + np.sqrt(p0 * p1) / d0**2
+                        dL0  = (du0 + pdv0) * dmx0
+                        dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
+                        dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
+                        sv1  = 0.5 * (dL1 + dL0) 
+
+                    elif amode == 3: # Arithmetic mean
+                        pdv0 = 0.5 * (p0 + p1) * (1 / d1 - 1 / d0)
+                        pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
+                        pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p0 + p1) / d0**2
+                        dL0  = (du0 + pdv0) * dmx0
+                        dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
+                        dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
+                        sv1  = 0.5 * (dL1 + dL0) 
+
                     else:
                         pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
                         pdv0bt0 = -  p0bt0 / (d1 + d0)
@@ -525,18 +570,25 @@ class Shot(Serialising):
             zm[j+1]  = z0
             xln[j+1] = xl0
             sv[j] = sv1
+            un[j] = 0.5 * (du0 * dmx0 + du1 * dmx1)
+            mec[j]= 0.5 * (pdv0 * dmx0 + pdv1 * dmx1)
+            phi[j] = (g0 * r0 - g1 * r1) * dmx0
             dln[j] = dL * xm0
             sn[j+1]  = s0
             snun[j+1]  = snu0
             smn[j+1]  = s0 * xm0
             smnun[j+1]  = snu0 * xm0
             xlnsv[j+1] = sv1 * xm1
+            xlnint[j+1] = un[j] * xm1
+            xlnmec[j+1] = mec[j] * xm1
+            xlnphi[j+1] = phi[j] * xm1
             if track_abu:
                 abu[j+1] = net.abu()
             abulen[j+1] = len(abu[j+1])
             mue[j+1] = abu[j+1].mue()
             max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
             rn[j+2]  = rm
+            gn[j+1]  = g0
 
             print('-----------------------------------------------------------------------')
             print(f'[SHOT] zone {j+1}, tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
@@ -559,17 +611,25 @@ class Shot(Serialising):
 
 # phoney
         sv[j+1] = sv1**2 / sv2
+        un[j+1] = un[j]
+        mec[j+1] = mec[j]
         xlnsv[j+2] = sv[j+1] * xm0
+        xlnint[j+2] = un[j+1] * xm0
+        xlnmec[j+2] = mec[j+1] * xm0
+        xlnphi[j+2] = phi[j+1] * xm0
         xl0 = xl0 - (s0 + sv[j+1]) * xm0
-# phoney
-
+#
 
         tn[j+2] = np.nan
         dn[j+2] = np.nan
         ki[j+2] = np.nan
         pn[j+2] = np.nan
         zm[j+2] = z0 - xm0
+        gn[j+2] = GRAV * zm[j+2] / rn[j+2]**2
         sv[j+2] = np.nan
+        un[j+2] = np.nan
+        mec[j+2] = np.nan
+        phi[j+2] = np.nan
         xm[j+2] = zm[j+2]
         xln[j+2] = xl0
         sn[j+2] = np.nan
@@ -587,9 +647,11 @@ class Shot(Serialising):
         ki      = ki[:j+3][::-1]
         pn      = pn[:j+3][::-1]
         sv      = sv[:j+3][::-1]
+        un      = un[:j+3][::-1]
         xm      = xm[:j+3][::-1]
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
+        gn      = gn[:j+3][::-1]
         sn      = sn[:j+3][::-1]
         snun      = snun[:j+3][::-1]
         smn      = smn[:j+3][::-1]
@@ -597,6 +659,9 @@ class Shot(Serialising):
         xlnn = np.append(smn[1:], 0) 
         xlnun = np.append(smnun[1:], 0) 
         xlnsv      = xlnsv[:j+3][::-1]
+        xlnint      = xlnint[:j+3][::-1]
+        xlnmec      = xlnmec[:j+3][::-1]
+        xlnphi      = xlnphi[:j+3][::-1]
         if track_abu:
             abu      = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
@@ -615,10 +680,12 @@ class Shot(Serialising):
         self.dn  = dn
         self.ki  = ki
         self.sv  = sv
+        self.un  = un
         self.xm  = xm
         self.xln = xln
         self.dln = dln
         self.rn  = rn
+        self.gn  = gn
         self.sn  = sn
         self.snun  = snun
         self.mdot  = mdot
@@ -627,6 +694,9 @@ class Shot(Serialising):
         self.y  = y
         self.y_m = y_m
         self.xlnsv = xlnsv
+        self.xlnint = xlnint
+        self.xlnmec = xlnmec
+        self.xlnphi = xlnphi
         self.xlnn = xlnn
         self.xlnun = xlnun
         if track_abu:
@@ -719,12 +789,17 @@ class Shot(Serialising):
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
+        xlnint = -np.cumsum(self.xlnint[ir])[ir]
+        xlnmec = np.cumsum(self.xlnmec[ir])[ir]
+        xlnphi = np.cumsum(self.xlnphi[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
-        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
-        ax.plot(self.y_m[i1], xlsum[i1] / scale, '--', label='sum')
+#        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
+#        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, '--', label = 'Sum')
+        ax.plot(self.y_m[i1], xlnint[i1] / scale, label='$L_{\mathrm{int}}$')
+        ax.plot(self.y_m[i1], xlnmec[i1] / scale, label='$L_{\mathrm{mec}}$')
+        ax.plot(self.y_m[i1], xlnphi[i1] / scale, label='$L_{\mathrm{grav}}$')
         ax.legend(loc='best')
         plt.show()
        

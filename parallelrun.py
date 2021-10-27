@@ -130,7 +130,7 @@ class ParallelProcessor(Serialising):
             ax.plot(self.mdot, self.Qb, '.')
             ax.set_xlabel('Accretion rate ($\dot{M}_{\mathrm{Edd}}$)')
         else:
-            ax.plot(self.Q, self.Qb)
+            ax.plot(self.Q, self.Qb, '.')
             ax.set_xlabel('Surface Flux ($\mathrm{MeV\,nucleon}^{-1}$)')
         ax.set_ylabel('Base Flux ($\mathrm{MeV\,nucleon}^{-1}$)')
 
