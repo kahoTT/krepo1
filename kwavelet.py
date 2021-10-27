@@ -57,8 +57,7 @@ class sim(simLC):
             super().__init__(_t, _y, dt, input_counts, norm)
             lct = np.concatenate((lct, _t), axis=0)
             lcy = np.concatenate((lcy, self.counts), axis=0)
-# plot all spectra
-            self.plot_spec()
+#            self.plot_spec() plot all spectra
         self.lct = lct
         self.lcy = lcy
             
@@ -241,8 +240,10 @@ class analysis(object):
                 _int = np.where(f < 1/ws.coi[i1])
                 norm_pow[:,i1][_int] = np.nan
             ax[0].plot(_f.tc, _f.yc)
-            ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
+            cm = ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
+#            ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
             ax[1].contour(_f.tc, f, sig, [-99,1], colors='k')
+            fig.colorbar(cm)
 
         ax[0].set_ylabel('Count/s')
         ax[1].set_ylabel('Frequency Hz')
