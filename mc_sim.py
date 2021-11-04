@@ -10,7 +10,7 @@ class simLC(object):
         self.norm = norm
         if dt is None:
             dt = t[1] - t[0]       
-        lc = stingray.Lightcurve(t, y, input_counts=input_counts)
+        lc = stingray.Lightcurve(t, y, input_counts=input_counts, dt = dt, skip_checks=True)
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
         logspec = spec.rebin_log(0.01)  

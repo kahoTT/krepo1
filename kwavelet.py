@@ -4,6 +4,7 @@ from astropy.io import fits
 import pycwt 
 import stingray
 from mc_sim import simLC
+import time
 import minbar
 b = minbar.Bursts()
 o = minbar.Observations()
@@ -78,6 +79,7 @@ class wavelet_spec(object):
 class analysis(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
+        start_time = time.time()
         if t is not None and y is not None:
             pass
         elif filename:
@@ -163,8 +165,8 @@ class analysis(object):
             for i4 in range(test):
                 s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
                 _f = fill(s.lct, s.lcy, dt=dt)
-                plt.plot(_f.tc, _f.yc, alpha=0.6)
-                plt.show()
+#                plt.plot(_f.tc, _f.yc, alpha=0.6)
+#                plt.show()
                 ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
                 norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
                 for i3 in range(len(ws.power[0])):
@@ -180,6 +182,8 @@ class analysis(object):
         self.pow = norm_pow
         self.maxp = maxp
         self.coi = ws.coi
+        self.finish_time = time.time() - start_time
+        print(f'Finish time = {self.finish_time}')
 
 #    def plot_hist(self):
 
@@ -188,7 +192,7 @@ class analysis(object):
     def plot_nob(self):
         for s in range(len(self.tnb)):
             plt.plot(self.tnb[s],self.ynb[s])
-        plt.ylabel('Count/s')
+        plt.ylabel('Counts/s')
         plt.xlabel('Time (s)')
         plt.show()
 
@@ -252,3 +256,13 @@ class analysis(object):
         ax[1].set_ylabel('Frequency (Hz)')
 #        fig.colorbar()
         self.rpow = norm_pow
+
+    def plot_maxp(self):
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+#        bins = int(len(self.maxp) * 0.02)  
+        ax.axes.hist(self.maxp, density=True, label='simulation')        
+
+
