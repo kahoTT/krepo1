@@ -126,8 +126,10 @@ class analysis(object):
             barray = list()
             a1 = None
             for i in range(len(b.get('bnum'))):
-                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0][0]
-                _a = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0][0]
+                a = list(abs(t-bst[i])).index(min(abs(t - bst[i])))
+                _a = list(abs(t-bet[i])).index(min(abs(t - bet[i])))
+#                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0][0]
+#                _a = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0][0]
                 barray.extend(np.r_[a:_a])
                 if i == 0: 
                     if a != 0: # for the case of starting in the middle of a burst
@@ -163,7 +165,11 @@ class analysis(object):
         for i2 in range(len(tnb)-3):
             maxp = list()
             for i4 in range(test):
+                testtime = time.time() - start_time
+                print(f'{testtime}')
                 s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
+                testtime2 = time.time() - start_time
+                print(f'{testtime2}')
                 _f = fill(s.lct, s.lcy, dt=dt)
 #                plt.plot(_f.tc, _f.yc, alpha=0.6)
 #                plt.show()
