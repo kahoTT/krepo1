@@ -162,8 +162,9 @@ class analysis(object):
         f = np.linspace(f1, f2, nf)
         self.f = f
 
-        for i2 in range(len(tnb)-3):
-            maxp = list()
+        maxp = ()
+        for i2 in range(len(tnb)): # tnb is a tuple
+            maxplist = list()
             for i4 in range(test):
                 testtime = time.time() - start_time
                 print(f'{testtime}')
@@ -178,16 +179,17 @@ class analysis(object):
                 for i3 in range(len(ws.power[0])):
                     _int = np.where(f < 1/ws.coi[i3])
                     norm_pow[:,i3][_int] = np.nan
-                maxp.append(np.nanmax(norm_pow))
+                maxplist.append(np.nanmax(norm_pow))
     #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
     #           plt.colorbar()
     #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
     #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
     #            plt.ylim(f1, f2)
     #            plt.plot(_f.tc, _f.yc, 'b')
-        self.pow = norm_pow
+            maxp += maxplist,
+            coiarray = ws.coi,
         self.maxp = maxp
-        self.coi = ws.coi
+        self.coi = coiarray
         self.finish_time = time.time() - start_time
         print(f'Finish time = {self.finish_time}')
 
@@ -240,7 +242,7 @@ class analysis(object):
         ta = self.t
         ya = self.y
 
-        for i in range(len(t)-3):
+        for i in range(len(t)):
             _f = fill(t[i], y[i], dt=dt)
             ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
             norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt

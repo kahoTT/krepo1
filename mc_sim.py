@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
 class simLC(object):
-    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
+    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', exclude=True, red_noise=1):
         self.norm = norm
         if dt is None:
             dt = t[1] - t[0]       
@@ -14,18 +14,33 @@ class simLC(object):
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
         logspec = spec.rebin_log(0.01)  
-        _ind = np.where((logspec.freq <= 4e-3) | (logspec.freq >= 15e-3))
-        _ind2 = np.where(logspec.freq >= 1e-2)
-        self.logfre = logspec.freq[_ind]
-        self.logpow = logspec.power[_ind]
-        guess_horizontal = logspec.power[_ind2].mean()
+        _ind2 = np.where(logspec.freq >= 2e-2)
+        logpow1 = logspec.power[_ind2]
+        if exclude == True:  
+            _ind = np.where((logspec.freq <= 5e-3) | (logspec.freq >= 15e-3))
+            logfre = logspec.freq[_ind]
+            logpow = logspec.power[_ind]
+        else:
+            logfre = logspec.freq
+            logpow = logspec.power
+        nan = np.isnan(logpow1)
+        notnan = ~nan
+        guess_horizontal = logpow1[notnan].mean()
         x0 = np.array([3, -2, guess_horizontal])
+        nan2 = np.isnan(logpow)
+        notnan2 = ~nan2
+        self.logfre = logfre[notnan2]
+        self.logpow = logpow[notnan2]
         result = least_squares(partial(G, self.logfre, self.logpow), x0)
         lmodel = F(spec.freq, *result.x)
-        sim = simulator.Simulator(N=len(t), mean=y.mean(), dt=dt, rms=y.std()/y.mean()) #!!! may be skip the check !!!
+#        sim = simulator.Simulator(N=len(t), mean=y.mean(), dt=dt, rms=y.std()/y.mean()) #!!! may be skip the check !!!
+# make the lightcurve with the not data gaps
+        sim = simulator.Simulator(N=len(t), mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
         lc = sim.simulate(lmodel)
-        self.time = t 
+#        self.time = t 
+        self.time = lc.time
         self.counts = lc.counts
+        self.result = result
 
 # define function within class        
 #        result = least_squares(self.g, x0)
