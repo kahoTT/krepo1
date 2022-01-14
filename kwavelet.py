@@ -1,3 +1,4 @@
+from astropy.time.utils import twoval_to_longdouble
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
@@ -11,7 +12,7 @@ o = minbar.Observations()
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
-# An example from 1636 is obsid('60032-05-02-00')
+# An examples from 1636 is obsid('60032-05-02-00') and 1606 obsid('10072-05-01-00')
 
 # This class is to fill the gap data with mean value
 class fill(object):
@@ -94,7 +95,7 @@ class analysis(object):
                 t = t1 - t1[0]
                 y = self.lc[1].data['RATE']
         elif obsid:
-            b.obsid(obsid)
+            ifb = b.obsid(obsid)
             o.obsid(obsid)
             obs = minbar.Observation(o[o['entry']]) 
             _path = obs.instr.lightcurve(obsid)
@@ -115,10 +116,13 @@ class analysis(object):
             print('data cleaning: No nan data')
 
 # dealing with bursts
-        if len(b.get('bnum')) == 0:
-            print('data cleaning:no bursts on this observation')
+        if len(np.where(ifb == obsid)) == 0:
+            print('data cleaning: No bursts in this observation')
+            tnb = t
+            ynb = y
+            ltnb = 1
         else:
-            print(str(len(b.get('bnum'))) +' bursts on this observation')
+            print(str(len(ifb)) +' bursts on this observation')
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
@@ -149,25 +153,30 @@ class analysis(object):
                 ynb += y[a1:],
             self.tb = t[barray]
             self.yb = y[barray]
-            self.tnb = tnb
-            self.ynb = ynb
+            self.bursttime = bursttime
+            ltnb = len(tnb)
+        self.tnb = tnb
+        self.ynb = ynb
         self.t = t
         self.y = y
         if o['instr'][0] == 'XPj':
             dt = self.dt = 0.125
         else:
-            self.dt = t[1] - t[0]
-        self.bursttime = bursttime
+            dt = self.dt = t[1] - t[0]
 
         f = np.linspace(f1, f2, nf)
         self.f = f
 
         maxp = ()
-        for i2 in range(len(tnb)): # tnb is a tuple
+        for i2 in range(ltnb): # tnb is a tuple
+            if ltnb == 1:
+                i2 = slice(None)
             maxplist = list()
-            for i4 in range(test):
+            print(i2)
+            for i3 in range(test):
                 testtime = time.time() - start_time
                 print(f'{testtime}')
+                breakpoint()
                 s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
                 testtime2 = time.time() - start_time
                 print(f'{testtime2}')
@@ -176,9 +185,9 @@ class analysis(object):
 #                plt.show()
                 ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
                 norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
-                for i3 in range(len(ws.power[0])):
-                    _int = np.where(f < 1/ws.coi[i3])
-                    norm_pow[:,i3][_int] = np.nan
+                for i4 in range(len(ws.power[0])):
+                    _int = np.where(f < 1/ws.coi[i4])
+                    norm_pow[:,i4][_int] = np.nan
                 maxplist.append(np.nanmax(norm_pow))
     #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
     #           plt.colorbar()
