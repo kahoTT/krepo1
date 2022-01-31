@@ -464,7 +464,7 @@ class Shot(Serialising):
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
                         sv1  = 0.5 * (dL1 + dL0) 
 
-                    else:
+                    elif amode == 4: # Use integral
                         pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
                         pdv0bt0 = -  p0bt0 / (d1 + d0)
                         pdv0bd0 = (p1 + p0 - (d1 + d0) * p0bd0) / (d1 + d0)**2
@@ -903,7 +903,7 @@ class Shot(Serialising):
                 z = z1
             else:
                 z = np.vstack((z,z1))
-        pcm = ax.pcolor(x, y, z.T, cmap = 'binary', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
+        pcm = ax.pcolor(x, y, z.T, cmap = 'Reds', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
         fig.colorbar(pcm, ax=ax, extend='max')
         
     def plot_mue(self):
