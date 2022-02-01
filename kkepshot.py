@@ -117,7 +117,7 @@ class Shot(Serialising):
             xms=1e13, xmsf=1.2,
             net='',
             eos='',
-            kepler = 'restart', # module | process | restart
+            kepler = 'restart', # module | process | restart 
             yfloorx = 1.e-3,
             safenet = True,
             eosmode = None, # static | burn | adapt , is NOT adaptive step size !!!
@@ -295,6 +295,7 @@ class Shot(Serialising):
         zm  = np.ndarray(k)
         sv  = np.ndarray(k)
         un = np.ndarray(k)
+        en = np.ndarray(k)
         mec = np.ndarray(k)
         phi = np.ndarray(k)
         xln = np.ndarray(k)
@@ -325,6 +326,7 @@ class Shot(Serialising):
         zm[0]  = M
         sv[0]  = 0
         un[0]  = 0
+        en[0]  = u1
         mec[0] = 0
         phi[0] = 0
         xln[0] = xln[1] = xl0
@@ -352,6 +354,7 @@ class Shot(Serialising):
         xm[1]  = xm0
         pn[1]  = p0
         zm[1]  = z0
+        en[1]  = u0
         sn[1]  = s0
         snun[1]  = snu0
         smn[1]  = s0 * xm0
@@ -404,7 +407,6 @@ class Shot(Serialising):
                 else:
                     xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
                 p   = p1 +  0.5 * (xm0 + xm1) * g0 / (4 * np.pi * r0**2) 
-                dt0 = xm0 / mdot
                 dmx1 = 2 * mdot / (xm1 + xm2)
                 dmx0 = 2 * mdot / (xm0 + xm1)
                 dt0 = xm0 / mdot
@@ -571,6 +573,7 @@ class Shot(Serialising):
             xln[j+1] = xl0
             sv[j] = sv1
             un[j] = 0.5 * (du0 * dmx0 + du1 * dmx1)
+            en[j+1] = u0
             mec[j]= 0.5 * (pdv0 * dmx0 + pdv1 * dmx1)
             phi[j] = (g0 * r0 - g1 * r1) * dmx0
             dln[j] = dL * xm0
@@ -632,6 +635,7 @@ class Shot(Serialising):
         phi[j+2] = np.nan
         xm[j+2] = zm[j+2]
         xln[j+2] = xl0
+        en[j+2] = en[j+1]
         sn[j+2] = np.nan
         snun[j+2] = np.nan
         smn[j+2] = np.nan
@@ -648,6 +652,7 @@ class Shot(Serialising):
         pn      = pn[:j+3][::-1]
         sv      = sv[:j+3][::-1]
         un      = un[:j+3][::-1]
+        en      = en[:j+3][::-1]
         xm      = xm[:j+3][::-1]
         xln     = xln[:j+3][::-1]
         rn      = rn[:j+3][::-1]
@@ -681,6 +686,7 @@ class Shot(Serialising):
         self.ki  = ki
         self.sv  = sv
         self.un  = un
+        self.en  = en
         self.xm  = xm
         self.xln = xln
         self.dln = dln
@@ -751,7 +757,7 @@ class Shot(Serialising):
 
         if escale is None:
             scale = MEV * self.mdot * NA
-            ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
+            ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}$)')
         else:
             scale = 1
             ax.set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)')
@@ -782,24 +788,14 @@ class Shot(Serialising):
         self.fig = fig
         self.ax = ax
         
-        scale = MEV * self.mdot * NA
+        scale = 1 / (MEV * self.mdot * NA)
         ax.set_xscale('log')
-        ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}\,\mathrm{s}^{-1}$)')
+        ax.set_ylabel('Specific flux ($\mathrm{MeV\,u}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        xlnn = np.cumsum(self.xlnn[ir])[ir]
-        xlnsv = np.cumsum(self.xlnsv[ir])[ir]
-        xlnint = -np.cumsum(self.xlnint[ir])[ir]
-        xlnmec = np.cumsum(self.xlnmec[ir])[ir]
-        xlnphi = np.cumsum(self.xlnphi[ir])[ir]
-        xlsum = self.xln + xlnn + xlnsv
+        xlne = self.en * self.mdot 
+        ax.plot(self.y_m[i1], xlne[i1] * scale, label='int')
 
-#        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
-#        ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, '--', label = 'Sum')
-        ax.plot(self.y_m[i1], xlnint[i1] / scale, label='$L_{\mathrm{int}}$')
-        ax.plot(self.y_m[i1], xlnmec[i1] / scale, label='$L_{\mathrm{mec}}$')
-        ax.plot(self.y_m[i1], xlnphi[i1] / scale, label='$L_{\mathrm{grav}}$')
         ax.legend(loc='best')
         plt.show()
        
