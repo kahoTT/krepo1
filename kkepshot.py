@@ -16,6 +16,7 @@ import matplotlib.colors as colors
 from serialising import Serialising
 from ioncolor import IonColor
 from utils import index1d
+import time
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -757,7 +758,7 @@ class Shot(Serialising):
 
         if escale is None:
             scale = MEV * self.mdot * NA
-            ax.set_ylabel('Specific flux ($\mathrm{MeV\,nucleons}^{-1}$)')
+            ax.set_ylabel('Specific flux ($\mathrm{MeV/u}$)')
         else:
             scale = 1
             ax.set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)')
@@ -771,18 +772,19 @@ class Shot(Serialising):
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
-        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$L_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
+        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$l_{\mathrm{m}}$')
+        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$l_{\mathrm{grav}}$')
+        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
         ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
-        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$L_{\nu}$')
         ax.legend(loc='best')
         plt.show()
        
     def plot_l2(self):
         i1 = slice(1, None)
-        i0 = slice(None, -1)
-        ir = slice(None, None, -1)
+        i0 = slice(None, -2)
+        i2 = slice(1, -1)
+        i3 = slice(2, None)
 
         fig, ax = plt.subplots()
         self.fig = fig
@@ -794,7 +796,16 @@ class Shot(Serialising):
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
         xlne = self.en * self.mdot 
-        ax.plot(self.y_m[i1], xlne[i1] * scale, label='int')
+        ax.plot(self.y_m[i1], xlne[i1] * scale, label='Int')
+
+        xlnpdv = self.pn[i1] / self.dn[i1] * self.mdot 
+        ax.plot(self.y_m[i1], xlnpdv * scale, label='Mech')
+
+        xlngrav = (self.gn[i1] * self.rn[i1] - self.gn[-2] * self.rn[-2]) * self.mdot
+        ax.plot(self.y[i1], xlngrav * scale, label='Grav')
+
+        xlns = self.sn[i1]  * self.mdot
+        ax.plot(self.y_m[i1], xlns * scale, label='$\epsilon$')
 
         ax.legend(loc='best')
         plt.show()
