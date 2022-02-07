@@ -1,16 +1,18 @@
+from astropy.time.utils import twoval_to_longdouble
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt 
 import stingray
 from mc_sim import simLC
+import time
 import minbar
 b = minbar.Bursts()
 o = minbar.Observations()
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
-# An example from 1636 is obsid('60032-05-02-00')
+# An examples from 1636 is obsid('60032-05-02-00') and 1606 obsid('10072-05-01-00')
 
 # This class is to fill the gap data with mean value
 class fill(object):
@@ -57,8 +59,7 @@ class sim(simLC):
             super().__init__(_t, _y, dt, input_counts, norm)
             lct = np.concatenate((lct, _t), axis=0)
             lcy = np.concatenate((lcy, self.counts), axis=0)
-# plot all spectra
-            self.plot_spec()
+#            self.plot_spec() plot all spectra
         self.lct = lct
         self.lcy = lcy
             
@@ -79,6 +80,7 @@ class wavelet_spec(object):
 class analysis(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
+        start_time = time.time()
         if t is not None and y is not None:
             pass
         elif filename:
@@ -93,7 +95,7 @@ class analysis(object):
                 t = t1 - t1[0]
                 y = self.lc[1].data['RATE']
         elif obsid:
-            b.obsid(obsid)
+            ifb = b.obsid(obsid)
             o.obsid(obsid)
             obs = minbar.Observation(o[o['entry']]) 
             _path = obs.instr.lightcurve(obsid)
@@ -114,10 +116,13 @@ class analysis(object):
             print('data cleaning: No nan data')
 
 # dealing with bursts
-        if len(b.get('bnum')) == 0:
-            print('data cleaning:no bursts on this observation')
+        if len(np.where(ifb == obsid)) == 0:
+            print('data cleaning: No bursts in this observation')
+            tnb = t
+            ynb = y
+            ltnb = 1
         else:
-            print(str(len(b.get('bnum'))) +' bursts on this observation')
+            print(str(len(ifb)) +' bursts on this observation')
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
@@ -125,8 +130,10 @@ class analysis(object):
             barray = list()
             a1 = None
             for i in range(len(b.get('bnum'))):
-                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0][0]
-                _a = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0][0]
+                a = list(abs(t-bst[i])).index(min(abs(t - bst[i])))
+                _a = list(abs(t-bet[i])).index(min(abs(t - bet[i])))
+#                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0][0]
+#                _a = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0][0]
                 barray.extend(np.r_[a:_a])
                 if i == 0: 
                     if a != 0: # for the case of starting in the middle of a burst
@@ -146,41 +153,54 @@ class analysis(object):
                 ynb += y[a1:],
             self.tb = t[barray]
             self.yb = y[barray]
-            self.tnb = tnb
-            self.ynb = ynb
+            self.bursttime = bursttime
+            ltnb = len(tnb)
+        self.tnb = tnb
+        self.ynb = ynb
         self.t = t
         self.y = y
         if o['instr'][0] == 'XPj':
             dt = self.dt = 0.125
         else:
-            self.dt = t[1] - t[0]
-        self.bursttime = bursttime
+            dt = self.dt = t[1] - t[0]
 
         f = np.linspace(f1, f2, nf)
         self.f = f
 
-        for i2 in range(len(tnb)-3):
-            maxp = list()
-            for i4 in range(test):
+        maxp = ()
+        for i2 in range(ltnb): # tnb is a tuple
+            if ltnb == 1:
+                i2 = slice(None)
+            maxplist = list()
+            print(i2)
+            for i3 in range(test):
+                testtime = time.time() - start_time
+                print(f'{testtime}')
+                breakpoint()
                 s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
+                testtime2 = time.time() - start_time
+                print(f'{testtime2}')
                 _f = fill(s.lct, s.lcy, dt=dt)
-                plt.plot(_f.tc, _f.yc, alpha=0.6)
-                plt.show()
+#                plt.plot(_f.tc, _f.yc, alpha=0.6)
+#                plt.show()
                 ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
                 norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
-                for i3 in range(len(ws.power[0])):
-                    _int = np.where(f < 1/ws.coi[i3])
-                    norm_pow[:,i3][_int] = np.nan
-                maxp.append(np.nanmax(norm_pow))
+                for i4 in range(len(ws.power[0])):
+                    _int = np.where(f < 1/ws.coi[i4])
+                    norm_pow[:,i4][_int] = np.nan
+                maxplist.append(np.nanmax(norm_pow))
     #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
     #           plt.colorbar()
     #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
     #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
     #            plt.ylim(f1, f2)
     #            plt.plot(_f.tc, _f.yc, 'b')
-        self.pow = norm_pow
+            maxp += maxplist,
+            coiarray = ws.coi,
         self.maxp = maxp
-        self.coi = ws.coi
+        self.coi = coiarray
+        self.finish_time = time.time() - start_time
+        print(f'Finish time = {self.finish_time}')
 
 #    def plot_hist(self):
 
@@ -189,7 +209,7 @@ class analysis(object):
     def plot_nob(self):
         for s in range(len(self.tnb)):
             plt.plot(self.tnb[s],self.ynb[s])
-        plt.ylabel('Count/s')
+        plt.ylabel('Counts/s')
         plt.xlabel('Time (s)')
         plt.show()
 
@@ -231,7 +251,7 @@ class analysis(object):
         ta = self.t
         ya = self.y
 
-        for i in range(len(t)-3):
+        for i in range(len(t)):
             _f = fill(t[i], y[i], dt=dt)
             ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
             norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
@@ -241,8 +261,10 @@ class analysis(object):
                 _int = np.where(f < 1/ws.coi[i1])
                 norm_pow[:,i1][_int] = np.nan
             ax[0].plot(_f.tc, _f.yc)
-            ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
+            cm = ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
+#            ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
             ax[1].contour(_f.tc, f, sig, [-99,1], colors='k')
+            fig.colorbar(cm)
 
         ax[0].set_ylabel('Count/s')
         ax[1].set_ylabel('Frequency Hz')
@@ -251,3 +273,13 @@ class analysis(object):
         ax[1].set_ylabel('Frequency (Hz)')
 #        fig.colorbar()
         self.rpow = norm_pow
+
+    def plot_maxp(self):
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+#        bins = int(len(self.maxp) * 0.02)  
+        ax.axes.hist(self.maxp, density=True, label='simulation')        
+
+
