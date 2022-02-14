@@ -6,6 +6,7 @@ import pycwt
 import stingray
 from mc_sim import simLC
 import time
+import sys
 import minbar
 b = minbar.Bursts()
 o = minbar.Observations()
@@ -122,7 +123,7 @@ class analysis(object):
             ynb = y
             ltnb = 1
         else:
-            print(str(len(ifb)) +' bursts on this observation')
+            print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
@@ -176,7 +177,6 @@ class analysis(object):
             for i3 in range(test):
                 testtime = time.time() - start_time
                 print(f'{testtime}')
-                breakpoint()
                 s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
                 testtime2 = time.time() - start_time
                 print(f'{testtime2}')

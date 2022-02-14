@@ -76,7 +76,7 @@ class simLC(object):
     def g(self, args):
        return (np.log(self.f(*args)) - np.log(self.logpow)) 
 
-def F(x, A, B, C):
+def F(x, A, B, C): # B is the alpha, the slope of power spectrum in log space
     return A * x** (B) + C
 
 def G(x, y, args):
