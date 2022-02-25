@@ -103,10 +103,10 @@ class Shot(Serialising):
 #    t[jm+1], d[jm+1], p[jm] - surface
 #    in loops we us:
 #      0 - current zone
-#      1 - zone above
-#      2 - 2 aones above
-#      m - zone below.
-#      m2 - 2 zones below
+#      1 - one zone above
+#      2 - two zones above
+#      m - one zone below.
+#      m2 - two zones below
 #    specifically, zone j has index 0 and lower boundary values
 #    at index m and upper boundary values at indices 0
 #    --//--|-------|-------|-------|-------|--//--
@@ -782,9 +782,10 @@ class Shot(Serialising):
        
     def plot_l2(self):
         i1 = slice(1, None)
-        i0 = slice(None, -2)
+        i0 = slice(None, 1)
         i2 = slice(1, -1)
         i3 = slice(2, None)
+        ir = slice(None, None, -1)
 
         fig, ax = plt.subplots()
         self.fig = fig
@@ -795,17 +796,24 @@ class Shot(Serialising):
         ax.set_ylabel('Specific flux ($\mathrm{MeV\,u}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        xlne = self.en * self.mdot 
-        ax.plot(self.y_m[i1], xlne[i1] * scale, label='Int')
+        xlne = (self.en[i2] - self.en[-2]) * self.mdot 
+        ax.plot(self.y_m[i2], xlne * scale, label='Int')
 
-        xlnpdv = self.pn[i1] / self.dn[i1] * self.mdot 
-        ax.plot(self.y_m[i1], xlnpdv * scale, label='Mech')
+        xlnpdv = (self.pn[i2] / self.dn[i2] - self.pn[-2] / self.dn[-2]) * self.mdot 
+        ax.plot(self.y_m[i2], xlnpdv * scale, label='Mech')
 
-        xlngrav = (self.gn[i1] * self.rn[i1] - self.gn[-2] * self.rn[-2]) * self.mdot
-        ax.plot(self.y[i1], xlngrav * scale, label='Grav')
+        xlngrav = (self.gn[i2] * self.rn[i2] - self.gn[-2] * self.rn[-2]) * self.mdot
+        ax.plot(self.y[i2], xlngrav * scale, label='Grav')
 
-        xlns = self.sn[i1]  * self.mdot
-        ax.plot(self.y_m[i1], xlns * scale, label='$\epsilon$')
+        xlnsv = np.cumsum(self.xlnsv[ir])[ir][i2]
+        ax.plot(self.y[i2], xlnsv * scale, label='Adv')
+
+        sum  = xlne + xlnpdv
+        sum2 = xlngrav - xlnsv
+
+        ax.plot(self.y_m[i2], sum * scale, label='Enthalpy', ls='--')
+        ax.plot(self.y[i2], sum2 * scale, label='grav + advection', ls='-.')
+
 
         ax.legend(loc='best')
         plt.show()
