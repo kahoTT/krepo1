@@ -13,7 +13,7 @@ o = minbar.Observations()
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
-# An examples from 1636 is obsid('60032-05-02-00') and 1606 obsid('10072-05-01-00')
+# An examples from 1636 is obsid('60032-05-02-00') and 1606 obsid('10072-05-01-00') and EXO 0748 obsid('90039-01-03-05')
 
 # This class is to fill the gap data with mean value
 class fill(object):
@@ -51,7 +51,7 @@ class sim(simLC):
             slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
             self.slices = slices
         else:
-            slices = ((),)
+            slices = ((),) # have problems for different observations
         lct = np.array([])
         lcy = np.array([])
         for s in slices:
@@ -96,7 +96,9 @@ class analysis(object):
                 t = t1 - t1[0]
                 y = self.lc[1].data['RATE']
         elif obsid:
+            b.clear()
             ifb = b.obsid(obsid)
+            o.clear()
             o.obsid(obsid)
             obs = minbar.Observation(o[o['entry']]) 
             _path = obs.instr.lightcurve(obsid)
@@ -176,10 +178,10 @@ class analysis(object):
             print(i2)
             for i3 in range(test):
                 testtime = time.time() - start_time
-                print(f'{testtime}')
+#                print(f'{testtime}')
                 s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
                 testtime2 = time.time() - start_time
-                print(f'{testtime2}')
+#                print(f'{testtime2}')
                 _f = fill(s.lct, s.lcy, dt=dt)
 #                plt.plot(_f.tc, _f.yc, alpha=0.6)
 #                plt.show()
@@ -263,15 +265,14 @@ class analysis(object):
             ax[0].plot(_f.tc, _f.yc)
             cm = ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
 #            ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
-            ax[1].contour(_f.tc, f, sig, [-99,1], colors='k')
-            fig.colorbar(cm)
+#            ax[1].contour(_f.tc, f, sig, [-99,1], colors='k')
 
         ax[0].set_ylabel('Count/s')
         ax[1].set_ylabel('Frequency Hz')
         fig.subplots_adjust(hspace=0.05)
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
-#        fig.colorbar()
+#        fig.colorbar(cm)
         self.rpow = norm_pow
 
     def plot_maxp(self):
