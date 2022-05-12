@@ -772,10 +772,10 @@ class Shot(Serialising):
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
-        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$l_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$l_{\mathrm{grav}}$')
-        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
+        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
+        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$L_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
+        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$L_{\nu}$')
         ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
         ax.legend(loc='best')
         plt.show()
@@ -873,7 +873,7 @@ class Shot(Serialising):
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
         l = ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
-        ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].color(), ls=':')
+        ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
         ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
 #        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
         ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')

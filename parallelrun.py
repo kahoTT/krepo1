@@ -165,6 +165,14 @@ class ParallelProcessor(Serialising):
                             self.Q[maxabu], a[maxabu], i.mpl, color=c(i),  
                             ha='center', va='center', clip_on=True, size=12)
 
+    def plot_mdot_qb_carbon(self):
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xlabel('$\dot{M}_{\mathrm{Edd}}$')
+        ax.set_ylabel('Base flux (MeV/u)')
+
 
 class Result(Serialising):
     def __init__(self, data):
