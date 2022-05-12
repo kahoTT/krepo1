@@ -434,6 +434,7 @@ class Shot(Serialising):
     ### main loop ###
                 while True:
                     jj += 1
+# elements are updated in the following step
                     p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
     
                     du0    = u1 - u0
@@ -541,6 +542,7 @@ class Shot(Serialising):
                     ri = 1
                     t0, d0 = v - c * ri
 
+# If it seems the dxmax is unlikely > 1 after iterations
                     if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
                         print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
                         xmaf *= (GOLDEN - 1)  
