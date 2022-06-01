@@ -139,6 +139,7 @@ class Shot(Serialising):
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
         abu = AbuSet(abu)
         if net == 'simple':
+            simplenet = True
             net = SimpleNet(abu)
             self.net = net
             eos = net.eos
@@ -193,7 +194,11 @@ class Shot(Serialising):
         jj = 0
         while True:
             jj += 1
-            p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
+            if simplenet == True:
+                p0,u0,_,p0bd0,u0bt0,u0bd0 = eos(T , d0)
+                ki0,_,ki0bd0 = kappa(T , d0)
+            else:
+                p0, u0, _, p0bd0, _, _, ki0, _, ki0bd0, _ = eos(T, d0, dt0)
             h = p0 - g / 1.5 * ki0 # ki = 1/kappa
             print(f'[SHOT] Iteration {jj} {h/p0}')
             if np.abs(h) < 1e-12 * p0:
@@ -220,13 +225,20 @@ class Shot(Serialising):
         d1 = d0
         ki1 = ki0 
         dt0 = xm0 / mdot
-        ppn0 = net.abu()
+        if simplenet == True:
+            ppn0 = net._net.ppn.copy()
+        else:
+            ppn0 = net.abu()
         jj = 0
         ri = 1
         fmin = 1
         while True:
             jj += 1
-            p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
+            if simplenet == True:
+                p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(T , d0)
+                ki0,ki0bt0,ki0bd0 = kappa(T , d0)
+            else:
+                p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
             rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) 
 #            dr0 = r0 - rm # rm : curretly r at zone bottom
             rmc = np.cbrt(r0**3 - 3 * xm0 / (8 * np.pi * d0)) 
@@ -275,7 +287,10 @@ class Shot(Serialising):
 # third step: include energy generation, we have t0 d0 p0 at the zone center
 # for pdv : using the boundary pressure
         p1  = p_surf
-        s0, snu0, dxmax = sdot(t0, d0, dt0)
+        if simplenet == True:
+            s0  = net.sdot(t0, d0, dt0)
+        else:    
+            s0, snu0, dxmax = sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
 #        z0  = M - xm1 
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
@@ -311,8 +326,7 @@ class Shot(Serialising):
         xlnint  = np.ndarray(k)
         xlnmec  = np.ndarray(k)
         xlnphi  = np.ndarray(k)
-        if track_abu:
-            abu = np.ndarray(k, dtype=np.object)
+        abu = np.ndarray(k, dtype=np.object)
         abulen = np.ndarray(k)
         mue = np.ndarray(k)
         max_mass_no = np.ndarray(k)
@@ -341,11 +355,7 @@ class Shot(Serialising):
         xlnsv[0]  = 0
         xlnint[0] = 0
         xlnmec[0] = 0
-        if track_abu:
-            abu[0] = ppn0
-        abulen[0] = len(abu[0])
-        mue[0] = abu[0].mue()
-        max_mass_no[0] = np.max(ufunc_A(abu[0].iso))
+        abu[0] = ppn0
         y[0] = 0
         gn[0] = g
 
@@ -357,17 +367,22 @@ class Shot(Serialising):
         zm[1]  = z0
         en[1]  = u0
         sn[1]  = s0
-        snun[1]  = snu0
         smn[1]  = s0 * xm0
-        smnun[1]  = snu0 * xm0
         xlnsv[1]  = 0
         xlnint[1] = 0
         xlnmec[1] = 0
-        if track_abu:
+        if simplenet == True:
+            abu[1] = net._net.ppn.copy()
+        else:
+            snun[1]  = snu0
+            smnun[1]  = snu0 * xm0
             abu[1] = net.abu()
+            abulen[0] = len(abu[0])
+            mue[0] = abu[0].mue()
+            mue[1] = abu[1].mue()
+            max_mass_no[0] = np.max(ufunc_A(abu[0].iso))
+            max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
         abulen[1] = len(abu[1])
-        mue[1] = abu[1].mue()
-        max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
         rn[1]  = R
         rn[2]  = rm
         y[1] = xm1 / (4 * np.pi * R**2)             
@@ -398,7 +413,10 @@ class Shot(Serialising):
             sv2 = sv1
             sv1 = sv0
             s1  = s0
-            snu1  = snu0
+            if simplenet == True:
+                pass
+            else:
+                snu1  = snu0
     ### adaptive network set in to change the xmsf ###
             xmaf = 1
             while True:
@@ -435,7 +453,11 @@ class Shot(Serialising):
                 while True:
                     jj += 1
 # elements are updated in the following step
-                    p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
+                    if simplenet == True:
+                        p0,u0,p0bt0,p0bd0,u0bt0,u0bd0 = eos(t0 , d0)  
+                        ki0,ki0bt0,ki0bd0 = kappa(t0 , d0) 
+                    else:
+                        p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
     
                     du0    = u1 - u0
                     du0bt0 = - u0bt0
@@ -497,32 +519,35 @@ class Shot(Serialising):
 
 # for finding t0 and d0
     ### check whether change of abundance is too large
-
-                    if jj <= 5:
-                        if np.max(np.abs(dvr)) < accuracy:
-                            if dxmax > 1:
-                                break                                    
-                            else:
-                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
-                                xmaf *= (GOLDEN - 1)  
-                                restart = True
-                                break
+                    if simplenet == True:
+                       if np.max(np.abs(dvr)) < accuracy:
+                           break
+                    else:     
+                        if jj <= 5:
+                            if np.max(np.abs(dvr)) < accuracy:
+                                if dxmax > 1:
+                                    break                                    
+                                else:
+                                    print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                                    xmaf *= (GOLDEN - 1)  
+                                    restart = True
+                                    break
                             
-                    elif jj > 5: 
-                        if np.max(np.abs(dvr)) < accept:
-                            if dxmax > 1:
-                                break                                    
+                        elif jj > 5: 
+                            if np.max(np.abs(dvr)) < accept:
+                                if dxmax > 1:
+                                    break                                    
+                                else:
+                                    print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                                    xmaf *= (GOLDEN - 1)  
+                                    restart = True
+                                    break
                             else:
-                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
-                                xmaf *= (GOLDEN - 1)  
+                                xmaf *= (GOLDEN - 1)
                                 restart = True
                                 break
-                        else:
-                            xmaf *= (GOLDEN - 1)
-                            restart = True
-                            break
 
-                    print(f'[SHOT] Iteration {jj}: dvr = [{dvr[0], dvr[1]}]: dxmax = {dxmax}')
+                        print(f'[SHOT] Iteration {jj}: dvr = [{dvr[0], dvr[1]}]: dxmax = {dxmax}')
                     h0bt0 = p0bt0
                     h0bd0 = p0bd0 
         
@@ -543,11 +568,14 @@ class Shot(Serialising):
                     t0, d0 = v - c * ri
 
 # If it seems the dxmax is unlikely > 1 after iterations
-                    if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
-                        print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
-                        xmaf *= (GOLDEN - 1)  
-                        restart = True
-                        break
+                    if simplenet == True:
+                        pass
+                    else:    
+                        if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
+                            print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                            xmaf *= (GOLDEN - 1)  
+                            restart = True
+                            break
 
                 if restart == True: # for adaptive network
                     continue
@@ -563,8 +591,11 @@ class Shot(Serialising):
                     continue # for index j
 
                 break # break for loop j finished
-            s0, snu0, dxmax  = sdot(t0, d0, dt0)
-            print(f'[SHOT] dxmax = {dxmax}')
+            if simplenet == True:
+                s0  = net.sdot(t0, d0, dt0)
+            else:    
+                s0, snu0, dxmax = sdot(t0, d0, dt0)
+                print(f'[SHOT] dxmax = {dxmax}')
 
 
             tn[j+1]  = t0
@@ -581,18 +612,20 @@ class Shot(Serialising):
             phi[j] = (g0 * r0 - g1 * r1) * dmx0
             dln[j] = dL * xm0
             sn[j+1]  = s0
-            snun[j+1]  = snu0
             smn[j+1]  = s0 * xm0
-            smnun[j+1]  = snu0 * xm0
             xlnsv[j+1] = sv1 * xm1
             xlnint[j+1] = un[j] * xm1
             xlnmec[j+1] = mec[j] * xm1
             xlnphi[j+1] = phi[j] * xm1
-            if track_abu:
+            if simplenet == True:
+                abu[j+1] = net._net.ppn.copy()
+            else:
                 abu[j+1] = net.abu()
+                max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
+                mue[j+1] = abu[j+1].mue()
+                snun[j+1]  = snu0
+                smnun[j+1]  = snu0 * xm0
             abulen[j+1] = len(abu[j+1])
-            mue[j+1] = abu[j+1].mue()
-            max_mass_no[j+1] = np.max(ufunc_A(abu[j+1].iso))
             rn[j+2]  = rm
             gn[j+1]  = g0
 
@@ -640,11 +673,13 @@ class Shot(Serialising):
         xln[j+2] = xl0
         en[j+2] = en[j+1]
         sn[j+2] = np.nan
-        snun[j+2] = np.nan
         smn[j+2] = np.nan
-        smnun[j+2] = np.nan
-        if track_abu:
+        if simplenet == True:
+            abu[j+2] = np.array([0,0,0])
+        else:    
             abu[j+2] = AbuSet(dict())
+            snun[j+2] = np.nan
+            smnun[j+2] = np.nan
         abulen[j+2] = len(abu[j+2])
         mue[j+2] = np.nan
         max_mass_no[j+2] = 0
@@ -661,19 +696,14 @@ class Shot(Serialising):
         rn      = rn[:j+3][::-1]
         gn      = gn[:j+3][::-1]
         sn      = sn[:j+3][::-1]
-        snun      = snun[:j+3][::-1]
         smn      = smn[:j+3][::-1]
-        smnun      = smnun[:j+3][::-1]
         xlnn = np.append(smn[1:], 0) 
-        xlnun = np.append(smnun[1:], 0) 
         xlnsv      = xlnsv[:j+3][::-1]
         xlnint      = xlnint[:j+3][::-1]
         xlnmec      = xlnmec[:j+3][::-1]
         xlnphi      = xlnphi[:j+3][::-1]
-        if track_abu:
-            abu      = abu[:j+3][::-1]
+        abu = abu[:j+3][::-1]
         abulen   = abulen[:j+3][::-1]
-        mue = mue[:j+3][::-1]
         max_mass_no = max_mass_no[:j+3][::-1]
         y      = y[:j+3][::-1]
 
@@ -681,6 +711,12 @@ class Shot(Serialising):
         y_m[1:-1] = 0.5 * (y[:-2] + y[1:-1])
         y_m[0] = np.nan
         y_m[-1] = y[-2]
+# Rather than simple network        
+        if not simplenet == True:
+            snun      = snun[:j+3][::-1]
+            smnun      = smnun[:j+3][::-1]
+            xlnun = np.append(smnun[1:], 0) 
+            mue = mue[:j+3][::-1]
 
         self.pn  = pn
         self.zm  = zm
@@ -696,9 +732,7 @@ class Shot(Serialising):
         self.rn  = rn
         self.gn  = gn
         self.sn  = sn
-        self.snun  = snun
         self.mdot  = mdot
-
         self.smn  = smn
         self.y  = y
         self.y_m = y_m
@@ -707,15 +741,23 @@ class Shot(Serialising):
         self.xlnmec = xlnmec
         self.xlnphi = xlnphi
         self.xlnn = xlnn
-        self.xlnun = xlnun
-        if track_abu:
-            self.abu = abu
+        self.abu = abu
         self.abulen = abulen
-        self.mue = mue
         self.max_mass_no = max_mass_no
+# For network rather than simple one
+        if simplenet == True:
+            self.ppn = np.array([a for a in abu])
+        else:
+            self.snun  = snun
+            self.xlnun = xlnun
+            self.mue = mue
+        
+        self.simplenet = simplenet
 
 # mapping ions
-        if track_abu:
+        if simplenet == True:
+            pass
+        else:    
             # map all ions
             print(f'[{self.__class__.__name__}] Mapping ions....')
             ions = set()
@@ -741,10 +783,9 @@ class Shot(Serialising):
                 xm = self.xm,
                 zm = self.zm,
                 )
-
+            self.da = ufunc_idx(self.abu[self.maxions].iso)
+            self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
         self.maxions = self.abulen.argmax()
-        self.da = ufunc_idx(self.abu[self.maxions].iso)
-        self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
         
         if endnet:
             net.done()
@@ -770,15 +811,19 @@ class Shot(Serialising):
 #        ax.set_ylim(-.3e35, 2e36)
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
-        xlnun = np.cumsum(self.xlnun[ir])[ir]
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
-        xlsum = self.xln + xlnn + xlnsv
 
-        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$L_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
-        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$L_{\nu}$')
+        if self.simplenet == True:
+            xlsum = self.xln + xlnsv
+            ax.plot(self.y_m[i1], xlnn[i1] / scale, label = '$L_{\mathrm{nuc}}$')
+        else:
+            xlnun = np.cumsum(self.xlnun[ir])[ir]
+            xlsum = self.xln + xlnn + xlnsv
+            ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$L_{\mathrm{nuc}}$')
+            ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$L_{\nu}$')
         ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
+        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
         ax.legend(loc='best')
         plt.show()
        
@@ -853,14 +898,25 @@ class Shot(Serialising):
         ax.set_ylim(1.e-3, 1.5)
         c = IonColor()
 
-        for i,a in self.abub:
-            am = np.max(a[i1])
-            if am > lim:
-                ax.plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
-                maxabu = np.argmax(a[i1])
+        if self.simplenet == True:
+            for j,i in enumerate(self.net._net.ions):
+                a = self.ppn[i1,j]
+                ax.plot(self.y_m[i1], a * i.A, label=i.mpl, color=c(i))
+                maxabu = np.argmax(a)
                 ax.text(
-                    self.y_m[i1][maxabu], a[i1][maxabu], i.mpl, color=c(i),
-                    ha='center', va='center', clip_on=True)
+                        self.y_m[i1][maxabu], a[i1][maxabu], i.mpl, color=c(i),
+                        ha='center', va='center', clip_on=True
+                        )
+        else:
+            for i,a in self.abub:
+                am = np.max(a[i1])
+                if am > lim:
+                    ax.plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
+                    maxabu = np.argmax(a[i1])
+                    ax.text(
+                            self.y_m[i1][maxabu], a[i1][maxabu], i.mpl, color=c(i),
+                            ha='center', va='center', clip_on=True
+                            )
 
     def plot_s(self):
         i1 = slice(1, -1)
