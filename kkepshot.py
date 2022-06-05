@@ -930,11 +930,15 @@ class Shot(Serialising):
         ax.set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        l = ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
-        ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
-        ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
-#        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
-        ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')
+        if self.simplenet == True:
+            l = ax.plot(self.y_m[i1], self.sn[i1], label= 'Nuclear')
+#            ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
+            ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+        else:
+            l = ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
+            ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
+            ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+            ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')
 
         ax.legend(loc='best')
         smax = np.maximum(np.max(self.sn[i1]), np.max(self.sv[i1])) * 2
