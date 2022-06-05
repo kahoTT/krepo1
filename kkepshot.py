@@ -839,7 +839,7 @@ class Shot(Serialising):
         ax.legend(loc='best')
         plt.show()
 
-    def plot_abu(self, lim = 1e-3):
+    def plot_abu(self, lim = 1e-3, A = ''):
         i1 = slice(1, None)
 
         fig, ax = plt.subplots()
@@ -854,6 +854,9 @@ class Shot(Serialising):
         c = IonColor()
 
         for i,a in self.abub:
+            if A:
+                if i.A > A:
+                    break
             am = np.max(a[i1])
             if am > lim:
                 ax.plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
@@ -876,7 +879,7 @@ class Shot(Serialising):
 
         l = ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
         ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
-        ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+#        ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
 #        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
         ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')
 
