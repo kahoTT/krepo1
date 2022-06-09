@@ -17,6 +17,7 @@ from serialising import Serialising
 from ioncolor import IonColor
 from utils import index1d
 import time
+import os
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -86,6 +87,27 @@ class SimpleNet(object):
         self._net = NetWork(abu, *args, **kwargs)
         self.sdot = self._net.sdot 
 
+class dStarEosKap(object):
+    def __init__(self, abu):
+        self.abar = abu.abar
+        self.zbar = abu.zbar
+        self.Z53 = abu.zmom(5/3)
+        self.Z2 = abu.zmom(2)
+        self.Z73 = abu.zmom(7/3)
+        self.Z52 = abu.zmom(5/2)
+        self.Q = self.Z2 - self.Z**2
+
+    def __call__(self, T, rho):
+        filepath = '~/dStar/dStar_eos'
+        os.chdir(filepath)
+        opt = !get.pressure -T $T -d $d
+        eps = 1e-7
+        dT = T * eps
+        drho = rho * eps 
+        kt = (self.__call__(T+dT, rho) - self.__call__(T-dT, rho)) / (2 * dT)
+        kd = (self.__call__(T, rho+drho) - self.__call__(T, rho-drho)) / (2 * drho)
+        dxmax = None
+        return p,u,pt,pd,ut,ud,k,kt,kd,dxmax 
 
 class Shot(Serialising):
 
