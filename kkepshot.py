@@ -434,6 +434,7 @@ class Shot(Serialising):
     ### main loop ###
                 while True:
                     jj += 1
+# elements are updated in the following step
                     p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
     
                     du0    = u1 - u0
@@ -541,6 +542,7 @@ class Shot(Serialising):
                     ri = 1
                     t0, d0 = v - c * ri
 
+# If it seems the dxmax is unlikely > 1 after iterations
                     if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
                         print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
                         xmaf *= (GOLDEN - 1)  
@@ -772,10 +774,10 @@ class Shot(Serialising):
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
-        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$l_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$l_{\mathrm{grav}}$')
-        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
+        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$L_{\mathrm{m}}$')
+        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$L_{\mathrm{nuc}}$')
+        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$L_{\mathrm{grav}}$')
+        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$L_{\nu}$')
         ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
         ax.legend(loc='best')
         plt.show()
@@ -837,7 +839,7 @@ class Shot(Serialising):
         ax.legend(loc='best')
         plt.show()
 
-    def plot_abu(self, lim = 1e-3):
+    def plot_abu(self, lim = 1e-3, A = ''):
         i1 = slice(1, None)
 
         fig, ax = plt.subplots()
@@ -852,6 +854,9 @@ class Shot(Serialising):
         c = IonColor()
 
         for i,a in self.abub:
+            if A:
+                if i.A > A:
+                    break
             am = np.max(a[i1])
             if am > lim:
                 ax.plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
@@ -872,8 +877,9 @@ class Shot(Serialising):
         ax.set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
-        ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
+        l = ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
+        ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
+#        ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
 #        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
         ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino loss')
 

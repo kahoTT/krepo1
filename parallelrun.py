@@ -96,8 +96,10 @@ class ParallelProcessor(Serialising):
 
         # get results
         Qb = list()
+#        C12abu = list()
         for i in results:
             Qb.append(i.result.Qb)
+#            C12abd.append(i.result.)
         self.Qb = Qb
 
         # map all ions (from Shot)
@@ -134,7 +136,7 @@ class ParallelProcessor(Serialising):
             ax.set_xlabel('Surface Flux ($\mathrm{MeV\,nucleon}^{-1}$)')
         ax.set_ylabel('Base Flux ($\mathrm{MeV\,nucleon}^{-1}$)')
 
-    def plot_abu(self, lim = 1e-3, mdot=None, surfaceflux = False):
+    def plot_abu(self, lim = 1e-5, mdot=None, surfaceflux = False):
         i1 = slice(1, None)
 
         fig, ax = plt.subplots()
@@ -143,7 +145,7 @@ class ParallelProcessor(Serialising):
 
         ax.set_yscale('log')
         ax.set_ylabel('Mass fraction')
-        ax.set_ylim(1.e-3, 1.5)
+        ax.set_ylim(1.e-5, 1.5)
         c = IonColor()
 
         if mdot is True:
@@ -164,6 +166,16 @@ class ParallelProcessor(Serialising):
                     ax.text(
                             self.Q[maxabu], a[maxabu], i.mpl, color=c(i),  
                             ha='center', va='center', clip_on=True, size=12)
+
+    def plot_mdot_qb_carbon(self):
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
+
+        ax.set_xlabel('$\dot{M}_{\mathrm{Edd}}$')
+        ax.set_ylabel('Base flux (MeV/u)')
+
+#        pcm = ax.pcolor(self.)
 
 
 class Result(Serialising):
