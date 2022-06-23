@@ -13,7 +13,7 @@ o = minbar.Observations()
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
-# An examples from 1636 is obsid('60032-05-02-00') and 1606 obsid('10072-05-01-00') and EXO 0748 obsid('90039-01-03-05')
+# An examples from 1636 is obsid('60032-05-02-00') and 1608 obsid('10072-05-01-00') and EXO 0748 obsid('90039-01-03-05')
 # 1323 obsid('96405-01-02-01')
 # This class is to fill the gap data with mean value
 class fill(object):
@@ -101,6 +101,7 @@ class analysis(object):
             ifb = b.get('obsid')
             o.clear()
             o.obsid(obsid)
+            name = o.get('name')[0]
             obs = minbar.Observation(o[o['entry']]) 
             _path = obs.instr.lightcurve(obsid)
             self.lc = fits.open(obs.get_path()+'/'+_path)
@@ -118,6 +119,13 @@ class analysis(object):
             print('data cleaning: nan data are clean')
         else:
             print('data cleaning: No nan data')
+
+        if any(y < 0):
+            bglc = fits.open(obs.get_path()+'/bkg_0.125s.lc')
+            bg = bglc[1].data['RATE']
+            breakpoint()
+            y = y + bg[_int]
+            self.bg = bg
 
 # dealing with bursts
         if len(np.where(ifb == obsid)[0]) == 0:
@@ -159,23 +167,23 @@ class analysis(object):
             self.yb = y[barray]
             self.bursttime = bursttime
             ltnb = len(tnb)
+        self.obsid = obsid
         self.tnb = tnb
         self.ynb = ynb
         self.t = t
         self.y = y
         self.ltnb = ltnb
+        self.name = name
         if o['instr'][0] == 'XPj':
             dt = self.dt = 0.125
         else:
             dt = self.dt = t[1] - t[0]
+        f = np.linspace(f1, f2, nf)
+        self.f = f
 
         if test == 0:
             pass
-
         else:
-            f = np.linspace(f1, f2, nf)
-            self.f = f
-
             maxp = ()
             for i2 in range(ltnb): # tnb is a tuple
                 if ltnb == 1:
@@ -205,7 +213,10 @@ class analysis(object):
         #            plt.plot(_f.tc, _f.yc, 'b')
                 maxp += maxplist,
                 coiarray = ws.coi,
-            self.maxp = maxp
+            if ltnb == 1:
+                self.maxp = maxp[0]
+            else:   
+                self.maxp = maxp
             self.coi = coiarray
             self.finish_time = time.time() - start_time
             print(f'Finish time = {self.finish_time}')
@@ -215,7 +226,7 @@ class analysis(object):
 # Plot without burst
     def plot_nob(self):
         if self.ltnb > 1:
-            for s in range(len(self.ltnb)):
+            for s in range(len(self.tnb)):
                 plt.plot(self.tnb[s],self.ynb[s])
         else:
             plt.plot(self.tnb, self.ynb)
@@ -263,7 +274,9 @@ class analysis(object):
 
         vmin = 0
         vmax = 0
-        for i in range(len(t)):
+        for i in range(self.ltnb): 
+            if self.ltnb == 1:
+                i = slice(None)
             _f = fill(t[i], y[i], dt=dt)
             ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
             norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
@@ -287,6 +300,7 @@ class analysis(object):
         fig.subplots_adjust(hspace=0.05)
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
+        fig.suptitle(f'{self.name} obsid: {self.obsid}')
         fig.colorbar(cm, ax=ax)
 ### norm_pow may need to modity, as this only has the elements for the last loop
         self.rpow = norm_pow
@@ -298,5 +312,6 @@ class analysis(object):
 
 #        bins = int(len(self.maxp) * 0.02)  
         ax.axes.hist(self.maxp, density=True, label='simulation')        
+        fig.suptitle(f'{self.name} obsid: {self.obsid}')
 
 
