@@ -79,7 +79,7 @@ class wavelet_spec(object):
 
 
 class analysis(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
+    def __init__(self, t=None, y=None, burst=False, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
         start_time = time.time()
         if t is not None and y is not None:
@@ -123,9 +123,14 @@ class analysis(object):
         if any(y < 0):
             bglc = fits.open(obs.get_path()+'/bkg_0.125s.lc')
             bg = bglc[1].data['RATE']
-            breakpoint()
             y = y + bg[_int]
             self.bg = bg
+
+        if np.any(np.isnan(y)) == True:
+            print('data cleaning: arrays contain nan data after background correction')
+            _int = np.where(np.isnan(y) == False)
+            t = t[_int]
+            y = y[_int]
 
 # dealing with bursts
         if len(np.where(ifb == obsid)[0]) == 0:
@@ -140,38 +145,47 @@ class analysis(object):
             bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 3 # scaling the time of the duration
             barray = list()
+            nbarray = list()
             a1 = None
             for i in range(len(b.get('bnum'))):
                 a = list(abs(t-bst[i])).index(min(abs(t - bst[i])))
                 _a = list(abs(t-bet[i])).index(min(abs(t - bet[i])))
-#                a = np.where(t == min(t, key = lambda x:abs(x - bst[i])))[0][0]
-#                _a = np.where(t == min(t, key = lambda x:abs(x - bet[i])))[0][0]
                 barray.extend(np.r_[a:_a])
                 if i == 0: 
                     if a != 0: # for the case of starting in the middle of a burst
+                        nbarray.extend(np.r_[a1:a])
                         tnb = t[:a],
                         ynb = y[:a],
                     else:
                         tnb = ()
                         ynb = ()
                 else:
+                    nbarray.extend(np.r_[a1:a])
                     tnb += t[a1:a],
                     ynb += y[a1:a],
+                breakpoint()
                 a1 = _a + 1
             if _a == len(t) - 1: # for the case of ending in the middle of a burst
                 pass
             else:
+                nbarray.extend(np.r_[a1:len(t)])
                 tnb += t[a1:],
                 ynb += y[a1:],
             self.tb = t[barray]
             self.yb = y[barray]
+            if burst == False: # lightcurve not divided the number of bursts
+                tnb = t[nbarray]
+                ynb = y[nbarray]
+                ltnb = 1
+            else:
+                ltnb = len(tnb)
             self.bursttime = bursttime
-            ltnb = len(tnb)
         self.obsid = obsid
-        self.tnb = tnb
-        self.ynb = ynb
         self.t = t
         self.y = y
+        self.tnb = tnb
+        self.ynb = ynb
+        self.burst = burst
         self.ltnb = ltnb
         self.name = name
         if o['instr'][0] == 'XPj':
@@ -224,8 +238,8 @@ class analysis(object):
 
 
 # Plot without burst
-    def plot_nob(self):
-        if self.ltnb > 1:
+    def plot_nob(self): # put self arguments
+        if self.ltnb > 1 and self.burst == True:
             for s in range(len(self.tnb)):
                 plt.plot(self.tnb[s],self.ynb[s])
         else:
