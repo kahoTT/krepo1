@@ -29,7 +29,9 @@ class TestLc(object):
 		
 
 		y2 = y
-		y2[2000:9000] = 20
+		y2[1500:3000] = 20
+		y2[3000:4500] = 20
+		y2[8000:9000] = 20
 
 		lc2 = stingray.Lightcurve(t, y2, input_counts=False, skip_checks=True)
 		spec2 = stingray.Powerspectrum(lc2, norm='None')   
