@@ -164,7 +164,6 @@ class analysis(object):
                     nbarray.extend(np.r_[a1:a])
                     tnb += t[a1:a],
                     ynb += y[a1:a],
-                breakpoint()
                 a1 = _a + 1
             if _a == len(t) - 1: # for the case of ending in the middle of a burst
                 pass
@@ -212,8 +211,8 @@ class analysis(object):
                     testtime2 = time.time() - start_time
     #                print(f'{testtime2}')
                     _f = fill(s.lct, s.lcy, dt=dt)
-    #                plt.plot(_f.tc, _f.yc, alpha=0.6)
-    #                plt.show()
+                    plt.plot(_f.tc, _f.yc, alpha=0.6)
+                    plt.show()
                     ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
                     norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
                     for i4 in range(len(ws.power[0])):
