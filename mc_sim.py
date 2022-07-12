@@ -13,7 +13,7 @@ class simLC(object):
         lc = stingray.Lightcurve(t, y, input_counts=input_counts, dt = dt, skip_checks=True)
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
-        logspec = spec.rebin_log(0.01)  
+        logspec = spec.rebin_log(0.01) # have an impact on having a flat or inclined spectrum 
         _ind2 = np.where(logspec.freq >= 2e-2)
         logpow1 = logspec.power[_ind2]
         if exclude == True:  

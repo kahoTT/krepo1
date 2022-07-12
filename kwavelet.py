@@ -41,7 +41,7 @@ class fill(object):
             self.yc = y
 
 
-class sim(simLC):
+class sim(simLC): # Main purposeof this class is to divide lightcurve into different sections and being put to another simulation module
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
         # see if there any large data gaps. If so, have to simulate them one by one
         if dt is None:
@@ -207,10 +207,10 @@ class analysis(object):
                 for i3 in range(test):
                     testtime = time.time() - start_time
     #                print(f'{testtime}')
-                    s = sim(t=tnb[i2], y=ynb[i2], dt=dt)
+                    s = sim(t=tnb[i2], y=ynb[i2], dt=dt) # Simulation class
                     testtime2 = time.time() - start_time
     #                print(f'{testtime2}')
-                    _f = fill(s.lct, s.lcy, dt=dt)
+                    _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     plt.plot(_f.tc, _f.yc, alpha=0.6)
                     plt.show()
                     ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
