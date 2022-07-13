@@ -1,12 +1,16 @@
+# Testing power spectrum for light curves with gaps
+
 import numpy as np
 import stingray
 import matplotlib.pyplot as plt
+from mc_sim import simLC
 
 class TestLc(object):
-	def __init__(self):
-		t = np.arange(0, 1000, 0.1)
-		y1 = np.random.uniform(-1, 1, size=len(t))
-		y = y1 + 20
+	def __init__(self, t=None, y=None, input_data=True):
+		if input_data is False:
+			t = np.arange(0, 1000, 0.1)
+			y1 = np.random.uniform(-1, 1, size=len(t))
+			y = y1 + 20
 		lc = stingray.Lightcurve(t, y, input_counts=False, skip_checks=True)
 		spec = stingray.Powerspectrum(lc, norm='None')   
 		power = abs(spec.power)
@@ -15,6 +19,8 @@ class TestLc(object):
 		self.y = y
 		self.freq1 = spec.freq
 		self.pow1 = power
+		l = simLC(t=t, y=y)
+		self.lmodel = l.lmodel
 
 		fig, ax = plt.subplots(4, figsize=(8,10))
 		self.fig = fig
@@ -22,13 +28,14 @@ class TestLc(object):
 		ax[0].plot(t,y)
 		ax[0].set_xticklabels([])
 		ax[1].plot(spec.freq, power)
+		ax[1].plot(spec.freq, l.lmodel)
 		ax[1].set_xscale('log')
 		ax[1].set_yscale('log')
 		ax[1].set_ylabel('Abs power')
 		ax[1].set_title(f'Power Sum = {sum_pow:.2f}')
 		
 		y2 = y
-#		y2[1500:3000] = 20
+		y2[0:500] = y.mean()
 #		y2[3000:4500] = 20
 #		y2[8000:9000] = 20
 
@@ -38,11 +45,14 @@ class TestLc(object):
 		sum_pow2 = sum(power2)
 		self.freq2 = spec2.freq
 		self.pow2 = power2
+		l2 = simLC(t=t, y=y2)
+		self.lmodel2 = l2.lmodel
 
 
 		ax[2].plot(t,y2)
 		ax[2].set_xticklabels([])
 		ax[3].plot(spec2.freq, power2)
+		ax[3].plot(spec2.freq, l2.lmodel)
 		ax[3].set_xscale('log')
 		ax[3].set_yscale('log')
 		ax[3].set_ylabel('Abs power')

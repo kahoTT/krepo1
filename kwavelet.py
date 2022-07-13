@@ -46,7 +46,7 @@ class sim(simLC): # Main purposeof this class is to divide lightcurve into diffe
         # see if there any large data gaps. If so, have to simulate them one by one
         if dt is None:
             dt = t[1] - t[0]
-        res = [(sub2 - sub1 > 100) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? For example, < 100, the data point
+        res = [(sub2 - sub1 > 500) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? For example, < 100, the data point
         if np.any(res) == True:
             l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
             slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
