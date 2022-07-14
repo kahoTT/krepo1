@@ -32,12 +32,21 @@ class simLC(object):
         self.logfre = logfre[notnan2]
         self.logpow = logpow[notnan2]
         result = least_squares(partial(G, self.logfre, self.logpow), x0)
+        omodel = F(spec.freq, *result.x)
+        # check if data has gap and make correction
+        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
+        if np.any(res) == True:
+            n_of_data = int((t[-1] - t[0]) / dt + 1)
+            factor = n_of_data / (len(t)) 
+        else:
+            n_of_data = len(t)
+        result.x[2] = result.x[2]*factor
+        #
         lmodel = F(spec.freq, *result.x)
-#        sim = simulator.Simulator(N=len(t), mean=y.mean(), dt=dt, rms=y.std()/y.mean()) #!!! may be skip the check !!!
+
 # make the lightcurve with the not data gaps
-        sim = simulator.Simulator(N=len(t), mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
+        sim = simulator.Simulator(N=n_of_data, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
         lc = sim.simulate(lmodel)
-#        self.time = t 
         self.time = lc.time
         self.counts = lc.counts
         self.result = result
@@ -48,11 +57,13 @@ class simLC(object):
 
         self.fre = spec.freq
         self.pow = spec.power
+        self.omodel = omodel
         self.lmodel = lmodel
 
     def plot_spec(self):
         fig, ax = plt.subplots()
         ax.plot(self.fre, self.pow , ds='steps-mid')
+        ax.plot(self.fre, self.omodel)
         ax.plot(self.fre, self.lmodel)
         plt.xscale('log')
         plt.yscale('log')

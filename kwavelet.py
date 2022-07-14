@@ -6,7 +6,6 @@ import pycwt
 import stingray
 from mc_sim import simLC
 import time
-import sys
 import minbar
 b = minbar.Bursts()
 o = minbar.Observations()
