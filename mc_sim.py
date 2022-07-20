@@ -38,17 +38,21 @@ class simLC(object):
         if np.any(res) == True:
             n_of_data = int((t[-1] - t[0]) / dt + 1)
             factor = n_of_data / (len(t)) 
+            result.x[2] = result.x[2]*factor
         else:
             n_of_data = len(t)
-        result.x[2] = result.x[2]*factor
-        #
+
         lmodel = F(spec.freq, *result.x)
 
 # make the lightcurve with the not data gaps
         sim = simulator.Simulator(N=n_of_data, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
         lc = sim.simulate(lmodel)
-        self.time = lc.time
-        self.counts = lc.counts
+        if np.any(res) == True:
+            _intin = np.isin(lc.time, (t-t[0]))
+        else:
+            _intin = ()
+        self.time = lc.time[_intin]
+        self.counts = lc.counts[_intin]
         self.result = result
 
 # define function within class        
@@ -63,8 +67,8 @@ class simLC(object):
     def plot_spec(self):
         fig, ax = plt.subplots()
         ax.plot(self.fre, self.pow , ds='steps-mid')
-        ax.plot(self.fre, self.omodel)
-        ax.plot(self.fre, self.lmodel)
+        ax.plot(self.fre, self.omodel, label='Original spec')
+        ax.plot(self.fre, self.lmodel, label='Power boosted spec')
         plt.xscale('log')
         plt.yscale('log')
         if self.norm == 'None':
@@ -72,6 +76,7 @@ class simLC(object):
         else:
             plt.ylabel(self.norm + ' power')
         plt.xlabel('Frequency (Hz)')
+        ax.legend(loc='best')
         plt.show()
 
     def plot_lc(self):

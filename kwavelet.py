@@ -15,7 +15,7 @@ o = minbar.Observations()
 # An examples from 1636 is obsid('60032-05-02-00') and 1608 obsid('10072-05-01-00') and EXO 0748 obsid('90039-01-03-05')
 # 1323 obsid('96405-01-02-01')
 
-# This class is to fill the gap data with mean value
+# This class is to fill the gap data with mean value, will change to fill with the fitted polynomail vales
 class fill(object):
     def __init__(self, t=None, y=None, dt=None):
         if dt is None:
@@ -38,7 +38,6 @@ class fill(object):
         else:
             self.tc = t
             self.yc = y
-
 
 class sim(simLC): # Main purposeof this class is to divide lightcurve into different sections and being put to another simulation module
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
