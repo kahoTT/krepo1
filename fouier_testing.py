@@ -4,6 +4,7 @@ import numpy as np
 import stingray
 import matplotlib.pyplot as plt
 from mc_sim import simLC
+import kwavelet
 
 class TestLc(object):
 	def __init__(self, t=None, y=None, input_data=True):
@@ -57,3 +58,23 @@ class TestLc(object):
 		ax[3].set_yscale('log')
 		ax[3].set_ylabel('Abs power')
 		ax[3].set_title(f'Power Sum2 = {sum_pow2:.2f}, sum1/sum2 = {sum_pow/sum_pow2:.2f}')
+
+# red_noise = 0, no exclude, use the model without any boosting seems to be the best, with problem occurs for both red_noise = 0 or 1 
+class Test1613(object):
+	def __init__(self, red_noise=1, testno = 5):
+		w = kwavelet.analysis(obsid='60032-05-02-00', test=0)
+		t2 = w.tnb
+		y2 = w.ynb
+		_int = np.where(t2> 18500)
+		t = t2[_int]
+		y = y2[_int]
+		fig, ax = plt.subplots()
+		ax.set_yscale('log')
+		ax.set_xscale('log')
+		for i in range(0,testno,1):
+			s = simLC(t = t, y=y, exclude=True, red_noise=red_noise, model = 'o')
+			s2 = simLC(s.time, s.counts, exclude=False, red_noise=red_noise, model = 'o')
+			ax.plot(s2.fre, s2.omodel, label=f'{i}')
+		ax.plot(s.fre, s.omodel, label='real data')
+		ax.plot(s.fre, s.omodel, 'r.', label='real data')
+#		ax.legend()

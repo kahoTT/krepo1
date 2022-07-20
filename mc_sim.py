@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
 class simLC(object):
-    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', exclude=True, red_noise=1):
+    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', exclude=True, red_noise=1, model='n'):
         self.norm = norm
         if dt is None:
             dt = t[1] - t[0]       
@@ -46,7 +46,10 @@ class simLC(object):
 
 # make the lightcurve with the not data gaps
         sim = simulator.Simulator(N=n_of_data, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
-        lc = sim.simulate(lmodel)
+        if model == 'o':
+            lc = sim.simulate(omodel)
+        elif model == 'n':
+            lc = sim.simulate(lmodel)
         if np.any(res) == True:
             _intin = np.isin(lc.time, (t-t[0]))
         else:
