@@ -17,12 +17,14 @@ o = minbar.Observations()
 
 # This class is to fill the gap data with mean value, will change to fill with the fitted polynomail vales
 class fill(object):
-    def __init__(self, t=None, y=None, dt=None):
+    def __init__(self, t=None, y=None, dt=None, plot=False):
         if dt is None:
             dt = t[1] - t[0]
-        p = np.polyfit(t, y, 1)
+        p = np.polyfit(t, y, 3)
+        if plot == True:
+            plt.plot(t,y)
+            plt.plot(t, np.polyval(p, t))
         dat_notrend = y - np.polyval(p, t)
-        mean = sum(y) / len(y)
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
         if np.any(res) == True:
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
@@ -30,16 +32,16 @@ class fill(object):
             for i in ag[1:]:
                 ta = np.arange(t[i] + dt, t[i+1], dt)
                 tc = np.concatenate([tc, ta])
-            yc = np.ones(len(tc)) * mean
+            yc = np.zeros(len(tc))
             tc = np.concatenate([t, tc])
-            yc = np.concatenate([y, yc])
+            yc = np.concatenate([dat_notrend, yc])
             y_c = np.array([x for _,x in sorted(zip(tc, yc))])
             t_c = np.sort(tc)
             self.tc = t_c
             self.yc = y_c
         else:
             self.tc = t
-            self.yc = y
+            self.yc = dat_notrend
 
 class sim(simLC): # Main purposeof this class is to divide lightcurve into different sections and being put to another simulation module
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
@@ -212,7 +214,8 @@ class analysis(object):
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     plt.plot(_f.tc, _f.yc, alpha=0.6)
                     plt.show()
-                    ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
+                    ws = wavelet_spec(y=(_f.yc), f=f, sigma=10, dt=dt, powera=None)
+# Normalisation of power. Ideally use leahy power
                     norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
                     for i4 in range(len(ws.power[0])):
                         _int = np.where(f < 1/ws.coi[i4])
@@ -291,7 +294,7 @@ class analysis(object):
             if self.ltnb == 1:
                 i = slice(None)
             _f = fill(t[i], y[i], dt=dt)
-            ws = wavelet_spec(y=(_f.yc-_f.yc.mean()), f=f, sigma=10, dt=dt, powera=None)
+            ws = wavelet_spec(y=(_f.yc), f=f, sigma=10, dt=dt, powera=None)
             norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
             if vmax >= np.max(norm_pow):
                 pass
