@@ -20,6 +20,8 @@ class fill(object):
     def __init__(self, t=None, y=None, dt=None):
         if dt is None:
             dt = t[1] - t[0]
+        p = np.polyfit(t, y, 1)
+        dat_notrend = y - np.polyval(p, t)
         mean = sum(y) / len(y)
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
         if np.any(res) == True:
@@ -80,7 +82,6 @@ class wavelet_spec(object):
 class analysis(object):
     def __init__(self, t=None, y=None, burst=False, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
-        start_time = time.time()
         if t is not None and y is not None:
             pass
         elif filename:

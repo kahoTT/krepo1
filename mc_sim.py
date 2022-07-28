@@ -10,10 +10,16 @@ class simLC(object):
         self.norm = norm
         if dt is None:
             dt = t[1] - t[0]       
-        lc = stingray.Lightcurve(t, y, input_counts=input_counts, dt = dt, skip_checks=True)
+        lc = stingray.Lightcurve(t, y, input_counts=input_counts, dt = dt, skip_checks=False)
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
-        logspec = spec.rebin_log(0.01) # have an impact on having a flat or inclined spectrum 
+        logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
+
+# rebin_log testing
+#        plt.plot(logspec.freq, logspec.power)
+#        plt.plot(spec.freq, spec.power)
+#        plt.yscale('log')
+#        plt.xscale('log')
         _ind2 = np.where(logspec.freq >= 2e-2)
         logpow1 = logspec.power[_ind2]
         if exclude == True:  
@@ -62,16 +68,16 @@ class simLC(object):
 #        result = least_squares(self.g, x0)
 #        lmodel = self.f(*result.x)
 
-        self.fre = spec.freq
+        self.freq = spec.freq
         self.pow = spec.power
         self.omodel = omodel
         self.lmodel = lmodel
 
     def plot_spec(self):
         fig, ax = plt.subplots()
-        ax.plot(self.fre, self.pow , ds='steps-mid')
-        ax.plot(self.fre, self.omodel, label='Original spec')
-        ax.plot(self.fre, self.lmodel, label='Power boosted spec')
+        ax.plot(self.freq, self.pow , ds='steps-mid')
+        ax.plot(self.freq, self.omodel, label='Original spec')
+        ax.plot(self.freq, self.lmodel, label='Power boosted spec')
         plt.xscale('log')
         plt.yscale('log')
         if self.norm == 'None':

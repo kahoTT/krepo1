@@ -12,7 +12,7 @@ class TestLc(object):
 			t = np.arange(0, 1000, 0.1)
 			y1 = np.random.uniform(-1, 1, size=len(t))
 			y = y1 + 20
-		lc = stingray.Lightcurve(t, y, input_counts=False, skip_checks=True)
+		lc = stingray.Lightcurve(t, y, input_counts=False, skip_checks=False)
 		spec = stingray.Powerspectrum(lc, norm='None')   
 		power = abs(spec.power)
 		sum_pow = sum(power)
@@ -72,9 +72,9 @@ class Test1613(object):
 		ax.set_yscale('log')
 		ax.set_xscale('log')
 		for i in range(0,testno,1):
-			s = simLC(t = t, y=y, exclude=True, red_noise=red_noise, model = 'o')
-			s2 = simLC(s.time, s.counts, exclude=False, red_noise=red_noise, model = 'o')
-			ax.plot(s2.fre, s2.omodel, label=f'{i}')
-		ax.plot(s.fre, s.omodel, label='real data')
-		ax.plot(s.fre, s.omodel, 'r.', label='real data')
+			s = simLC(t = t, y=y, exclude=False, red_noise=red_noise, model = 'n')
+			s2 = simLC(s.time, s.counts, exclude=False, red_noise=red_noise, model = 'n')
+			ax.plot(s2.freq, s2.omodel, label=f'{i}')
+		ax.plot(s.freq, s.omodel, label='real data')
+		ax.plot(s.freq, s.omodel, 'r.', label='real data')
 #		ax.legend()
