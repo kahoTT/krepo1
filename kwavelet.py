@@ -145,7 +145,7 @@ class analysis(object):
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
-            bet = bst + obs.bursts['dur'] * 3 # scaling the time of the duration
+            bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration
             barray = list()
             nbarray = list()
             a1 = None
@@ -199,12 +199,12 @@ class analysis(object):
         if test == 0:
             pass
         else:
-            maxp = ()
+            p = ()
             for i2 in range(ltnb): # tnb is a tuple
                 if ltnb == 1:
                     i2 = slice(None)
-                maxplist = list()
-                print(i2)
+                plist = list()
+                start_time = time.time()
                 for i3 in range(test):
                     testtime = time.time() - start_time
     #                print(f'{testtime}')
@@ -214,28 +214,28 @@ class analysis(object):
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     plt.plot(_f.tc, _f.yc, alpha=0.6)
                     plt.show()
-                    ws = wavelet_spec(y=(_f.yc), f=f, sigma=10, dt=dt, powera=None)
+#                    ws = wavelet_spec(y=(_f.yc), f=f, sigma=10, dt=dt, powera=None)
 # Normalisation of power. Ideally use leahy power
-                    norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
-                    for i4 in range(len(ws.power[0])):
-                        _int = np.where(f < 1/ws.coi[i4])
-                        norm_pow[:,i4][_int] = np.nan
-                    maxplist.append(np.nanmax(norm_pow))
+#                    norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+#                    for i4 in range(len(ws.power[0])):
+#                        _int = np.where(f < 1/ws.coi[i4])
+#                        norm_pow[:,i4][_int] = np.nan
+#                    maxplist.append(np.nanmax(norm_pow))
         #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
         #           plt.colorbar()
         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
         #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
         #            plt.ylim(f1, f2)
         #            plt.plot(_f.tc, _f.yc, 'b')
-                maxp += maxplist,
-                coiarray = ws.coi,
-            if ltnb == 1:
-                self.maxp = maxp[0]
-            else:   
-                self.maxp = maxp
-            self.coi = coiarray
-            self.finish_time = time.time() - start_time
-            print(f'Finish time = {self.finish_time}')
+#                maxp += maxplist,
+#                coiarray = ws.coi,
+#            if ltnb == 1:
+#                self.maxp = maxp[0]
+#            else:   
+#                self.maxp = maxp
+#            self.coi = coiarray
+#            self.finish_time = time.time() - start_time
+#            print(f'Finish time = {self.finish_time}')
 
 
 

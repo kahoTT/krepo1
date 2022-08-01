@@ -6,18 +6,34 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
 class simLC(object):
-    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', exclude=True, red_noise=1, model='n'):
+    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', exclude=True, red_noise=1, model='n', gen = True):
         self.norm = norm
         if dt is None:
             dt = t[1] - t[0]       
-        lc = stingray.Lightcurve(t, y, input_counts=input_counts, dt = dt, skip_checks=False)
+        # fill light curve with mean value 
+        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
+        if np.any(res) == True:
+            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+            tc = np.array([])
+            for i in ag[1:]:
+                ta = np.arange(t[i] + dt, t[i+1], dt)
+                tc = np.concatenate([tc, ta])
+            yc = np.ones(len(tc)) * y.mean()
+            tc = np.concatenate([t, tc])
+            yc = np.concatenate([y, yc])
+            y_c = np.array([x for _,x in sorted(zip(tc, yc))])
+            t_c = np.sort(tc)
+        else:
+            t_c = t
+            y_c = y
+        lc = stingray.Lightcurve(t_c-t_c[0], y_c, input_counts=input_counts, dt = dt, skip_checks=False)
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
         logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
 
 # rebin_log testing
-#        plt.plot(logspec.freq, logspec.power)
-#        plt.plot(spec.freq, spec.power)
+#        plt.plot(spec.freq, spec.power, alpha = 0.6, ds='steps-mid')
+#        plt.plot(logspec.freq, logspec.power, ds='steps-mid')
 #        plt.yscale('log')
 #        plt.xscale('log')
         _ind2 = np.where(logspec.freq >= 2e-2)
@@ -40,7 +56,6 @@ class simLC(object):
         result = least_squares(partial(G, self.logfre, self.logpow), x0)
         omodel = F(spec.freq, *result.x)
         # check if data has gap and make correction
-        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
         if np.any(res) == True:
             n_of_data = int((t[-1] - t[0]) / dt + 1)
             factor = n_of_data / (len(t)) 
@@ -51,17 +66,18 @@ class simLC(object):
         lmodel = F(spec.freq, *result.x)
 
 # make the lightcurve with the not data gaps
-        sim = simulator.Simulator(N=n_of_data, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
-        if model == 'o':
-            lc = sim.simulate(omodel)
-        elif model == 'n':
-            lc = sim.simulate(lmodel)
-        if np.any(res) == True:
-            _intin = np.isin(lc.time, (t-t[0]))
-        else:
-            _intin = ()
-        self.time = lc.time[_intin]
-        self.counts = lc.counts[_intin]
+        if gen == True:
+            sim = simulator.Simulator(N=n_of_data, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
+            if model == 'o':
+                lc = sim.simulate(omodel)
+            elif model == 'n':
+                lc = sim.simulate(lmodel)
+            if np.any(res) == True:
+                _intin = np.isin(lc.time, (t-t[0]))
+            else:
+                _intin = ()
+            self.time = lc.time[_intin]
+            self.counts = lc.counts[_intin]
         self.result = result
 
 # define function within class        

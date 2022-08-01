@@ -65,16 +65,19 @@ class Test1613(object):
 		w = kwavelet.analysis(obsid='60032-05-02-00', test=0)
 		t2 = w.tnb
 		y2 = w.ynb
-		_int = np.where(t2> 18500)
+#		_int = np.where((t2> 18500) & (t2<20650))
+		_int = np.where(t2> 18500) 
 		t = t2[_int]
 		y = y2[_int]
 		fig, ax = plt.subplots()
 		ax.set_yscale('log')
 		ax.set_xscale('log')
 		for i in range(0,testno,1):
-			s = simLC(t = t, y=y, exclude=False, red_noise=red_noise, model = 'n')
-			s2 = simLC(s.time, s.counts, exclude=False, red_noise=red_noise, model = 'n')
+			s = simLC(t = t, y=y, exclude=False, red_noise=red_noise, model = 'o')
+#			ax.plot(s.time, s.counts, label=f'{i}', alpha = 0.6,)
+			s2 = simLC(s.time, s.counts, exclude=False, red_noise=red_noise, model = 'o', gen=False)
 			ax.plot(s2.freq, s2.omodel, label=f'{i}')
+#			ax.plot(s2.freq, s2.pow, label=f'{i}', ds='steps-mid')
 		ax.plot(s.freq, s.omodel, label='real data')
 		ax.plot(s.freq, s.omodel, 'r.', label='real data')
 #		ax.legend()
