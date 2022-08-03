@@ -48,7 +48,7 @@ class sim(simLC): # Main purposeof this class is to divide lightcurve into diffe
         # see if there any large data gaps. If so, have to simulate them one by one
         if dt is None:
             dt = t[1] - t[0]
-        res = [(sub2 - sub1 > 500) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? For example, < 100, the data point
+        res = [(sub2 - sub1 > 400) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? For example, < 100, the data point
         if np.any(res) == True:
             l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
             slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
@@ -57,6 +57,7 @@ class sim(simLC): # Main purposeof this class is to divide lightcurve into diffe
             slices = ((),) # have problems for different observations
         lct = np.array([])
         lcy = np.array([])
+        fig, ax = plt.subplots()
         for s in slices:
             _t = t[s]
             _y = y[s]
@@ -212,28 +213,28 @@ class analysis(object):
                     testtime2 = time.time() - start_time
     #                print(f'{testtime2}')
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
-                    plt.plot(_f.tc, _f.yc, alpha=0.6)
-                    plt.show()
-#                    ws = wavelet_spec(y=(_f.yc), f=f, sigma=10, dt=dt, powera=None)
-# Normalisation of power. Ideally use leahy power
+                    ystd = s.lcy.std()
+                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera=None)
+                    # Normalisation of power. Ideally use leahy power
 #                    norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
-#                    for i4 in range(len(ws.power[0])):
-#                        _int = np.where(f < 1/ws.coi[i4])
-#                        norm_pow[:,i4][_int] = np.nan
-#                    maxplist.append(np.nanmax(norm_pow))
+                    norm_pow = ws.power  
+                    for i4 in range(len(ws.power[0])):
+                        _int = np.where(f < 1/ws.coi[i4])
+                        norm_pow[:,i4][_int] = np.nan
+                    plist.append((norm_pow))
         #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
         #           plt.colorbar()
         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
         #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
         #            plt.ylim(f1, f2)
         #            plt.plot(_f.tc, _f.yc, 'b')
-#                maxp += maxplist,
-#                coiarray = ws.coi,
-#            if ltnb == 1:
-#                self.maxp = maxp[0]
-#            else:   
-#                self.maxp = maxp
-#            self.coi = coiarray
+                p += plist,
+                coiarray = ws.coi,
+            if ltnb == 1:
+                self.p = p[0]
+            else:   
+                self.p = p
+            self.coi = coiarray
 #            self.finish_time = time.time() - start_time
 #            print(f'Finish time = {self.finish_time}')
 
@@ -294,8 +295,10 @@ class analysis(object):
             if self.ltnb == 1:
                 i = slice(None)
             _f = fill(t[i], y[i], dt=dt)
-            ws = wavelet_spec(y=(_f.yc), f=f, sigma=10, dt=dt, powera=None)
-            norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+            ystd = y[i].std()
+            ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera=None)
+#            norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+            norm_pow = ws.power
             if vmax >= np.max(norm_pow):
                 pass
             else:
@@ -307,7 +310,7 @@ class analysis(object):
                 _int = np.where(f < 1/ws.coi[i1])
                 norm_pow[:,i1][_int] = np.nan
             ax[0].plot(_f.tc, _f.yc)
-            cm = ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis, vmin=vmin, vmax=(int(vmax)+1))
+#            cm = ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis, vmin=vmin, vmax=(int(vmax)+1))
 #            ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
 #            ax[1].contour(_f.tc, f, sig, [-99,1], colors='k')
 
@@ -317,7 +320,7 @@ class analysis(object):
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
         fig.suptitle(f'{self.name} obsid: {self.obsid}')
-        fig.colorbar(cm, ax=ax)
+#        fig.colorbar(cm, ax=ax)
 ### norm_pow may need to modity, as this only has the elements for the last loop
         self.rpow = norm_pow
 
