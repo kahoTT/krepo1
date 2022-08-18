@@ -15,7 +15,9 @@ from heat.numeric import sqrt, cbrt, qqrt, GOLDEN
 import matplotlib.colors as colors
 from serialising import Serialising
 from ioncolor import IonColor
+from linestyle import LineStyle
 from utils import index1d
+import matplotlib
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -765,19 +767,19 @@ class Shot(Serialising):
             scale = 1
             ax.set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)')
 
-        ax.set_xscale('log')
-        ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        ax.set_xlabel('Log column depth ($\mathrm{g\,cm}^{-2}$)')
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
         xlnun = np.cumsum(self.xlnun[ir])[ir]
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
-        ax.plot(self.y_m[i1], self.xln[i1] / scale, label= '$l_{\mathrm{m}}$')
-        ax.plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$')
-        ax.plot(self.y_m[i1], xlnsv[i1] / scale, label = '$l_{\mathrm{therm}}$')
-        ax.plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
-        ax.plot(self.y_m[i1], xlsum[i1] / scale, ':', label='sum')
+        ax.plot(np.log10(np.log10(self.y_m[i1])), self.xln[i1] / scale, label= '$l_{\mathrm{m}}$')
+        ax.plot(np.log10(np.log10(self.y_m[i1])), (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$')
+        ax.plot(np.log10(np.log10(self.y_m[i1])), xlnsv[i1] / scale, label = '$l_{\mathrm{therm}}$')
+        ax.plot(np.log10(np.log10(self.y_m[i1])), xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
+        ax.plot(np.log10(np.log10(self.y_m[i1])), xlsum[i1] / scale, ':', label='sum')
+#        ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
         ax.legend(loc='best')
         plt.show()
        
@@ -833,8 +835,8 @@ class Shot(Serialising):
         ax.set_ylabel('Temperature ($\mathrm{K}$), Density ($\mathrm{g\,cm}^{-3}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        ax.plot(self.y_m[i1], self.tn[i1], label= '$\mathrm{T}$')
-        ax.plot(self.y_m[i1], self.dn[i1], label= '$\\rho$')
+        ax.plot(np.log10(self.y_m[i1]), self.tn[i1], label= '$\mathrm{T}$')
+        ax.plot(np.log10(self.y_m[i1]), self.dn[i1], label= '$\\rho$')
         ax.legend(loc='best')
         plt.show()
 
@@ -858,10 +860,10 @@ class Shot(Serialising):
                     break
             am = np.max(a[i1])
             if am > lim:
-                ax.plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
+                ax.plot(np.log10(self.y_m[i1]), a[i1], label=i.mpl, color=c(i))
                 maxabu = np.argmax(a[i1])
                 ax.text(
-                    self.y_m[i1][maxabu], a[i1][maxabu], i.mpl, color=c(i),
+                    np.log10(self.y_m[i1])[maxabu], a[i1][maxabu], i.mpl, color=c(i),
                     ha='center', va='center', clip_on=True)
 
     def plot_s(self):
@@ -876,11 +878,11 @@ class Shot(Serialising):
         ax.set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        l = ax.plot(self.y_m[i1], self.sn[i1] + self.snun[i1], label= 'Nuclear')
-        ax.plot(self.y_m[i1], -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
-        ax.plot(self.y_m[i1], self.sv[i1], label= 'Gravothermol')
-#        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
-        ax.plot(self.y_m[i1], self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino')
+        l = ax.plot(np.log10(self.y_m[i1]), self.sn[i1] + self.snun[i1], label= 'Nuclear')
+        ax.plot(np.log10(self.y_m[i1]), -(self.sn[i1] + self.snun[i1]), color=l[0].get_color(), ls=':')
+        ax.plot(np.log10(self.y_m[i1]), self.sv[i1], label= 'Gravothermol')
+#        ax.plot(np.log10(self.y_m[i1]), self.sv[i1], 'r.', label= 'Gravothermol')
+        ax.plot(np.log10(self.y_m[i1]), self.snun[i1],'--' ,color='#BFBFBF' ,label= 'Neutrino')
 
         ax.legend(loc='best')
         smax = np.maximum(np.max(self.sn[i1]), np.max(self.sv[i1])) * 2
@@ -938,7 +940,7 @@ class Shot(Serialising):
 #        ax.set_ylabel('Opacity ($cm^2\,g^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
         
-        ax.plot(self.y_m[i1], self.mue[i1], label='$\mu_e$')
+        ax.plot(np.log10(self.y_m[i1]), self.mue[i1], label='$\mu_e$')
         ax.legend(loc='best')
 
     def plot_ki(self):
@@ -953,15 +955,15 @@ class Shot(Serialising):
         ax.set_ylabel('Opacity ($\mathrm{cm}^2\,\mathrm{g}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
         
-        ax.plot(self.y_m[i1], self.ki[i1], label='$\kappa$')
+        ax.plot(np.log10(self.y_m[i1]), self.ki[i1], label='$\kappa$')
         ax.legend(loc='best')
 
-    def plot_combine(self, escale=None, A = 27, lim = 1e-3):
+    def plot_combine(self, escale=None, A = 27, lim = 10**(-2.4), ls='on'):
         i1 = slice(1, None)
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
 
-        fig, ax = plt.subplots(4, sharex=True, figsize=(8,24))
+        fig, ax = plt.subplots(4, sharex=True, figsize=(8,20))
         fig.subplots_adjust(hspace=.05)
         self.fig = fig
         self.ax = ax
@@ -979,33 +981,34 @@ class Shot(Serialising):
         xlnsv = np.cumsum(self.xlnsv[ir])[ir]
         xlsum = self.xln + xlnn + xlnsv
 
-        ax[0].plot(self.y_m[i1], self.xln[i1] / scale, label= '$l$')
-        ax[0].plot(self.y_m[i1], (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$', ls='-.')
-        ax[0].plot(self.y_m[i1], xlnsv[i1] / scale, label = '$l_{\mathrm{therm}}$', ls=':')
-        ax[0].plot(self.y_m[i1], xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
-        ax[0].plot(self.y_m[i1], xlsum[i1] / scale, ls=(0, (3, 1, 1, 1, 1, 1)), label='sum')
+        ax[0].plot(np.log10(self.y_m[i1]), self.xln[i1] / scale, label= '$l$')
+        ax[0].plot(np.log10(self.y_m[i1]), (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$', ls='-.')
+        ax[0].plot(np.log10(self.y_m[i1]), xlnsv[i1] / scale, label = '$l_{\mathrm{therm}}$', ls=':')
+        ax[0].plot(np.log10(self.y_m[i1]), xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
+        ax[0].plot(np.log10(self.y_m[i1]), xlsum[i1] / scale, ls=(0, (3, 1, 1, 1, 1, 1)), label='sum')
         ax[0].legend(loc='best')
 
         # plot_s
-        ax[1].set_yscale('log')
-        ax[1].set_ylabel('Specific rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=9)
+#        ax[1].set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=9)
+        ax[1].set_ylabel('Log $\epsilon\,(\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=9)
 
-        l = ax[1].plot(self.y_m[i0], self.sn[i0] + self.snun[i0], label= 'Nuclear')
-        ax[1].plot(self.y_m[i0], -(self.sn[i0] + self.snun[i0]), color=l[0].get_color(), ls=':')
-        ax[1].plot(self.y_m[i0], self.sv[i0], label= 'Gravothermol', ls=':')
-#        ax.plot(self.y_m[i1], self.sv[i1], 'r.', label= 'Gravothermol')
-        ax[1].plot(self.y_m[i0], self.snun[i0],'--' ,color='#BFBFBF' ,label= 'Neutrino')
+        l = ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.sn[i0] + self.snun[i0]), label= 'Nuclear')
+#        ax[1].plot(np.log10(self.y_m[i0]), -np.log10((self.sn[i0] + self.snun[i0])), color=l[0].get_color(), ls=':')
+        ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.sv[i0]), label= 'Gravothermol', ls=':')
+#        ax.plot(np.log10(self.y_m[i1]), np.log10(self.sv[i1]), 'r.', label= 'Gravothermol')
+        ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.snun[i0]),'--' ,color='#BFBFBF' ,label= 'Neutrino')
 
         ax[1].legend(loc='best')
         smax = np.maximum(np.max(self.sn[i0]), np.max(self.sv[i0])) * 2
         smin = smax * 1e-18
-        ax[1].set_ylim(smin, smax)
+        ax[1].set_ylim(np.log10(smin), np.log10(smax))
 
         # plot_abu
-        ax[2].set_yscale('log')
-        ax[2].set_ylabel('Mass fraction', fontsize=9)
-        ax[2].set_ylim(1.e-3, 1.5)
+        ax[2].set_ylabel('Log mass fraction', fontsize=9)
+        ax[2].set_ylim(-3, 0.1)
         c = IonColor()
+        l = LineStyle()
+        k = -1
 
         for i,a in self.abub:
             if A:
@@ -1013,19 +1016,29 @@ class Shot(Serialising):
                     break
             am = np.max(a[i1])
             if am > lim:
-                ax[2].plot(self.y_m[i1], a[i1], label=i.mpl, color=c(i))
-                maxabu = np.argmax(a[i1])
-                ax[2].text(
-                    self.y_m[i1][maxabu], a[i1][maxabu], i.mpl, color=c(i),
-                    ha='center', va='center', clip_on=True)
+                if i.A != 20:
+                    k += 1
+                    if ls == 'on':
+                        ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i), ls=l(k))
+                    ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i))
+                    maxabu = np.argmax(a[i1])
+                    ax[2].text(
+                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color=c(i),
+                        ha='center', va='center', clip_on=True)
+                else:
+                    ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='k')
+                    maxabu = np.argmax(a[i1])
+                    ax[2].text(
+                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color='k',
+                        ha='center', va='center', clip_on=True)
+
+                     
 
         # plot_td
-        ax[3].set_yscale('log')
-        ax[3].set_ylabel('Temperature ($\mathrm{K}$), Density ($\mathrm{g\,cm}^{-3}$)', fontsize=9)
+        ax[3].set_ylabel('Log $T$ ($\mathrm{K}$), log $\\rho$ ($\mathrm{g\,cm}^{-3}$)', fontsize=9)
 
-        ax[3].plot(self.y_m[i1], self.tn[i1], label= '$\mathrm{T}$')
-        ax[3].plot(self.y_m[i1], self.dn[i1], label= '$\\rho$', ls='--')
+        ax[3].plot(np.log10(self.y_m[i1]), np.log10(self.tn[i1]), label= '$\mathrm{T}$')
+        ax[3].plot(np.log10(self.y_m[i1]), np.log10(self.dn[i1]), label= '$\\rho$', ls='--')
         ax[3].legend(loc='best')
 
-        plt.xscale('log')
-        plt.xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
+        plt.xlabel('Log column depth ($\mathrm{g\,cm}^{-2}$)')
