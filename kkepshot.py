@@ -963,7 +963,7 @@ class Shot(Serialising):
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
 
-        fig, ax = plt.subplots(4, sharex=True, figsize=(8,20))
+        fig, ax = plt.subplots(4, sharex=True, figsize=(8,13))
         fig.subplots_adjust(hspace=.05)
         self.fig = fig
         self.ax = ax
@@ -1005,7 +1005,7 @@ class Shot(Serialising):
 
         # plot_abu
         ax[2].set_ylabel('Log mass fraction', fontsize=9)
-        ax[2].set_ylim(-3, 0.1)
+        ax[2].set_ylim(-3, 0.2)
         c = IonColor()
         l = LineStyle()
         k = -1
@@ -1015,22 +1015,27 @@ class Shot(Serialising):
                 if i.A > A:
                     break
             am = np.max(a[i1])
+            maxabu = np.arange(0, len(self.y_m), 100)
             if am > lim:
                 if i.A != 20:
                     k += 1
                     if ls == 'on':
                         ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i), ls=l(k))
                     ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i))
-                    maxabu = np.argmax(a[i1])
-                    ax[2].text(
-                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color=c(i),
-                        ha='center', va='center', clip_on=True)
+#                    ax[2].text(
+#                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color=c(i),
+#                        ha='center', va='center', clip_on=True)
+                    for j in maxabu:
+                        ax[2].text(
+                            np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True)
                 else:
                     ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='k')
-                    maxabu = np.argmax(a[i1])
-                    ax[2].text(
-                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color='k',
-                        ha='center', va='center', clip_on=True)
+#                    ax[2].text(
+#                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color='k',
+#                        ha='center', va='center', clip_on=True)
+                    for j in maxabu:
+                        ax[2].text(
+                            np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True)
 
                      
 
