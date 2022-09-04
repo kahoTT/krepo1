@@ -57,7 +57,6 @@ class sim(simLC): # Main purposeof this class is to divide lightcurve into diffe
             slices = ((),) # have problems for different observations
         lct = np.array([])
         lcy = np.array([])
-        fig, ax = plt.subplots()
         for s in slices:
             _t = t[s]
             _y = y[s]
@@ -208,20 +207,22 @@ class analysis(object):
                 start_time = time.time()
                 for i3 in range(test):
                     testtime = time.time() - start_time
-    #                print(f'{testtime}')
                     s = sim(t=tnb[i2], y=ynb[i2], dt=dt) # Simulation class
-                    testtime2 = time.time() - start_time
-    #                print(f'{testtime2}')
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     ystd = s.lcy.std()
                     ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera=None)
                     # Normalisation of power. Ideally use leahy power
 #                    norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
-                    norm_pow = ws.power  
-                    for i4 in range(len(ws.power[0])):
-                        _int = np.where(f < 1/ws.coi[i4])
-                        norm_pow[:,i4][_int] = np.nan
-                    plist.append((norm_pow))
+                    if len(f) == 1: 
+                        norm_pow = ws.power[0] # dealing with extra [] for 1D f array  
+                        _int = np.where(f < 1/ws.coi)
+                        norm_pow[_int] = np.nan
+                    else:
+                        norm_pow = ws.power  
+                        for i4 in range(len(norm_pow[0])):
+                            _int = np.where(f < 1/ws.coi[i4])
+                            norm_pow[:,i4][_int] = np.nan
+#                    plist.append(norm_pow)
         #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
         #           plt.colorbar()
         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
