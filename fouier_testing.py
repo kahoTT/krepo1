@@ -61,30 +61,51 @@ class TestLc(object):
 
 # red_noise = 0, no exclude, use the model without any boosting seems to be the best, with problem occurs for both red_noise = 0 or 1 
 class Test1613(object):
-	def __init__(self, red_noise=1, testno = 5):
+	def __init__(self, red_noise=1, testno = 5, norm = 'leahy', norm2 = 'None'):
 		w = kwavelet.analysis(obsid='60032-05-02-00', test=0)
 		t2 = w.tnb
 		y2 = w.ynb
-#		_int = np.where((t2> 18500) & (t2<20650))
-		_int = np.where(t2> 18500) 
+		_int = np.where((t2> 18500) & (t2<20650))
+#		_int = np.where(t2> 18500) 
 		t = t2[_int]
 		y = y2[_int]
+		lc = stingray.Lightcurve(t-t[0], y, input_counts=False, dt = t[1] - t[0]) 
+		spec = stingray.Powerspectrum(lc, norm=norm)   
+		ynorm = y / y.std() + 1e5
+		lc2 = stingray.Lightcurve(t-t[0], ynorm, input_counts=False, dt = t[1] - t[0]) 
+		spec_norm = stingray.Powerspectrum(lc2, norm=norm2)   
+
+
+		self.t = t
+		self.y = y
+		self.spec = spec
+		self.spec_norm = spec_norm
+
+	def __call__(self):
+		return self.t, self.y
+
+	def plot_spec(self):
+		self.spec.plot()
+
+	def plot_spec_norm(self):
+		self.spec_norm.plot()
+	
+	def sim_plot():
 		fig, ax = plt.subplots()
-#		ax.set_yscale('log')
-	#	ax.set_xscale('log')
+		ax.set_yscale('log')
+		ax.set_xscale('log')
 		for i in range(0,testno,1):
 			s = simLC(t = t, y=y, exclude=True, red_noise=red_noise, model = 'n')
-#			ax.plot(s.time, s.counts, label=f'{i}', alpha = 0.6,)
+			ax.plot(s.time, s.counts, label=f'{i}', alpha = 0.6,)
 			s2 = simLC(s.time, s.counts, exclude=False, red_noise=red_noise, model = 'o', gen=False)
 			if i == 0:
 				a = s2.omodel
 			else:
 				b = s2.omodel
 				a = np.vstack((a,b))
-#			ax.plot(s2.freq, s2.pow, label=f'{i}', ds='steps-mid')
+				ax.plot(s2.freq, s2.pow, label=f'{i}', ds='steps-mid')
 			plt.plot(s.time, s.counts)
-		print(np.mean(a, axis=0))
-#		ax.plot(s.freq, s.omodel, label='real data')
-#		ax.plot(s.freq, s.omodel, 'r.', label='real data')
-#		ax.plot(s2.freq, np.mean(a, axis=0), label='simulated')
+		ax.plot(s.freq, s.omodel, label='real data')
+		ax.plot(s.freq, s.omodel, 'r.', label='real data')
+		ax.plot(s2.freq, np.mean(a, axis=0), label='simulated')
 		ax.legend()
