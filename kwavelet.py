@@ -82,7 +82,7 @@ class wavelet_spec(object):
 
 
 class analysis(object):
-    def __init__(self, t=None, y=None, burst=False, filename=None, dt=None, obsid='60032-05-02-00', kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid='60032-05-02-00', kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
         if t is not None and y is not None:
             pass
@@ -136,14 +136,11 @@ class analysis(object):
             t = t[_int]
             y = y[_int]
 
-# divide the light curve  
-        res = [(sub2 - sub1 > 400) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? 
 # dealing with bursts
         if len(np.where(ifb == obsid)[0]) == 0:
             print('data cleaning: No bursts in this observation')
             tnb = t
             ynb = y
-            ltnb = 1
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
@@ -153,44 +150,37 @@ class analysis(object):
             barray = []
             nbarray = []
             a1 = None
-            for i in range(len(b.get('bnum'))):
+            for i in range(len(b.get('bnum'))): # extract burst data and non-burst data
                 a = list(abs(t-bst[i])).index(min(abs(t - bst[i])))
                 _a = list(abs(t-bet[i])).index(min(abs(t - bet[i])))
                 barray.extend(np.r_[a:_a])
                 if i == 0: 
-                    if a != 0: # for the case of starting in the middle of a burst
+                    if a != 0: 
                         nbarray.extend(np.r_[a1:a])
-                        tnb = t[:a],
-                        ynb = y[:a],
-                    else:
-                        tnb = ()
-                        ynb = ()
+                    else: # for the case of starting in the middle of a burst
+                        pass
                 else:
                     nbarray.extend(np.r_[a1:a])
-                    tnb += t[a1:a],
-                    ynb += y[a1:a],
                 a1 = _a + 1
             if _a == len(t) - 1: # for the case of ending in the middle of a burst
                 pass
             else:
                 nbarray.extend(np.r_[a1:len(t)])
-                tnb += t[a1:],
-                ynb += y[a1:],
             self.tb = t[barray]
             self.yb = y[barray]
-            if burst == False: # lightcurve not divided the number of bursts
-                tnb = t[nbarray]
-                ynb = y[nbarray]
-                ltnb = 1
-            else:
-                ltnb = len(tnb)
+            self.tnb = t[nbarray]
+            self.ynb = y[nbarray]
             self.bursttime = bursttime
+# divide the light curve  
+        res = [(sub2 - sub1 > 400) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? 
+        ltnb = 1
+        ltnb = len(tnb)
+
         self.obsid = obsid
         self.t = t
         self.y = y
         self.tnb = tnb
         self.ynb = ynb
-        self.burst = burst
         self.ltnb = ltnb
         self.name = name
         if o['instr'][0] == 'XPj':
