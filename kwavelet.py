@@ -3,12 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt 
-import stingray
 from mc_sim import simLC
 import time
 import minbar
-b = minbar.Bursts()
-o = minbar.Observations()
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
@@ -20,7 +17,7 @@ class fill(object):
     def __init__(self, t=None, y=None, dt=None, plot=False):
         if dt is None:
             dt = t[1] - t[0]
-        p = np.polyfit(t, y, 3)
+        p = np.polyfit(t, y, 2) # value is the d.o.f
         if plot == True:
             plt.plot(t,y)
             plt.plot(t, np.polyval(p, t))
@@ -68,21 +65,24 @@ class sim(simLC): # Main purposeof this class is to divide lightcurve into diffe
         self.lcy = lcy
             
 class wavelet_spec(object):
-    def __init__(self, y, f, sigma, dt, powera):
+    def __init__(self, y, f, sigma, dt, powera='Liu'):
         mother = pycwt.Morlet(sigma)
         wave, scales, freqs, coi, fft, fftfreqs = pycwt.wavelet.cwt(y, dt, wavelet=mother, freqs=f)
         power = (np.abs(wave)) ** 2
+        fft_power = np.abs(fft) ** 2
         Liu_power = power / scales[:, None]
         if powera is None:
             _pow = power
         elif powera == 'Liu':
             _pow = Liu_power
         self.power = _pow
+        self.fftfreqs = fftfreqs
+        self.fft_power = fft_power
         self.coi = coi
 
 
 class analysis(object):
-    def __init__(self, t=None, y=None, burst=False, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
+    def __init__(self, t=None, y=None, burst=False, filename=None, dt=None, obsid='60032-05-02-00', kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
         if t is not None and y is not None:
             pass
@@ -98,6 +98,8 @@ class analysis(object):
                 t = t1 - t1[0]
                 y = self.lc[1].data['RATE']
         elif obsid:
+            b = minbar.Bursts()
+            o = minbar.Observations()
             b.clear()
             b.obsid(obsid)
             ifb = b.get('obsid')
@@ -134,6 +136,8 @@ class analysis(object):
             t = t[_int]
             y = y[_int]
 
+# divide the light curve  
+        res = [(sub2 - sub1 > 400) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? 
 # dealing with bursts
         if len(np.where(ifb == obsid)[0]) == 0:
             print('data cleaning: No bursts in this observation')
@@ -146,8 +150,8 @@ class analysis(object):
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration
-            barray = list()
-            nbarray = list()
+            barray = []
+            nbarray = []
             a1 = None
             for i in range(len(b.get('bnum'))):
                 a = list(abs(t-bst[i])).index(min(abs(t - bst[i])))
@@ -210,9 +214,10 @@ class analysis(object):
                     s = sim(t=tnb[i2], y=ynb[i2], dt=dt) # Simulation class
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     ystd = s.lcy.std()
-                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera=None)
-                    # Normalisation of power. Ideally use leahy power
+                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera='Liu')
+# Normalisation of power. Ideally use leahy power
 #                    norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+
                     if len(f) == 1: 
                         norm_pow = ws.power[0] # dealing with extra [] for 1D f array  
                         _int = np.where(f < 1/ws.coi)
@@ -270,7 +275,7 @@ class analysis(object):
         plt.plot(self.t[ii], self.y[ii],'.')
         plt.show()
 
-    def plot_spec(
+    def plot_wspec(
             self,
             astart = None,
             aend = None,
@@ -297,7 +302,7 @@ class analysis(object):
                 i = slice(None)
             _f = fill(t[i], y[i], dt=dt)
             ystd = y[i].std()
-            ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera=None)
+            ws = wavelet_spec(y=(_f.yc / ystd**2), f=f, sigma=10, dt=dt, powera='Liu')
 #            norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
             norm_pow = ws.power
             if vmax >= np.max(norm_pow):
@@ -334,4 +339,22 @@ class analysis(object):
         ax.axes.hist(self.maxp, density=True, label='simulation')        
         fig.suptitle(f'{self.name} obsid: {self.obsid}')
 
+# plot fft spectrum
+    def plot_spec(self, sigma=10):
+        fig, ax = plt.subplots()
+        self.fig = fig
+        self.ax = ax
 
+        f = self.f 
+        t = self.tnb
+        y = self.ynb
+        dt = self.dt
+
+        for i in range(self.ltnb): 
+            if self.ltnb == 1:
+                i = slice(None)
+            _f = fill(t[i], y[i], dt=dt)
+            ystd = y[i].std()
+            ws = wavelet_spec(y=(_f.yc / ystd**2), f=f, sigma=10, dt=dt, powera='Liu')
+
+        ax.plot(ws.fftfreqs, ws.fft_power)

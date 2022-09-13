@@ -65,13 +65,15 @@ class Test1613(object):
 		w = kwavelet.analysis(obsid='60032-05-02-00', test=0)
 		t2 = w.tnb
 		y2 = w.ynb
-		_int = np.where((t2> 18500) & (t2<20650))
+		dt = t2[1] - t2[0]
+		_int = np.where((t2> 1200) & (t2<7000))
+#		_int = np.where((t2> 18500) & (t2<20650))
 #		_int = np.where(t2> 18500) 
 		t = t2[_int]
 		y = y2[_int]
 		lc = stingray.Lightcurve(t-t[0], y, input_counts=False, dt = t[1] - t[0]) 
 		spec = stingray.Powerspectrum(lc, norm=norm)   
-		ynorm = y / y.std() + 1e5
+		ynorm = y / y.std() 
 		lc2 = stingray.Lightcurve(t-t[0], ynorm, input_counts=False, dt = t[1] - t[0]) 
 		spec_norm = stingray.Powerspectrum(lc2, norm=norm2)   
 
