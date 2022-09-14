@@ -80,6 +80,8 @@ class Test1613(object):
 
 		self.t = t
 		self.y = y
+		self.ta = t2
+		self.ya = y2
 		self.spec = spec
 		self.spec_norm = spec_norm
 

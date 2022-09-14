@@ -1,3 +1,4 @@
+from re import L
 from astropy.time.utils import twoval_to_longdouble
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,29 +41,14 @@ class fill(object):
             self.tc = t
             self.yc = dat_notrend
 
-class sim(simLC): # Main purposeof this class is to divide lightcurve into different sections and being put to another simulation module
+class sim(simLC): # Main purpose of this class is to divide lightcurve into different sections and being put to another simulation module
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
         # see if there any large data gaps. If so, have to simulate them one by one
         if dt is None:
             dt = t[1] - t[0]
-        res = [(sub2 - sub1 > 400) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? For example, < 100, the data point
-        if np.any(res) == True:
-            l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-            slices = np.concatenate(([slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])], [slice(l_ag[-1]+1, None)]), axis=0)
-            self.slices = slices
-        else:
-            slices = ((),) # have problems for different observations
-        lct = np.array([])
-        lcy = np.array([])
-        for s in slices:
-            _t = t[s]
-            _y = y[s]
-            super().__init__(_t, _y, dt, input_counts, norm)
-            lct = np.concatenate((lct, _t), axis=0)
-            lcy = np.concatenate((lcy, self.counts), axis=0)
-#            self.plot_spec() plot all spectra
-        self.lct = lct
-        self.lcy = lcy
+        super().__init__(t, y, dt, input_counts, norm)
+        self.lct = t
+        self.lcy = self.counts
             
 class wavelet_spec(object):
     def __init__(self, y, f, sigma, dt, powera='Liu'):
@@ -80,9 +66,19 @@ class wavelet_spec(object):
         self.fft_power = fft_power
         self.coi = coi
 
+def Slice(t, gap=400):
+    res = [(sub2 - sub1 > gap) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? 
+    if np.any(res) == True:
+        l_ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+        slices = [slice(a0+1, a1+1) for a0, a1 in zip(l_ag[:-1], l_ag[1:])]
+        slices.append(slice(l_ag[-1]+1, None))
+    else:
+        slices = [slice(None)] # have problems for different observations
+    return slices 
+
 
 class analysis(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid='60032-05-02-00', kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
         if t is not None and y is not None:
             pass
@@ -112,6 +108,8 @@ class analysis(object):
             t1 = self.lc[1].data['TIME']
             y = self.lc[1].data['RATE']
             t = t1 - t1[0]
+            if o['instr'][0] == 'XPj':
+                dt = 0.125
         else:
             raise AttributeError(f'give me a light curve')
 
@@ -137,7 +135,11 @@ class analysis(object):
             y = y[_int]
 
 # dealing with bursts
-        if len(np.where(ifb == obsid)[0]) == 0:
+        if not obsid:
+            tnb = t
+            ynb = y
+            name = None
+        elif (len(np.where(ifb == obsid)[0]) == 0):
             print('data cleaning: No bursts in this observation')
             tnb = t
             ynb = y
@@ -168,25 +170,31 @@ class analysis(object):
                 nbarray.extend(np.r_[a1:len(t)])
             self.tb = t[barray]
             self.yb = y[barray]
-            self.tnb = t[nbarray]
-            self.ynb = y[nbarray]
+            tnb = t[nbarray]
+            ynb = y[nbarray]
             self.bursttime = bursttime
+
 # divide the light curve  
-        res = [(sub2 - sub1 > 400) for sub1, sub2 in zip(t[:-1], t[1:])] # the value should be based on something? 
-        ltnb = 1
-        ltnb = len(tnb)
+
+        tnb_s = []
+        ynb_s = []
+        for j in Slice(tnb):
+            tnb_s.append(tnb[j])
+            ynb_s.append(ynb[j])
+        self.tnb_s = tnb_s
+        self.ynb_s = ynb_s
+        ltnb = len(tnb_s)
+        self.ltnb = ltnb
 
         self.obsid = obsid
         self.t = t
         self.y = y
         self.tnb = tnb
         self.ynb = ynb
-        self.ltnb = ltnb
         self.name = name
-        if o['instr'][0] == 'XPj':
-            dt = self.dt = 0.125
-        else:
-            dt = self.dt = t[1] - t[0]
+        if not dt:
+            dt = t[1] - t[0]
+        self.dt = dt
         f = np.linspace(f1, f2, nf)
         self.f = f
 
@@ -197,7 +205,7 @@ class analysis(object):
             for i2 in range(ltnb): # tnb is a tuple
                 if ltnb == 1:
                     i2 = slice(None)
-                plist = list()
+                plist = []
                 start_time = time.time()
                 for i3 in range(test):
                     testtime = time.time() - start_time
@@ -217,7 +225,7 @@ class analysis(object):
                         for i4 in range(len(norm_pow[0])):
                             _int = np.where(f < 1/ws.coi[i4])
                             norm_pow[:,i4][_int] = np.nan
-#                    plist.append(norm_pow)
+                    plist.append(norm_pow)
         #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
         #           plt.colorbar()
         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
@@ -235,14 +243,12 @@ class analysis(object):
 #            print(f'Finish time = {self.finish_time}')
 
 
-
 # Plot without burst
     def plot_nob(self): # put self arguments
-        if self.ltnb > 1 and self.burst == True:
-            for s in range(len(self.tnb)):
-                plt.plot(self.tnb[s],self.ynb[s])
-        else:
-            plt.plot(self.tnb, self.ynb)
+        plt.plot(self.tnb, self.ynb)
+        if self.ltnb > 1:
+            for s in range(self.ltnb):
+                plt.plot(self.tnb_s[s],self.ynb_s[s], alpha=0.5)
         plt.ylabel('Counts/s')
         plt.xlabel('Time (s)')
         plt.show()
