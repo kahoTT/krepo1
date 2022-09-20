@@ -18,6 +18,7 @@ from ioncolor import IonColor
 from linestyle import LineStyle
 from utils import index1d
 import matplotlib
+import string
 
 class TabKappa(object):
     def __init__(self, *args, **kwars):
@@ -963,7 +964,7 @@ class Shot(Serialising):
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
 
-        fig, ax = plt.subplots(4, sharex=True, figsize=(8,13))
+        fig, ax = plt.subplots(4, sharex=True, figsize=(8,12))
         fig.subplots_adjust(hspace=.05)
         self.fig = fig
         self.ax = ax
@@ -1005,39 +1006,30 @@ class Shot(Serialising):
 
         # plot_abu
         ax[2].set_ylabel('Log mass fraction', fontsize=9)
-        ax[2].set_ylim(-3, 0.2)
         c = IonColor()
         l = LineStyle()
         k = -1
 
+        _ind = self.logabu(self.y_m[i1])
         for i,a in self.abub:
             if A:
-                if i.A > A:
-                    break
-            am = np.max(a[i1])
-            maxabu = np.arange(0, len(self.y_m), 100)
-            if am > lim:
-                if i.A != 20:
-                    k += 1
-                    if ls == 'on':
-                        ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i), ls=l(k))
-                    ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i))
-#                    ax[2].text(
-#                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color=c(i),
-#                        ha='center', va='center', clip_on=True)
-                    for j in maxabu:
-                        ax[2].text(
-                            np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True)
-                else:
-                    ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='k')
-#                    ax[2].text(
-#                        np.log10(self.y_m[i1])[maxabu], np.log10(a[i1][maxabu]), i.mpl, color='k',
-#                        ha='center', va='center', clip_on=True)
-                    for j in maxabu:
-                        ax[2].text(
-                            np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True)
-
-                     
+                if i.A < A:
+                    am = np.max(a[i1])
+                    if am > lim:
+                        if i.A != 1000:
+                            k += 1
+                            if ls == 'on':
+                                ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i), ls=l(k))
+                            ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i))
+                            for j in _ind:
+                                ax[2].text(
+                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True, fontsize=9)
+                        else:
+                            ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='k')
+                            for j in _ind:
+                                ax[2].text(
+                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color='k', ha='center', va='center', clip_on=True, fontsize=9)
+        ax[2].set_ylim(-3, 0.2)
 
         # plot_td
         ax[3].set_ylabel('Log $T$ ($\mathrm{K}$), log $\\rho$ ($\mathrm{g\,cm}^{-3}$)', fontsize=9)
@@ -1046,4 +1038,17 @@ class Shot(Serialising):
         ax[3].plot(np.log10(self.y_m[i1]), np.log10(self.dn[i1]), label= '$\\rho$', ls='--')
         ax[3].legend(loc='best')
 
+        lets = string.ascii_letters
         plt.xlabel('Log column depth ($\mathrm{g\,cm}^{-2}$)')
+        for j,k in enumerate(ax):
+            k.text(1,1, lets[j]+' ', fontsize=12, va='top', ha='right', transform=k.transAxes)
+
+
+    def logabu(self, y_m):
+        l = []
+        y = np.log10(y_m)
+        a = np.arange(0, 13, 1)
+        for i in a:
+            _ind = np.abs(i - y).argmin()
+            l.append(_ind)
+        return l
