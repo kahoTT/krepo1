@@ -959,7 +959,7 @@ class Shot(Serialising):
         ax.plot(np.log10(self.y_m[i1]), self.ki[i1], label='$\kappa$')
         ax.legend(loc='best')
 
-    def plot_combine(self, escale=None, A = 27, lim = 10**(-2.4), ls='on'):
+    def plot_combine(self, escale=None, A = 50, lim = 10**(-2.4), ls='on'):
         i1 = slice(1, None)
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
@@ -999,7 +999,7 @@ class Shot(Serialising):
 #        ax.plot(np.log10(self.y_m[i1]), np.log10(self.sv[i1]), 'r.', label= 'Gravothermol')
         ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.snun[i0]),'--' ,color='#BFBFBF' ,label= 'Neutrino')
 
-        ax[1].legend(loc='best')
+        ax[1].legend(loc=3)
         smax = np.maximum(np.max(self.sn[i0]), np.max(self.sv[i0])) * 2
         smin = smax * 1e-18
         ax[1].set_ylim(np.log10(smin), np.log10(smax))
@@ -1016,7 +1016,7 @@ class Shot(Serialising):
                 if i.A < A:
                     am = np.max(a[i1])
                     if am > lim:
-                        if i.A != 1000:
+                        if i.A != 4:
                             k += 1
                             if ls == 'on':
                                 ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i), ls=l(k))
