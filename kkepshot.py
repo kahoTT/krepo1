@@ -960,22 +960,24 @@ class Shot(Serialising):
         ax.legend(loc='best')
 
     def plot_combine(self, escale=None, A = 50, lim = 10**(-2.4), ls='on'):
+        matplotlib.rc('xtick', labelsize=12) 
+        matplotlib.rc('ytick', labelsize=12) 
         i1 = slice(1, None)
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
 
-        fig, ax = plt.subplots(4, sharex=True, figsize=(8,12))
-        fig.subplots_adjust(hspace=.05)
+        fig, ax = plt.subplots(4, sharex=True, figsize=(8,14))
+        fig.subplots_adjust(hspace=0)
         self.fig = fig
         self.ax = ax
 
         # plot_l
         if escale is None:
             scale = MEV * self.mdot * NA
-            ax[0].set_ylabel('Specific flux ($\mathrm{MeV/u}$)', fontsize=9)
+            ax[0].set_ylabel('Specific flux ($\mathrm{MeV/u}$)', fontsize=15)
         else:
             scale = 1
-            ax[0].set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)')
+            ax[0].set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)', fontsize=15)
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
         xlnun = np.cumsum(self.xlnun[ir])[ir]
@@ -984,28 +986,28 @@ class Shot(Serialising):
 
         ax[0].plot(np.log10(self.y_m[i1]), self.xln[i1] / scale, label= '$l$')
         ax[0].plot(np.log10(self.y_m[i1]), (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$', ls='-.')
-        ax[0].plot(np.log10(self.y_m[i1]), xlnsv[i1] / scale, label = '$l_{\mathrm{therm}}$', ls=':')
+        ax[0].plot(np.log10(self.y_m[i1]), xlnsv[i1] / scale, label = '$l_{\mathrm{Gravothermal}}$', ls=':')
         ax[0].plot(np.log10(self.y_m[i1]), xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
         ax[0].plot(np.log10(self.y_m[i1]), xlsum[i1] / scale, ls=(0, (3, 1, 1, 1, 1, 1)), label='sum')
-        ax[0].legend(loc='best')
+        ax[0].legend(loc='best', fontsize=15)
 
         # plot_s
 #        ax[1].set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=9)
-        ax[1].set_ylabel('Log $\epsilon\,(\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=9)
+        ax[1].set_ylabel('Log $\epsilon\,(\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=15)
 
         l = ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.sn[i0] + self.snun[i0]), label= 'Nuclear')
 #        ax[1].plot(np.log10(self.y_m[i0]), -np.log10((self.sn[i0] + self.snun[i0])), color=l[0].get_color(), ls=':')
-        ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.sv[i0]), label= 'Gravothermol', ls=':')
+        ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.sv[i0]), label= 'Gravothermal', ls=':')
 #        ax.plot(np.log10(self.y_m[i1]), np.log10(self.sv[i1]), 'r.', label= 'Gravothermol')
         ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.snun[i0]),'--' ,color='#BFBFBF' ,label= 'Neutrino')
 
-        ax[1].legend(loc=3)
+        ax[1].legend(loc=3, fontsize=15)
         smax = np.maximum(np.max(self.sn[i0]), np.max(self.sv[i0])) * 2
         smin = smax * 1e-18
         ax[1].set_ylim(np.log10(smin), np.log10(smax))
 
         # plot_abu
-        ax[2].set_ylabel('Log mass fraction', fontsize=9)
+        ax[2].set_ylabel('Log mass fraction', fontsize=15)
         c = IonColor()
         l = LineStyle()
         k = -1
@@ -1023,26 +1025,26 @@ class Shot(Serialising):
                             ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i))
                             for j in _ind:
                                 ax[2].text(
-                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True, fontsize=9)
+                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True, fontsize=12)
                         else:
                             ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='k')
                             for j in _ind:
                                 ax[2].text(
-                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color='k', ha='center', va='center', clip_on=True, fontsize=9)
+                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color='k', ha='center', va='center', clip_on=True, fontsize=12)
         ax[2].set_ylim(-3, 0.2)
 
         # plot_td
-        ax[3].set_ylabel('Log $T$ ($\mathrm{K}$), log $\\rho$ ($\mathrm{g\,cm}^{-3}$)', fontsize=9)
+        ax[3].set_ylabel('Log $T$ ($\mathrm{K}$), log $\\rho$ ($\mathrm{g\,cm}^{-3}$)', fontsize=15)
 
         ax[3].plot(np.log10(self.y_m[i1]), np.log10(self.tn[i1]), label= '$\mathrm{T}$')
         ax[3].plot(np.log10(self.y_m[i1]), np.log10(self.dn[i1]), label= '$\\rho$', ls='--')
-        ax[3].legend(loc='best')
+        ax[3].legend(loc='best', fontsize=15)
 
         lets = string.ascii_letters
-        plt.xlabel('Log column depth ($\mathrm{g\,cm}^{-2}$)')
+        plt.xlabel('Log column depth ($\mathrm{g\,cm}^{-2}$)', fontsize=15)
         for j,k in enumerate(ax):
-            k.text(1,1, lets[j]+' ', fontsize=12, va='top', ha='right', transform=k.transAxes)
-
+            k.text(1,1, lets[j]+' ', fontsize=18, va='top', ha='right', transform=k.transAxes)
+        plt.tight_layout()
 
     def logabu(self, y_m):
         l = []

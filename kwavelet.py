@@ -7,10 +7,11 @@ import pycwt
 from mc_sim import simLC
 import time
 import minbar
+minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
-# An examples from 1636 is obsid('60032-05-02-00') and 1608 obsid('10072-05-01-00') and EXO 0748 obsid('90039-01-03-05')
+# Examples from 1636 is obsid('60032-05-02-00') and 1608 obsid('10072-05-01-00') and EXO 0748 obsid('90039-01-03-05')
 # 1323 obsid('96405-01-02-01')
 
 # This class is to fill the gap data with mean value, will change to fill with the fitted polynomail vales
