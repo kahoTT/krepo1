@@ -376,7 +376,7 @@ class Shot(Serialising):
         y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
         gn[1] = g0
 
-# starting from the SECOND ZONE
+# starting from the SECOND ZONE (burn zone)
         second_last_step = None
         for j in range(1 , k , 1): 
             xm2 = xm1
