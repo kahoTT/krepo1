@@ -5,7 +5,11 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
-def PowFit(x, y, guess, x2):
+def PowFit(x, y, x2=None, guess=None):
+    if guess is None: 
+        guess = y.mean() 
+    if x2 is None:
+        x2 = x
     x0 = x0 = np.array([3, -1, guess])
     result = least_squares(partial(G, x, y), x0)
     model = F(x2, *result.x)

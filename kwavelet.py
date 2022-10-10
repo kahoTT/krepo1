@@ -4,9 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt 
-from mc_sim import simLC
+import mc_sim
 import time
 import minbar
+import stingray
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 
 # Normalized light curves and fill spaces with zeors
@@ -42,7 +43,7 @@ class fill(object):
             self.tc = t
             self.yc = dat_notrend
 
-class sim(simLC): # Main purpose of this class is to divide lightcurve into different sections and being put to another simulation module
+class sim(mc_sim.simLC): # Main purpose of this class is to divide lightcurve into different sections and being put to another simulation module
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
         # see if there any large data gaps. If so, have to simulate them one by one
         if dt is None:
@@ -214,8 +215,8 @@ class analysis(object):
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     ystd = s.lcy.std()
                     ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera='Liu')
-# Normalisation of power. Ideally use leahy power
-#                    norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+                    # Normalisation of power. Ideally use leahy power
+                    # norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
 
                     if len(f) == 1: 
                         norm_pow = ws.power[0] # dealing with extra [] for 1D f array  
@@ -243,6 +244,12 @@ class analysis(object):
 #            self.finish_time = time.time() - start_time
 #            print(f'Finish time = {self.finish_time}')
 
+    # normalise wavelet power by power-law model
+    def norm_wp(fft_f, fft_p, w_f):
+        rebin = stingray.rebin_data_log(fft_f, fft_p, 0.05)
+        guess = rebin[1].mean()
+        result, model = mc_sim.PowFit(rebin[0][1:], rebin[1], x2=w_f, guess=guess)
+        return result.x[2], model
 
 # Plot without burst
     def plot_nob(self): # put self arguments
