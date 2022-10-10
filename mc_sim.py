@@ -5,6 +5,12 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
+def PowFit(x, y, guess, x2):
+    x0 = x0 = np.array([3, -1, guess])
+    result = least_squares(partial(G, x, y), x0)
+    model = F(x2, *result.x)
+    return result, model
+
 class simLC(object):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', exclude=True, red_noise=1, model='n', gen = True):
         self.norm = norm
@@ -48,24 +54,26 @@ class simLC(object):
         nan = np.isnan(logpow1)
         notnan = ~nan
         guess_horizontal = logpow1[notnan].mean()
-        x0 = np.array([3, -2, guess_horizontal])
+#        x0 = np.array([3, -2, guess_horizontal])
         nan2 = np.isnan(logpow)
         notnan2 = ~nan2
         self.logfre = logfre[notnan2]
         self.logpow = logpow[notnan2]
-        result = least_squares(partial(G, self.logfre, self.logpow), x0)
-        omodel = F(spec.freq, *result.x)
+
+        result, omodel = PowFit(self.logfre, self.logpow, guess_horizontal, spec.freq)
+#        result = least_squares(partial(G, self.logfre, self.logpow), x0)
+#        omodel = F(spec.freq, *result.x)
+
         # check if data has gap and make correction
+
         if np.any(res) == True:
             n_of_data = int((t[-1] - t[0]) / dt + 1)
             factor = n_of_data / (len(t)) 
             result.x[2] = result.x[2]*factor
         else:
             n_of_data = len(t)
-
         lmodel = F(spec.freq, *result.x)
 
-# make the lightcurve with the not data gaps
         if gen == True:
             sim = simulator.Simulator(N=n_of_data, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
             if model == 'o':

@@ -960,14 +960,14 @@ class Shot(Serialising):
         ax.legend(loc='best')
 
     def plot_combine(self, escale=None, A = 50, lim = 10**(-2.4), ls='on'):
-        matplotlib.rc('xtick', labelsize=12) 
-        matplotlib.rc('ytick', labelsize=12) 
+        matplotlib.rc('xtick', labelsize=13) 
+        matplotlib.rc('ytick', labelsize=13) 
         i1 = slice(1, None)
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
 
         fig, ax = plt.subplots(4, sharex=True, figsize=(8,14))
-        fig.subplots_adjust(hspace=0)
+        fig.subplots_adjust(hspace=.1)
         self.fig = fig
         self.ax = ax
 
@@ -989,7 +989,7 @@ class Shot(Serialising):
         ax[0].plot(np.log10(self.y_m[i1]), xlnsv[i1] / scale, label = '$l_{\mathrm{Gravothermal}}$', ls=':')
         ax[0].plot(np.log10(self.y_m[i1]), xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
         ax[0].plot(np.log10(self.y_m[i1]), xlsum[i1] / scale, ls=(0, (3, 1, 1, 1, 1, 1)), label='sum')
-        ax[0].legend(loc='best', fontsize=15)
+        ax[0].legend(loc='best', fontsize=14)
 
         # plot_s
 #        ax[1].set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=9)
