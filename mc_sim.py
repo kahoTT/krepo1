@@ -5,14 +5,29 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
-def PowFit(x, y, x2=None, guess=None):
+def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
+    nan = np.isnan(y)
+    notnan = ~nan
+    f = f[notnan]
+    y = y[notnan]
+    if exclude == True:  
+        _ind = np.where((f <= 5e-3) | (f >= 15e-3))
+        f = f[_ind]
+        y = y[_ind]
     if guess is None: 
-        guess = y.mean() 
-    if x2 is None:
-        x2 = x
-    x0 = x0 = np.array([3, -1, guess])
-    result = least_squares(partial(G, x, y), x0)
-    model = F(x2, *result.x)
+        _ind2 = np.where(f >= 2e-2)
+        guess = y[_ind2].mean()
+    if rebin_log == True:
+        rebin = stingray.rebin_data_log(f, y, 0.05)
+        nan2 = np.isnan(rebin[1])
+        notnan2 = ~nan2
+        rebinf = rebin[0][1:][notnan2]
+        rebinp = rebin[1][notnan2]
+    if f2 is None:
+        f2 = f
+    x0 = np.array([3, -1, guess])
+    result = least_squares(partial(G, rebinf, rebinp[1]), x0)
+    model = F(f2, *result.x)
     return result, model
 
 class simLC(object):
@@ -40,12 +55,6 @@ class simLC(object):
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
         logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
-
-# rebin_log testing
-#        plt.plot(spec.freq, spec.power, alpha = 0.6, ds='steps-mid')
-#        plt.plot(logspec.freq, logspec.power, ds='steps-mid')
-#        plt.yscale('log')
-#        plt.xscale('log')
         _ind2 = np.where(logspec.freq >= 2e-2)
         logpow1 = logspec.power[_ind2]
         if exclude == True:  
@@ -58,17 +67,13 @@ class simLC(object):
         nan = np.isnan(logpow1)
         notnan = ~nan
         guess_horizontal = logpow1[notnan].mean()
-#        x0 = np.array([3, -2, guess_horizontal])
         nan2 = np.isnan(logpow)
         notnan2 = ~nan2
         self.logfre = logfre[notnan2]
         self.logpow = logpow[notnan2]
+        result, omodel = PowFit(self.logfre, self.logpow, spec.freq, guess_horizontal) 
 
-        result, omodel = PowFit(self.logfre, self.logpow, guess_horizontal, spec.freq)
-#        result = least_squares(partial(G, self.logfre, self.logpow), x0)
-#        omodel = F(spec.freq, *result.x)
-
-        # check if data has gap and make correction
+        # check if data has gap and make correction 
 
         if np.any(res) == True:
             n_of_data = int((t[-1] - t[0]) / dt + 1)

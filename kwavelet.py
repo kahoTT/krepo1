@@ -80,7 +80,7 @@ def Slice(t, gap=400):
 
 
 class analysis(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f1=4e-3, f2=15e-3, nf=200, test=500):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
         if t is not None and y is not None:
             pass
@@ -197,9 +197,13 @@ class analysis(object):
         if not dt:
             dt = t[1] - t[0]
         self.dt = dt
-        f = np.linspace(f1, f2, nf)
+        if f is None:
+            f = np.linspace(f1, f2, nf)
+        else:
+            f = np.array([f])
         self.f = f
 
+        # Simulation, the number of test means the number of simulations
         if test == 0:
             pass
         else:
@@ -208,9 +212,14 @@ class analysis(object):
                 if ltnb == 1:
                     i2 = slice(None)
                 plist = []
-                start_time = time.time()
+                #' power spectrum for real data to for normalising the synthetic ones
+                realf = fill(tnb[i2], ynb[i2], dt=dt)
+                rystd = realf.yc.std()
+                rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=10, dt=dt, powera='Liu')
+                _, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
+#                start_time = time.time()
                 for i3 in range(test):
-                    testtime = time.time() - start_time
+#                    testtime = time.time() - start_time
                     s = sim(t=tnb[i2], y=ynb[i2], dt=dt) # Simulation class
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     ystd = s.lcy.std()
@@ -218,12 +227,13 @@ class analysis(object):
                     # Normalisation of power. Ideally use leahy power
                     # norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
 
+                    # using single frequency
                     if len(f) == 1: 
-                        norm_pow = ws.power[0] # dealing with extra [] for 1D f array  
+                        norm_pow = ws.power[0] * realmodel # dealing with extra [] for 1D f array  
                         _int = np.where(f < 1/ws.coi)
                         norm_pow[_int] = np.nan
                     else:
-                        norm_pow = ws.power  
+                        norm_pow = ws.power * realmodel[:, np.newaxis]  
                         for i4 in range(len(norm_pow[0])):
                             _int = np.where(f < 1/ws.coi[i4])
                             norm_pow[:,i4][_int] = np.nan
@@ -243,13 +253,6 @@ class analysis(object):
             self.coi = coiarray
 #            self.finish_time = time.time() - start_time
 #            print(f'Finish time = {self.finish_time}')
-
-    # normalise wavelet power by power-law model
-    def norm_wp(fft_f, fft_p, w_f):
-        rebin = stingray.rebin_data_log(fft_f, fft_p, 0.05)
-        guess = rebin[1].mean()
-        result, model = mc_sim.PowFit(rebin[0][1:], rebin[1], x2=w_f, guess=guess)
-        return result.x[2], model
 
 # Plot without burst
     def plot_nob(self): # put self arguments
@@ -362,3 +365,5 @@ class analysis(object):
             ws = wavelet_spec(y=(_f.yc / ystd**2), f=f, sigma=10, dt=dt, powera='Liu')
 
         ax.plot(ws.fftfreqs, ws.fft_power)
+        plt.yscale('log')
+        plt.xscale('log')
