@@ -959,14 +959,14 @@ class Shot(Serialising):
         ax.plot(np.log10(self.y_m[i1]), self.ki[i1], label='$\kappa$')
         ax.legend(loc='best')
 
-    def plot_combine(self, escale=None, A = 50, lim = 10**(-2.4), ls='on'):
-        matplotlib.rc('xtick', labelsize=13) 
-        matplotlib.rc('ytick', labelsize=13) 
+    def plot_combine(self, escale=None, A = 500, lim = 10**(-2.4), ls='on'):
+        matplotlib.rc('xtick', labelsize=14) 
+        matplotlib.rc('ytick', labelsize=14) 
         i1 = slice(1, None)
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
 
-        fig, ax = plt.subplots(4, sharex=True, figsize=(8,14))
+        fig, ax = plt.subplots(4, sharex=True, figsize=(7,14))
         fig.subplots_adjust(hspace=.1)
         self.fig = fig
         self.ax = ax
@@ -974,10 +974,10 @@ class Shot(Serialising):
         # plot_l
         if escale is None:
             scale = MEV * self.mdot * NA
-            ax[0].set_ylabel('Specific flux ($\mathrm{MeV/u}$)', fontsize=15)
+            ax[0].set_ylabel('Specific flux ($\mathrm{MeV/u}$)', fontsize=17)
         else:
             scale = 1
-            ax[0].set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)', fontsize=15)
+            ax[0].set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)', fontsize=17)
 
         xlnn = np.cumsum(self.xlnn[ir])[ir]
         xlnun = np.cumsum(self.xlnun[ir])[ir]
@@ -993,7 +993,7 @@ class Shot(Serialising):
 
         # plot_s
 #        ax[1].set_ylabel('Specific energy generation rate ($\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=9)
-        ax[1].set_ylabel('Log $\epsilon\,(\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=15)
+        ax[1].set_ylabel('Log $\epsilon\,(\mathrm{erg\,g}^{-1}\mathrm{s}^{-1}$)', fontsize=17)
 
         l = ax[1].plot(np.log10(self.y_m[i0]), np.log10(self.sn[i0] + self.snun[i0]), label= 'Nuclear')
 #        ax[1].plot(np.log10(self.y_m[i0]), -np.log10((self.sn[i0] + self.snun[i0])), color=l[0].get_color(), ls=':')
@@ -1007,7 +1007,7 @@ class Shot(Serialising):
         ax[1].set_ylim(np.log10(smin), np.log10(smax))
 
         # plot_abu
-        ax[2].set_ylabel('Log mass fraction', fontsize=15)
+        ax[2].set_ylabel('Log mass fraction', fontsize=17)
         c = IonColor()
         l = LineStyle()
         k = -1
@@ -1034,14 +1034,14 @@ class Shot(Serialising):
         ax[2].set_ylim(-3, 0.2)
 
         # plot_td
-        ax[3].set_ylabel('Log $T$ ($\mathrm{K}$), log $\\rho$ ($\mathrm{g\,cm}^{-3}$)', fontsize=15)
+        ax[3].set_ylabel('Log $T$ ($\mathrm{K}$), log $\\rho$ ($\mathrm{g\,cm}^{-3}$)', fontsize=17)
 
         ax[3].plot(np.log10(self.y_m[i1]), np.log10(self.tn[i1]), label= '$\mathrm{T}$')
         ax[3].plot(np.log10(self.y_m[i1]), np.log10(self.dn[i1]), label= '$\\rho$', ls='--')
-        ax[3].legend(loc='best', fontsize=15)
+        ax[3].legend(loc='best', fontsize=16)
 
         lets = string.ascii_letters
-        plt.xlabel('Log column depth ($\mathrm{g\,cm}^{-2}$)', fontsize=15)
+        plt.xlabel('Log column depth ($\mathrm{g\,cm}^{-2}$)', fontsize=17)
         for j,k in enumerate(ax):
             k.text(1,1, lets[j]+' ', fontsize=18, va='top', ha='right', transform=k.transAxes)
         plt.tight_layout()

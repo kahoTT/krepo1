@@ -215,6 +215,7 @@ class analysis(object):
                 #' power spectrum for real data to for normalising the synthetic ones
                 realf = fill(tnb[i2], ynb[i2], dt=dt)
                 rystd = realf.yc.std()
+                breakpoint()
                 rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=10, dt=dt, powera='Liu')
                 _, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
 #                start_time = time.time()

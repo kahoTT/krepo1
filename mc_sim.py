@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
 def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
+    breakpoint()
     nan = np.isnan(y)
     notnan = ~nan
     f = f[notnan]
@@ -17,16 +18,19 @@ def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
     if guess is None: 
         _ind2 = np.where(f >= 2e-2)
         guess = y[_ind2].mean()
+    x0 = np.array([3, -1, guess])
     if rebin_log == True:
-        rebin = stingray.rebin_data_log(f, y, 0.05)
-        nan2 = np.isnan(rebin[1])
+        rf, rebinp, _, _ = stingray.rebin_data_log(f, y, 0.05)
+        rebinf = (rf[1:]+rf[:-1])/2
+        nan2 = np.isnan(rebinp)
         notnan2 = ~nan2
-        rebinf = rebin[0][1:][notnan2]
-        rebinp = rebin[1][notnan2]
+        rebinf = rebinf[notnan2]
+        rebinp = rebinp[notnan2]
+        result = least_squares(partial(G, rebinf, rebinp), x0)
+    else:
+        result = least_squares(partial(G, f, y), x0)
     if f2 is None:
         f2 = f
-    x0 = np.array([3, -1, guess])
-    result = least_squares(partial(G, rebinf, rebinp[1]), x0)
     model = F(f2, *result.x)
     return result, model
 
@@ -71,7 +75,9 @@ class simLC(object):
         notnan2 = ~nan2
         self.logfre = logfre[notnan2]
         self.logpow = logpow[notnan2]
-        result, omodel = PowFit(self.logfre, self.logpow, spec.freq, guess_horizontal) 
+        result, omodel = PowFit(f=self.logfre, y=self.logpow,
+                                f2=spec.freq, guess=guess_horizontal, 
+                                rebin_log=False, exclude=False) 
 
         # check if data has gap and make correction 
 
@@ -105,6 +111,7 @@ class simLC(object):
         self.pow = spec.power
         self.omodel = omodel
         self.lmodel = lmodel
+        self.spec = spec
 
     def plot_spec(self):
         fig, ax = plt.subplots()
