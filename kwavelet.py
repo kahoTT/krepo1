@@ -210,7 +210,7 @@ class analysis(object):
             for i2 in range(ltnb): # tnb is a tuple
                 if ltnb == 1:
                     i2 = slice(None)
-                plist = []
+                synp = np.array([])
                 #' power spectrum for real data to for normalising the synthetic ones
                 realf = fill(tnb[i2], ynb[i2], dt=dt)
                 rystd = realf.yc.std()
@@ -228,23 +228,28 @@ class analysis(object):
                     if len(f) == 1: 
                         norm_pow = ws.power[0] * realresult.x[2] / realmodel # dealing with extra [] for 1D f array  
                         _int = np.where(f > 1/ws.coi)
-                        norm_pow = norm_pow[_int]
+                        synp = norm_pow[_int]
                     else:
-                        norm_pow = ws.power * realmodel[:, np.newaxis]  
+                        norm_pow = ws.power * realresult.x[2] / realmodel[:, np.newaxis]  
                         for i4 in range(len(norm_pow[0])):
                             _int = np.where(f < 1/ws.coi[i4])
                             norm_pow[:,i4][_int] = np.nan
-                    plist.append(norm_pow)
+                        # synp2d = norm_pow
+                    if i3 == 0:
+                        synp = norm_pow
+                    else:
+                        synp = np.concatenate((synp, norm_pow), axis=1)
+                        # synp = norm_pow.reshape(1, norm_pow.size)[0]
+                        # _int2 = np.isnan(synp)
+                        # synp = synp[~_int2]
         #           plt.colorbar()
         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
         #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
         #            plt.ylim(f1, f2)
         #            plt.plot(_f.tc, _f.yc, 'b')
                 coiarray = ws.coi,
-            if ltnb == 1:
-                self.p = plist[0]
-            else:   
-                self.p = plist
+            self.synp = synp 
+            # self.synp2d = synp2d 
             self.coi = coiarray
             self.finish_time = time.time() - start_time
             print(f'Finish time = {self.finish_time}')

@@ -34,12 +34,13 @@ def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
     return result, model
 
 class simLC(object):
-    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', exclude=True, red_noise=1, model='n', gen = True):
+    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n', gen = True):
         self.norm = norm
         if dt is None:
             dt = t[1] - t[0]       
         # fill light curve with mean value 
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
+        breakpoint()
         if np.any(res) == True:
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
             tc = np.array([])
@@ -58,25 +59,8 @@ class simLC(object):
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
         logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
-        _ind2 = np.where(logspec.freq >= 2e-2)
-        logpow1 = logspec.power[_ind2]
-        if exclude == True:  
-            _ind = np.where((logspec.freq <= 5e-3) | (logspec.freq >= 15e-3))
-            logfre = logspec.freq[_ind]
-            logpow = logspec.power[_ind]
-        else:
-            logfre = logspec.freq
-            logpow = logspec.power
-        nan = np.isnan(logpow1)
-        notnan = ~nan
-        guess_horizontal = logpow1[notnan].mean()
-        nan2 = np.isnan(logpow)
-        notnan2 = ~nan2
-        self.logfre = logfre[notnan2]
-        self.logpow = logpow[notnan2]
-        result, omodel = PowFit(f=self.logfre, y=self.logpow,
-                                f2=spec.freq, guess=guess_horizontal, 
-                                rebin_log=False, exclude=False) 
+        result, omodel = PowFit(f=logspec.freq, y=logspec.power,
+                                f2=spec.freq, rebin_log=False) 
 
         # check if data has gap and make correction 
 
