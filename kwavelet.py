@@ -207,7 +207,6 @@ class analysis(object):
         if test == 0:
             pass
         else:
-            p = ()
             for i2 in range(ltnb): # tnb is a tuple
                 if ltnb == 1:
                     i2 = slice(None)
@@ -215,45 +214,40 @@ class analysis(object):
                 #' power spectrum for real data to for normalising the synthetic ones
                 realf = fill(tnb[i2], ynb[i2], dt=dt)
                 rystd = realf.yc.std()
-                breakpoint()
                 rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=10, dt=dt, powera='Liu')
-                _, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
-#                start_time = time.time()
+                realresult, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
+                start_time = time.time()
                 for i3 in range(test):
 #                    testtime = time.time() - start_time
                     s = sim(t=tnb[i2], y=ynb[i2], dt=dt) # Simulation class
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
-                    ystd = s.lcy.std()
-                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera='Liu')
-                    # Normalisation of power. Ideally use leahy power
-                    # norm_pow = 2*ws.power*len(_f.yc)/sum(_f.yc)*dt
+                    ystd = _f.yc.std()
+                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera=None)
 
-                    # using single frequency
+                    #' Case when using single frequency
                     if len(f) == 1: 
-                        norm_pow = ws.power[0] * realmodel # dealing with extra [] for 1D f array  
-                        _int = np.where(f < 1/ws.coi)
-                        norm_pow[_int] = np.nan
+                        norm_pow = ws.power[0] * realresult.x[2] / realmodel # dealing with extra [] for 1D f array  
+                        _int = np.where(f > 1/ws.coi)
+                        norm_pow = norm_pow[_int]
                     else:
                         norm_pow = ws.power * realmodel[:, np.newaxis]  
                         for i4 in range(len(norm_pow[0])):
                             _int = np.where(f < 1/ws.coi[i4])
                             norm_pow[:,i4][_int] = np.nan
                     plist.append(norm_pow)
-        #            plt.contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis)
         #           plt.colorbar()
         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
         #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
         #            plt.ylim(f1, f2)
         #            plt.plot(_f.tc, _f.yc, 'b')
-                p += plist,
                 coiarray = ws.coi,
             if ltnb == 1:
-                self.p = p[0]
+                self.p = plist[0]
             else:   
-                self.p = p
+                self.p = plist
             self.coi = coiarray
-#            self.finish_time = time.time() - start_time
-#            print(f'Finish time = {self.finish_time}')
+            self.finish_time = time.time() - start_time
+            print(f'Finish time = {self.finish_time}')
 
 # Plot without burst
     def plot_nob(self): # put self arguments

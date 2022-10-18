@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
 def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
-    breakpoint()
     nan = np.isnan(y)
     notnan = ~nan
     f = f[notnan]
