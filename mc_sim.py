@@ -40,7 +40,6 @@ class simLC(object):
             dt = t[1] - t[0]       
         # fill light curve with mean value 
         res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
-        breakpoint()
         if np.any(res) == True:
             ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
             tc = np.array([])
