@@ -100,7 +100,19 @@ class ParallelProcessor(Serialising):
         for i in results:
             Qb.append(i.result.Qb)
 #            C12abd.append(i.result.)
+        a = len(np.unique(self.Q))
+        b = len(np.unique(self.mdot))
+        Qba = np.array(Qb).reshape(b, a)
         self.Qb = Qb
+        self.Qba = Qba
+
+        # Qba = np.empty((len(self.Q), len(self.mdot)))
+        # k = 0
+        # for j in range(len(self.mdot)):
+        #     for i in range(len(self.Q)):
+        #         Qba[j,i] = Qb[k]
+        #         k += 1
+        # self.Qba = Qba
 
         # map all ions (from Shot)
         print(f'[{self.__class__.__name__}] Mapping ions....')
@@ -167,15 +179,19 @@ class ParallelProcessor(Serialising):
                             self.Q[maxabu], a[maxabu], i.mpl, color=c(i),  
                             ha='center', va='center', clip_on=True, size=12)
 
-    def plot_mdot_qb_carbon(self):
+    def plot_contour_Q_mdot_Qb(self):
         fig, ax = plt.subplots()
         self.fig = fig
         self.ax = ax
-
+        q = self.Q
+        qba = self.Qba
+        mdot = self.mdot
+        cm = ax.contourf(np.unique(q), np.unique(mdot), qba, cmap=plt.cm.viridis)
+        plt.colorbar
+        fig.colorbar(cm, ax=ax)
         ax.set_xlabel('$\dot{M}_{\mathrm{Edd}}$')
         ax.set_ylabel('Base flux (MeV/u)')
 
-#        pcm = ax.pcolor(self.)
 
 
 class Result(Serialising):

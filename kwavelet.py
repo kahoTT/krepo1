@@ -82,6 +82,7 @@ def Slice(t, gap=400):
 class analysis(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, test=500):
 #read lc
+        start_time = time.time()
         if t is not None and y is not None:
             pass
         elif filename:
@@ -204,25 +205,23 @@ class analysis(object):
         self.f = f
 
         # Simulation, the number of test means the number of simulations
-        tc = np.array([])
-        _powall = np.empty((len(f),0))
+        tc = []
+        _powall = []
+        lsigma3 = []
         for i2 in range(ltnb): # tnb is a tuple
-            if ltnb == 1:
-                i2 = slice(None)
-            #' power spectrum for real data to for normalising the synthetic ones
-            # breakpoint()
             realf = fill(tnb_s[i2], ynb_s[i2], dt=dt)
-            tc = np.concatenate((tc, realf.tc), axis=0)
+            tc.append(realf.tc)
             rystd = realf.yc.std()
+            #' power spectrum for real data to for normalising the synthetic ones
             rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=10, dt=dt, powera='Liu')
-            for i5 in range(len(rws.power[0])):
+            realresult, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
+            rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
+            for i5 in range(len(rpower[0])):
                 _int = np.where(f < 1/rws.coi[i5])
-                rws.power[:,i5][_int] = np.nan
+                rpower[:,i5][_int] = np.nan
             if test == 0:
-                _powall = np.concatenate((_powall, rws.power), axis=0)
+                _powall.append(rpower)
             else:
-                realresult, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
-                start_time = time.time()
                 for i3 in range(test):
 #                    testtime = time.time() - start_time
                     s = sim(t=tnb_s[i2], y=ynb_s[i2], dt=dt) # Simulation class
@@ -248,8 +247,9 @@ class analysis(object):
                 _int2 = np.isnan(synpall)
                 synpall = np.sort(synpall[~_int2])
                 sigma3 = synpall[int(len(synpall) * 0.9973)]
-                _pow = rws.power / sigma3
-                _powall = np.concatenate((_powall, _pow), axis=1)
+                _pow = rpower / sigma3
+                _powall.append(_pow)
+                lsigma3.append(sigma3)
         #           plt.colorbar()
         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
         #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
@@ -259,10 +259,10 @@ class analysis(object):
             # self.coi = coiarray
             self.rws = rws
             self.p = _powall
+            self.sigma = lsigma3
             self.tc = tc
-            self.synpall = synpall
-            self.finish_time = time.time() - start_time
-            print(f'Finish time = {self.finish_time}')
+        self.finish_time = time.time() - start_time
+        print(f'Finish time = {self.finish_time}')
 
 # Plot without burst
     def plot_nob(self): # put self arguments
@@ -296,24 +296,30 @@ class analysis(object):
             self,
             astart = None,
             aend = None,
-            sigma = 10,
-            power = None, 
-#            tstart = None,
-#            tend = None
+            tstart = None,
+            tend = None
             ):
     
         fig, ax = plt.subplots(2, sharex=True)
         self.fig = fig
         self.ax = ax
         f = self.f 
-        t = self.tnb
-        y = self.ynb
+        t = self.tnb_s
+        y = self.ynb_s
+        tnb = self.tnb
+        ynb = self.ynb
         dt = self.dt
         ta = self.t
         ya = self.y
         p = self.p
         tc = self.tc
-        vmax = self.vmax
+        sigma = self.sigma
+
+        ax[0].plot(tnb, ynb)
+        for i in range(self.ltnb): 
+            ax[1].contourf(tc[i], f, p[i], cmap=plt.cm.viridis)
+            ax[1].contour(tc[i], f, p[i], 1, colors='k')
+
 
         # vmin = 0
         # vmax = 0
@@ -321,11 +327,8 @@ class analysis(object):
         #     pass
         # else:
         #     vmax = np.max(norm_pow)
-        ax[0].plot(ta, ya)
         # cm = ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis, vmin=vmin, vmax=(int(vmax)+1))
         # ax[1].contourf(tc, f, p, cmap=plt.cm.viridis)
-        ax[1].contourf(tc, f, p, cmap=plt.cm.viridis, vmax = vmax)
-#            ax[1].contour(_f.tc, f, sig, [-99,1], colors='k')
 
         ax[0].set_ylabel('Count/s')
         ax[1].set_ylabel('Frequency Hz')
