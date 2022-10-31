@@ -974,7 +974,7 @@ class Shot(Serialising):
         # plot_l
         if escale is None:
             scale = MEV * self.mdot * NA
-            ax[0].set_ylabel('Specific flux ($\mathrm{MeV/u}$)', fontsize=17)
+            ax[0].set_ylabel('Surface luminosity / $\dot{m}$ ($\mathrm{MeV/u}$)', fontsize=15)
         else:
             scale = 1
             ax[0].set_ylabel('Luminosity ($\mathrm{erg\,s}^{-1}$)', fontsize=17)

@@ -80,7 +80,7 @@ def Slice(t, gap=400):
 
 
 class analysis(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, test=500):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, test=20, sigma=10):
 #read lc
         start_time = time.time()
         if t is not None and y is not None:
@@ -209,11 +209,12 @@ class analysis(object):
         _powall = []
         lsigma3 = []
         for i2 in range(ltnb): # tnb is a tuple
+            breakpoint()
             realf = fill(tnb_s[i2], ynb_s[i2], dt=dt)
             tc.append(realf.tc)
             rystd = realf.yc.std()
             #' power spectrum for real data to for normalising the synthetic ones
-            rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=10, dt=dt, powera='Liu')
+            rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=sigma, dt=dt, powera='Liu')
             realresult, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
             rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
             for i5 in range(len(rpower[0])):
@@ -227,7 +228,7 @@ class analysis(object):
                     s = sim(t=tnb_s[i2], y=ynb_s[i2], dt=dt) # Simulation class
                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
                     ystd = _f.yc.std()
-                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=10, dt=dt, powera=None)
+                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=sigma, dt=dt, powera=None)
 
                     #' Case when using single frequency
                     if len(f) == 1: 
