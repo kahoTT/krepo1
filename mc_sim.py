@@ -33,6 +33,34 @@ def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
     model = F(f2, *result.x)
     return result, model
 
+def Fillpoint(t=None, y=None, dt=None)
+    """fill missing data of light curve with mean value."""
+    if dt is None:
+        dt = t[1] - t[0]       
+    res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
+    if np.any(res) == True:
+        ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
+        tc = np.array([])
+        for i in ag[1:]:
+            ta = np.arange(t[i] + dt, t[i+1], dt)
+            tc = np.concatenate([tc, ta])
+        yc = np.ones(len(tc)) * y.mean()
+        tc = np.concatenate([t, tc])
+        yc = np.concatenate([y, yc])
+        y_c = np.array([x for _,x in sorted(zip(tc, yc))])
+        t_c = np.sort(tc)
+    else:
+        t_c = t
+        y_c = y
+    return t_c, y_c
+
+def GenSpec(t=None, y=None, input_counts=False, norm='leahy', dt=None)
+    lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=False)
+    spec = stingray.Powerspectrum(lc, norm=norm)   
+    spec.power = abs(spec.power)
+    logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
+    return logspec
+
 class simLC(object):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n', gen = True):
         self.norm = norm
@@ -123,7 +151,8 @@ class simLC(object):
     def g(self, args):
        return (np.log(self.f(*args)) - np.log(self.logpow)) 
 
-def F(x, A, B, C): # B is the alpha, the slope of power spectrum in log space
+def F(x, A, B, C): 
+    # B is the alpha, the slope of power spectrum in log space
     return A * x** (B) + C
 
 def G(x, y, args):
