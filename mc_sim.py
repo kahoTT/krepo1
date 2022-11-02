@@ -5,6 +5,8 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
+class 
+
 def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
     nan = np.isnan(y)
     notnan = ~nan
