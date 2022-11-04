@@ -5,23 +5,22 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
-class 
-
-def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
+def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=True, exclude=True, factor=None):
+    """Lightcurve may contain gaps, we use n_model to try to take it into account"""
     nan = np.isnan(y)
     notnan = ~nan
-    f = f[notnan]
+    logfreq = logfreq[notnan]
     y = y[notnan]
     if exclude == True:  
-        _ind = np.where((f <= 5e-3) | (f >= 15e-3))
-        f = f[_ind]
+        _ind = np.where((logfreq <= 5e-3) | (logfreq >= 15e-3))
+        logfreq = logfreq[_ind]
         y = y[_ind]
     if guess is None: 
-        _ind2 = np.where(f >= 2e-2)
+        _ind2 = np.where(logfreq >= 2e-2)
         guess = y[_ind2].mean()
     x0 = np.array([3, -1, guess])
     if rebin_log == True:
-        rf, rebinp, _, _ = stingray.rebin_data_log(f, y, 0.05)
+        rf, rebinp, _, _ = stingray.rebin_data_log(logfreq, y, 0.05)
         rebinf = (rf[1:]+rf[:-1])/2
         nan2 = np.isnan(rebinp)
         notnan2 = ~nan2
@@ -29,13 +28,18 @@ def PowFit(f, y, f2=None, guess=None, rebin_log=True, exclude=True):
         rebinp = rebinp[notnan2]
         result = least_squares(partial(G, rebinf, rebinp), x0)
     else:
-        result = least_squares(partial(G, f, y), x0)
-    if f2 is None:
-        f2 = f
-    model = F(f2, *result.x)
-    return result, model
+        result = least_squares(partial(G, logfreq, y), x0)
 
-def Fillpoint(t=None, y=None, dt=None)
+    o_model = F(f, *result.x)
+    n_result = result
+    n_result.x[2] = n_result.x[2] * factor
+    n_model = F(f, *n_result.x)
+    if wf is None:
+        wf = f
+    norm_f = F(wf, *result.x)
+    return result, o_model, n_model, norm_f
+
+def Fillpoint(t=None, y=None, dt=None):
     """fill missing data of light curve with mean value."""
     if dt is None:
         dt = t[1] - t[0]       
@@ -51,17 +55,42 @@ def Fillpoint(t=None, y=None, dt=None)
         yc = np.concatenate([y, yc])
         y_c = np.array([x for _,x in sorted(zip(tc, yc))])
         t_c = np.sort(tc)
+        n_of_data = int((t[-1] - t[0]) / dt + 1)
+        factor = n_of_data / (len(t)) 
     else:
         t_c = t
         y_c = y
-    return t_c, y_c
+        n_of_data = len(t)
+        factor = 1
+    return t_c, y_c, n_of_data, factor, dt 
 
-def GenSpec(t=None, y=None, input_counts=False, norm='leahy', dt=None)
+def Genspec(t=None, y=None, input_counts=False, norm='leahy', dt=None):
     lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=False)
     spec = stingray.Powerspectrum(lc, norm=norm)   
     spec.power = abs(spec.power)
     logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
-    return logspec
+    return spec, logspec
+
+def simlc(res=None, t=None, y=None, dt=None, N=None, red_noise=1, o_model=None, n_model=None, model='n'):
+    sim = simulator.Simulator(N=N, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
+    if model == 'o':
+        lc = sim.simulate(o_model)
+    elif model == 'n':
+        lc = sim.simulate(n_model)
+    if np.any(res) == True:
+        _intin = np.isin(lc.time, (t-t[0]))
+    else:
+        _intin = ()
+    time = lc.time[_intin]
+    counts = lc.counts[_intin]
+    return time, counts
+
+class SimLC(object):
+    def __init__(self, t=None, y=None, wf=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n'):
+        tc, yc, N, factor, dt = Fillpoint(t, y, dt)
+        spec, logspec = Genspec(t=tc, y=yc, dt=dt)
+        result, o_model, n_model, norm_f = Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=wf, rebin_log=False, factor=factor)
+
 
 class simLC(object):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n', gen = True):
