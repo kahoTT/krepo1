@@ -62,7 +62,7 @@ def Fillpoint(t=None, y=None, dt=None):
         y_c = y
         n_of_data = len(t)
         factor = 1
-    return t_c, y_c, n_of_data, factor, dt 
+    return t_c, y_c, n_of_data, factor, dt, res 
 
 def Genspec(t=None, y=None, input_counts=False, norm='leahy', dt=None):
     lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=False)
@@ -85,12 +85,16 @@ def simlc(res=None, t=None, y=None, dt=None, N=None, red_noise=1, o_model=None, 
     counts = lc.counts[_intin]
     return time, counts
 
-class SimLC(object):
-    def __init__(self, t=None, y=None, wf=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n'):
-        tc, yc, N, factor, dt = Fillpoint(t, y, dt)
-        spec, logspec = Genspec(t=tc, y=yc, dt=dt)
+class RealLc(object):
+    def __init__(self, t=None, y=None):
+        self.t = t
+        self.y = y
+    def __call__(self, wf=None, dt=None, input_counts=False, norm='leahy', red_noise=1, model='n'):
+        tc, yc, N, factor, dt, res = Fillpoint(self.t, self.y, dt)
+        spec, logspec = Genspec(t=tc, y=yc, dt=dt, norm=norm, input_counts=input_counts)
         result, o_model, n_model, norm_f = Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=wf, rebin_log=False, factor=factor)
-
+        time, counts = simlc(res=res, t=self.t, y=self.y, dt=dt, N=N, o_model=o_model, n_model=n_model, red_noise=red_noise)
+        return time, counts, result, norm_f
 
 class simLC(object):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n', gen = True):
@@ -117,8 +121,8 @@ class simLC(object):
         spec = stingray.Powerspectrum(lc, norm=norm)   
         spec.power = abs(spec.power)
         logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
-        result, omodel = PowFit(f=logspec.freq, y=logspec.power,
-                                f2=spec.freq, rebin_log=False) 
+        result, omodel = Powfit(logfreq=logspec.freq, y=logspec.power,
+                                f=spec.freq, rebin_log=False) 
 
         # check if data has gap and make correction 
 

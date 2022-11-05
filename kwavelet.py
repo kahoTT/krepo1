@@ -205,62 +205,62 @@ class analysis(object):
         self.f = f
 
         # Simulation, the number of sims means the number of simulations
-        tc = []
-        _powall = []
-        lsigma3 = []
-        for i2 in range(ltnb): # tnb is a list 
-            realf = fill(tnb_s[i2], ynb_s[i2], dt=dt)
-            tc.append(realf.tc)
-            rystd = realf.yc.std()
-            # power spectrum for real data to for normalising the synthetic ones
-            rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=sigma, dt=dt, powera='Liu')
-            realresult, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
-            rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
-            for i5 in range(len(rpower[0])):
-                _int = np.where(f < 1/rws.coi[i5])
-                rpower[:,i5][_int] = np.nan
-            if sims == 0:
-                _powall.append(rpower)
-            else:
-                for i3 in range(sims):
-#                    testtime = time.time() - start_time
-                    s = sim(t=tnb_s[i2], y=ynb_s[i2], dt=dt) # Simulation class
-                    _f = fill(s.lct, s.lcy, dt=dt) # fill class
-                    ystd = _f.yc.std()
-                    ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=sigma, dt=dt, powera=None)
+#         tc = []
+#         _powall = []
+#         lsigma3 = []
+#         for i2 in range(ltnb): # tnb is a list 
+#             realf = fill(tnb_s[i2], ynb_s[i2], dt=dt)
+#             tc.append(realf.tc)
+#             rystd = realf.yc.std()
+#             # power spectrum for real data to for normalising the synthetic ones
+#             rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=sigma, dt=dt, powera='Liu')
+#             realresult, realmodel = mc_sim.Powfit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
+#             rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
+#             for i5 in range(len(rpower[0])):
+#                 _int = np.where(f < 1/rws.coi[i5])
+#                 rpower[:,i5][_int] = np.nan
+#             if sims == 0:
+#                 _powall.append(rpower)
+#             else:
+#                 for i3 in range(sims):
+# #                    testtime = time.time() - start_time
+#                     s = sim(t=tnb_s[i2], y=ynb_s[i2], dt=dt) # Simulation class
+#                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
+#                     ystd = _f.yc.std()
+#                     ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=sigma, dt=dt, powera=None)
 
-                    # Case when using single frequency
-                    if len(f) == 1: 
-                        norm_pow = ws.power[0] * realresult.x[2] / realmodel # dealing with extra [] for 1D f array  
-                        _int = np.where(f > 1/ws.coi)
-                        synp = norm_pow[_int]
-                    else:
-                        norm_pow = ws.power * realresult.x[2] / realmodel[:, np.newaxis]  
-                        for i4 in range(len(norm_pow[0])):
-                            _int = np.where(f < 1/ws.coi[i4])
-                            norm_pow[:,i4][_int] = np.nan
-                    if i3 == 0:
-                        synp = norm_pow
-                    else:
-                        synp = np.concatenate((synp, norm_pow), axis=1)
-                synpall = synp.reshape(1, synp.size)[0]
-                _int2 = np.isnan(synpall)
-                synpall = np.sort(synpall[~_int2])
-                sigma3 = synpall[int(len(synpall) * 0.9973)]
-                _pow = rpower / sigma3
-                _powall.append(_pow)
-                lsigma3.append(sigma3)
-        #           plt.colorbar()
-        #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
-        #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
-        #            plt.ylim(f1, f2)
-        #            plt.plot(_f.tc, _f.yc, 'b')
-                # coiarray = ws.coi,
-            # self.coi = coiarray
-            self.rws = rws
-            self.p = _powall
-            self.sigma = lsigma3
-            self.tc = tc
+#                     # Case when using single frequency
+#                     if len(f) == 1: 
+#                         norm_pow = ws.power[0] * realresult.x[2] / realmodel # dealing with extra [] for 1D f array  
+#                         _int = np.where(f > 1/ws.coi)
+#                         synp = norm_pow[_int]
+#                     else:
+#                         norm_pow = ws.power * realresult.x[2] / realmodel[:, np.newaxis]  
+#                         for i4 in range(len(norm_pow[0])):
+#                             _int = np.where(f < 1/ws.coi[i4])
+#                             norm_pow[:,i4][_int] = np.nan
+#                     if i3 == 0:
+#                         synp = norm_pow
+#                     else:
+#                         synp = np.concatenate((synp, norm_pow), axis=1)
+#                 synpall = synp.reshape(1, synp.size)[0]
+#                 _int2 = np.isnan(synpall)
+#                 synpall = np.sort(synpall[~_int2])
+#                 sigma3 = synpall[int(len(synpall) * 0.9973)]
+#                 _pow = rpower / sigma3
+#                 _powall.append(_pow)
+#                 lsigma3.append(sigma3)
+#         #           plt.colorbar()
+#         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
+#         #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
+#         #            plt.ylim(f1, f2)
+#         #            plt.plot(_f.tc, _f.yc, 'b')
+#                 # coiarray = ws.coi,
+#             # self.coi = coiarray
+#             self.rws = rws
+#             self.p = _powall
+#             self.sigma = lsigma3
+#             self.tc = tc
         self.finish_time = time.time() - start_time
         print(f'Finish time = {self.finish_time}')
 

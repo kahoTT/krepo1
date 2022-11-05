@@ -62,13 +62,14 @@ class TestLc(object):
 # red_noise = 0, no exclude, use the model without any boosting seems to be the best, with problem occurs for both red_noise = 0 or 1 
 class Test1613(object):
 	def __init__(self, red_noise=1, testno = 5, norm = 'leahy', norm2 = 'None'):
-		w = kwavelet.analysis(obsid='60032-05-02-00', test=0)
+		w = kwavelet.analysis(obsid='60032-05-02-00')
 		t2 = w.tnb
 		y2 = w.ynb
 		dt = t2[1] - t2[0]
 		# _int = np.where((t2> 1200) & (t2<7000))
+		_int = np.where((t2> 7000) & (t2<12600))
 #		_int = np.where((t2> 18500) & (t2<20650))
-		_int = np.where(t2 < 12600) 
+		# _int = np.where(t2 < 12600) 
 		t = t2[_int]
 		y = y2[_int]
 		lc = stingray.Lightcurve(t-t[0], y, input_counts=False, dt = t[1] - t[0]) 
