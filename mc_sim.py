@@ -29,14 +29,19 @@ def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=True, ex
         result = least_squares(partial(G, rebinf, rebinp), x0)
     else:
         result = least_squares(partial(G, logfreq, y), x0)
-
-    o_model = F(f, *result.x)
-    n_result = result
-    n_result.x[2] = n_result.x[2] * factor
-    n_model = F(f, *n_result.x)
+     
     if wf is None:
         wf = f
-    norm_f = F(wf, *result.x)
+    if result.x[0] * result.x[1] > 0:
+        o_model = np.ones(len(f)) * guess
+        n_model = o_model * factor
+        norm_f = None
+    else:
+        o_model = F(f, *result.x)
+        n_result = result
+        n_result.x[2] = n_result.x[2] * factor
+        n_model = F(f, *n_result.x)
+        norm_f = F(wf, *result.x)
     return result, o_model, n_model, norm_f
 
 def Fillpoint(t=None, y=None, dt=None):
@@ -44,7 +49,8 @@ def Fillpoint(t=None, y=None, dt=None):
     if dt is None:
         dt = t[1] - t[0]       
     res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
-    if np.any(res) == True:
+    ares = np.any(res)
+    if ares == True:
         ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
         tc = np.array([])
         for i in ag[1:]:
@@ -62,7 +68,7 @@ def Fillpoint(t=None, y=None, dt=None):
         y_c = y
         n_of_data = len(t)
         factor = 1
-    return t_c, y_c, n_of_data, factor, dt, res 
+    return t_c, y_c, n_of_data, factor, dt, ares 
 
 def Genspec(t=None, y=None, input_counts=False, norm='leahy', dt=None):
     lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=False)
@@ -93,8 +99,8 @@ class RealLc(object):
         tc, yc, N, factor, dt, res = Fillpoint(self.t, self.y, dt)
         spec, logspec = Genspec(t=tc, y=yc, dt=dt, norm=norm, input_counts=input_counts)
         result, o_model, n_model, norm_f = Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=wf, rebin_log=False, factor=factor)
-        time, counts = simlc(res=res, t=self.t, y=self.y, dt=dt, N=N, o_model=o_model, n_model=n_model, red_noise=red_noise)
-        return time, counts, result, norm_f
+        # time, counts = simlc(res=res, t=self.t, y=self.y, dt=dt, N=N, o_model=o_model, n_model=n_model, red_noise=red_noise)
+        return o_model, n_model, norm_f, logspec
 
 class simLC(object):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n', gen = True):

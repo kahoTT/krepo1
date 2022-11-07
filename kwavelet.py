@@ -80,7 +80,7 @@ def Slice(t, gap=400):
 
 
 class analysis(object):
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=1, sigma=6):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=6):
 #read lc
         start_time = time.time()
         if t is not None and y is not None:
@@ -204,7 +204,8 @@ class analysis(object):
             f = np.array([f])
         self.f = f
 
-        # Simulation, the number of sims means the number of simulations
+        """Simulation, the number of sims means the number of simulations."""
+
 #         tc = []
 #         _powall = []
 #         lsigma3 = []
