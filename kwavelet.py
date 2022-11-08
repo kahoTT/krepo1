@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import pycwt 
 import mc_sim
-import time
+import time as T
 import minbar
 import stingray
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
@@ -16,32 +16,15 @@ minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 # 1323 obsid('96405-01-02-01')
 
 # This class is to fill the gap data with mean value, will change to fill with the fitted polynomail vales
-class fill(object):
-    def __init__(self, t=None, y=None, dt=None, plot=False):
-        if dt is None:
-            dt = t[1] - t[0]
-        p = np.polyfit(t, y, 2) # value is the d.o.f
-        if plot == True:
-            plt.plot(t,y)
-            plt.plot(t, np.polyval(p, t))
-        dat_notrend = y - np.polyval(p, t)
-        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
-        if np.any(res) == True:
-            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-            tc = np.array([])
-            for i in ag[1:]:
-                ta = np.arange(t[i] + dt, t[i+1], dt)
-                tc = np.concatenate([tc, ta])
-            yc = np.zeros(len(tc))
-            tc = np.concatenate([t, tc])
-            yc = np.concatenate([dat_notrend, yc])
-            y_c = np.array([x for _,x in sorted(zip(tc, yc))])
-            t_c = np.sort(tc)
-            self.tc = t_c
-            self.yc = y_c
-        else:
-            self.tc = t
-            self.yc = dat_notrend
+def detrend(t=None, y=None, dt=None, plot=False, dof=2):
+    if dt is None:
+        dt = t[1] - t[0]
+    p = np.polyfit(t, y, dof) # value is the d.o.f
+    if plot == True:
+        plt.plot(t,y)
+        plt.plot(t, np.polyval(p, t))
+    dat_notrend = y - np.polyval(p, t)
+    return dat_notrend
 
 class sim(mc_sim.simLC): # Main purpose of this class is to divide lightcurve into different sections and being put to another simulation module
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
@@ -81,8 +64,7 @@ def Slice(t, gap=400):
 
 class analysis(object):
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=6):
-#read lc
-        start_time = time.time()
+        start_time = T.time()
         if t is not None and y is not None:
             pass
         elif filename:
@@ -204,22 +186,77 @@ class analysis(object):
             f = np.array([f])
         self.f = f
 
-        """Simulation, the number of sims means the number of simulations."""
+        tc = []
+        _powall = []
+        for i2 in range(ltnb): # tnb is a list 
+            t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
+            tc.append(t_c)
+            spec, logspec = mc_sim.Genspec(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
+            breakpoint()
+            result, o_model, n_model, norm_f = mc_sim.Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=f, rebin_log=False, factor=factor)
+            dat_notrend = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
+            _, y_c, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=dat_notrend, dt=dt)
+            rws = wavelet_spec(y=y_c, f=f, sigma=sigma, dt=dt)
+            if norm_f is not None:
+                rpower = rws.power * result.x[2] / norm_f[:, np.newaxis]  # dealing with extra [] for 1D f array  
+            else:
+                rpower = rws.power
+            for i5 in range(len(rpower[0])):
+                _int = np.where(f < 1/rws.coi[i5])
+                rpower[:,i5][_int] = np.nan
+            if sims:
+                lsigma3 = []
+                """Simulation, the number of sims means the number of simulations."""
+                for i3 in range(sims):
+#                    testtime = time.time() - start_time
+                    time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
+                    sdat_notrend = detrend(time, counts, dt=dt) # fill class
+                    _, sy, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=sdat_notrend, dt=dt)
+                    ws = wavelet_spec(y=sy, f=f, sigma=sigma, dt=dt)
+                    if len(f) == 1: 
+                        # Case when using single frequency
+                        if norm_f is not None:
+                            norm_pow = ws.power[0] * result.x[2] / norm_f # dealing with extra [] for 1D f array  
+                        else:
+                            norm_pow = ws.power[0]
+                        _int = np.where(f > 1/ws.coi)
+                        synp = norm_pow[_int]
+                    else:
+                        if norm_f is not None:
+                            norm_pow = ws.power * result.x[2] / norm_f[:, np.newaxis]  
+                        else:
+                            norm_pow = ws.power
+                        for i4 in range(len(norm_pow[0])):
+                            _int = np.where(f < 1/ws.coi[i4])
+                            norm_pow[:,i4][_int] = np.nan
+                    if i3 == 0:
+                        synp = norm_pow
+                    else:
+                        synp = np.concatenate((synp, norm_pow), axis=1)
+                synpall = synp.reshape(1, synp.size)[0]
+                _int2 = np.isnan(synpall)
+                synpall = np.sort(synpall[~_int2])
+                sigma3 = synpall[int(len(synpall) * 0.9973)]
+                _pow = rpower / sigma3
+                _powall.append(_pow)
+                lsigma3.append(sigma3)
+            else:
+                _powall.append(rpower)
+                lsigma3 = None
+            self.sigma = lsigma3
+            self.p = _powall
+            self.tc = tc
+        self.finish_time = T.time() - start_time
+        print(f'Finish time = {self.finish_time}')
 
-#         tc = []
-#         _powall = []
+
 #         lsigma3 = []
-#         for i2 in range(ltnb): # tnb is a list 
-#             realf = fill(tnb_s[i2], ynb_s[i2], dt=dt)
 #             tc.append(realf.tc)
 #             rystd = realf.yc.std()
 #             # power spectrum for real data to for normalising the synthetic ones
 #             rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=sigma, dt=dt, powera='Liu')
 #             realresult, realmodel = mc_sim.Powfit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
 #             rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
-#             for i5 in range(len(rpower[0])):
-#                 _int = np.where(f < 1/rws.coi[i5])
-#                 rpower[:,i5][_int] = np.nan
 #             if sims == 0:
 #                 _powall.append(rpower)
 #             else:
@@ -258,12 +295,6 @@ class analysis(object):
 #         #            plt.plot(_f.tc, _f.yc, 'b')
 #                 # coiarray = ws.coi,
 #             # self.coi = coiarray
-#             self.rws = rws
-#             self.p = _powall
-#             self.sigma = lsigma3
-#             self.tc = tc
-        self.finish_time = time.time() - start_time
-        print(f'Finish time = {self.finish_time}')
 
 # Plot without burst
     def plot_nob(self): # put self arguments
@@ -319,7 +350,8 @@ class analysis(object):
         ax[0].plot(tnb, ynb)
         for i in range(self.ltnb): 
             ax[1].contourf(tc[i], f, p[i], cmap=plt.cm.viridis)
-            ax[1].contour(tc[i], f, p[i], 1, colors='k')
+            if sigma is not None:
+                ax[1].contour(tc[i], f, p[i], 1, colors='k')
 
 
         # vmin = 0

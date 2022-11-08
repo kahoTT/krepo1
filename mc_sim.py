@@ -77,13 +77,13 @@ def Genspec(t=None, y=None, input_counts=False, norm='leahy', dt=None):
     logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
     return spec, logspec
 
-def simlc(res=None, t=None, y=None, dt=None, N=None, red_noise=1, o_model=None, n_model=None, model='n'):
+def simlc(ares=None, t=None, y=None, dt=None, N=None, red_noise=1, o_model=None, n_model=None, model='n'):
     sim = simulator.Simulator(N=N, mean=y.mean(), dt=dt, rms=y.std()/y.mean(), red_noise=red_noise) 
     if model == 'o':
         lc = sim.simulate(o_model)
     elif model == 'n':
         lc = sim.simulate(n_model)
-    if np.any(res) == True:
+    if ares == True:
         _intin = np.isin(lc.time, (t-t[0]))
     else:
         _intin = ()
@@ -101,6 +101,17 @@ class RealLc(object):
         result, o_model, n_model, norm_f = Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=wf, rebin_log=False, factor=factor)
         # time, counts = simlc(res=res, t=self.t, y=self.y, dt=dt, N=N, o_model=o_model, n_model=n_model, red_noise=red_noise)
         return o_model, n_model, norm_f, logspec
+    def plot_spec(self, logspec):
+        fig, ax = plt.subplots()
+        ax.plot(logspec.freq, logspec.power , ds='steps-mid')
+        ax.plot(logspec.freq, logspec.o_model, label='Original spec')
+        ax.plot(logspec.freq, logspec.n_model, label='Power boosted spec')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.ylabel('Leahy Power')
+        plt.xlabel('Frequency (Hz)')
+        ax.legend(loc='best')
+        plt.show()
 
 class simLC(object):
     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n', gen = True):
