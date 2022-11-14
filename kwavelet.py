@@ -63,6 +63,11 @@ def Slice(t, gap=400):
 
 
 class analysis(object):
+    b = minbar.Bursts()
+    o = minbar.Observations()
+    number_obs = 1e5
+    total_sims = int(1 / (1-.9973) * number_obs) + 1
+
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=6):
         start_time = T.time()
         if t is not None and y is not None:
@@ -79,21 +84,19 @@ class analysis(object):
                 t = t1 - t1[0]
                 y = self.lc[1].data['RATE']
         elif obsid:
-            b = minbar.Bursts()
-            o = minbar.Observations()
-            b.clear()
-            b.obsid(obsid)
-            ifb = b.get('obsid')
-            o.clear()
-            o.obsid(obsid)
-            name = o.get('name')[0]
-            obs = minbar.Observation(o[o['entry']]) 
+            self.b.clear()
+            self.b.obsid(obsid)
+            ifb = self.b.get('obsid')
+            self.o.clear()
+            self.o.obsid(obsid)
+            name = self.o.get('name')[0]
+            obs = minbar.Observation(self.o[self.o['entry']]) 
             _path = obs.instr.lightcurve(obsid)
             self.lc = fits.open(obs.get_path()+'/'+_path)
             t1 = self.lc[1].data['TIME']
             y = self.lc[1].data['RATE']
             t = t1 - t1[0]
-            if o['instr'][0] == 'XPj':
+            if self.o['instr'][0] == 'XPj':
                 dt = 0.125
         else:
             raise AttributeError(f'give me a light curve')
@@ -129,7 +132,7 @@ class analysis(object):
             tnb = t
             ynb = y
         else:
-            print(str(len(b.get('bnum'))) +' bursts on this observation')
+            print(str(len(self.b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
@@ -137,7 +140,7 @@ class analysis(object):
             barray = []
             nbarray = []
             a1 = None
-            for i in range(len(b.get('bnum'))): # extract burst data and non-burst data
+            for i in range(len(self.b.get('bnum'))): # extract burst data and non-burst data
                 a = list(abs(t-bst[i])).index(min(abs(t - bst[i])))
                 _a = list(abs(t-bet[i])).index(min(abs(t - bet[i])))
                 barray.extend(np.r_[a:_a])
@@ -205,6 +208,8 @@ class analysis(object):
                 _int = np.where(f < 1/rws.coi[i5])
                 rpower[:,i5][_int] = np.nan
             if sims:
+                if sims is True:
+                    sims = self.total_sims // (len(f) * len(t_c)) + 1
                 lsigma3 = []
                 """Simulation, the number of sims means the number of simulations."""
                 for i3 in range(sims):

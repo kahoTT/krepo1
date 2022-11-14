@@ -32,12 +32,14 @@ def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=True, ex
      
     if wf is None:
         wf = f
-    if result.x[0] * result.x[1] > 0:
+
+    o_model = F(f, *result.x)
+    if o_model[0] < guess:
+        # best fit model does not have decreasing trend over frequenies
         o_model = np.ones(len(f)) * guess
         n_model = o_model * factor
         norm_f = None
     else:
-        o_model = F(f, *result.x)
         n_result = result
         n_result.x[2] = n_result.x[2] * factor
         n_model = F(f, *n_result.x)
