@@ -68,7 +68,7 @@ class analysis(object):
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
 
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=6):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=10):
         start_time = T.time()
         if t is not None and y is not None:
             pass
