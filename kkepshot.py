@@ -128,7 +128,7 @@ class Shot(Serialising):
             dtcp  = None,
             scale = 1,
             accuracy = 1.e-10,
-            accept = 1.e-8,
+            accept = 1.e-7,
             Q = None,
             ymax = 1e12,
             endnet = True,

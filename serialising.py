@@ -5,7 +5,7 @@ from pathlib import Path
 class Serialising(object):
     def save(self, filename=None, path='/home/kaho/kepshot_run'):
         if filename:
-            filename = filename+'.gz'
+            filename = filename
         else:
             raise Exception
         outfile = gzip.open(Path(path)/filename, 'wb')
