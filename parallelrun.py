@@ -200,6 +200,7 @@ class ParallelProcessor(Serialising):
         fig.colorbar(cm, ax=ax)
         ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$')
         ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)')
+        cm.ax.set_title('Your Label')
 
 
 
