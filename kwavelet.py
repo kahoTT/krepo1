@@ -63,7 +63,7 @@ def Slice(t, gap=400):
 
 
 class analysis(object):
-    'argument:_re is for '
+    'argument:_re is minbar table'
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=10, _re=None, b=None):
