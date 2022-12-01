@@ -195,12 +195,12 @@ class ParallelProcessor(Serialising):
             b = len(np.unique(mdot))
             qba = np.array(Qb).reshape(b, a)
 
-        cm = ax.contourf(np.unique(Q), np.unique(mdot), qba, cmap=plt.cm.viridis)
+        cm = ax.contourf(np.unique(Q), np.unique(mdot), qba, 20, cmap=plt.cm.viridis)
         plt.colorbar
         fig.colorbar(cm, ax=ax)
         ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$')
         ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)')
-        cm.ax.set_title('Your Label')
+        # cm.ax.set_title('Your Label')
 
 
 
