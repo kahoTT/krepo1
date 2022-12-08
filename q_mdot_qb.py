@@ -25,4 +25,11 @@ qqb = np.array(qb).reshape(len(b), len(a), order='F')
 
 fig, ax = plt.subplots()
 pcm = ax.pcolor(a, b, qqb)
-fig.colorbar(pcm, ax=ax)
+
+ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)', fontsize=15)
+ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$', fontsize=15)
+ax.tick_params(labelsize=13)
+cbar = plt.colorbar(pcm)
+cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', rotation=270, fontsize=15, labelpad=20)
+cbar.update_ticks(size=15)
+plt.tight_layout()
