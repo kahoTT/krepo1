@@ -986,7 +986,7 @@ class Shot(Serialising):
 
         ax[0].plot(np.log10(self.y_m[i1]), self.xln[i1] / scale, label= '$l$')
         ax[0].plot(np.log10(self.y_m[i1]), (xlnn[i1] + xlnun[i1]) / scale, label = '$l_{\mathrm{nuc}}$', ls='-.')
-        ax[0].plot(np.log10(self.y_m[i1]), xlnsv[i1] / scale, label = '$l_{\mathrm{Gravothermal}}$', ls=':')
+        ax[0].plot(np.log10(self.y_m[i1]), xlnsv[i1] / scale, label = '$l_{\mathrm{gravothermal}}$', ls=':')
         ax[0].plot(np.log10(self.y_m[i1]), xlnun[i1] / scale, color='#BFBFBF', ls='--', label = r'$l_{\nu}$')
         ax[0].plot(np.log10(self.y_m[i1]), xlsum[i1] / scale, ls=(0, (3, 1, 1, 1, 1, 1)), label='sum')
         ax[0].legend(loc='best', fontsize=14)
