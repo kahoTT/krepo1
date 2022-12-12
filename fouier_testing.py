@@ -3,7 +3,7 @@
 import numpy as np
 import stingray
 import matplotlib.pyplot as plt
-from mc_sim import simLC
+# from mc_sim import simLC
 import kwavelet
 
 class TestLc(object):
