@@ -130,7 +130,7 @@ class Shot(Serialising):
             accuracy = 1.e-10,
             accept = 1.e-8,
             Q = None,
-            ymax = 1e12,
+            ymax = 1e11,
             endnet = True,
             silent = None,
             burn = True,
