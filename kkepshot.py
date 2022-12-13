@@ -251,6 +251,13 @@ class Shot(Serialising):
             if jj >= 5:
                 if np.max(np.abs(dvr)) < accuracy:
                     break
+            
+            if jj >=5 and jj%5 == 0:
+                ri *= (GOLDEN - 1)
+
+            if jj >= 20:
+                if np.max(np.abs(dvr)) < accept:
+                    break 
 
             drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
             h0bt0 = p0bt0
