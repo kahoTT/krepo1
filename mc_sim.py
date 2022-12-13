@@ -94,22 +94,27 @@ def simlc(ares=None, t=None, y=None, dt=None, N=None, red_noise=1, o_model=None,
     return time, counts
 
 class RealLc(object):
-    def __init__(self, t=None, y=None):
+    def __init__(self, t=None, y=None, wf=None, dt=None, input_counts=False, norm='leahy', red_noise=1, model='n', exclude=True):
         self.t = t
         self.y = y
-
-    def __call__(self, wf=None, dt=None, input_counts=False, norm='leahy', red_noise=1, model='n'):
-        tc, yc, N, factor, dt, res = Fillpoint(self.t, self.y, dt)
+        tc, yc, N, factor, dt, res = Fillpoint(t, y, dt)
         spec, logspec = Genspec(t=tc, y=yc, dt=dt, norm=norm, input_counts=input_counts)
-        result, o_model, n_model, norm_f = Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=wf, rebin_log=False, factor=factor)
-        # time, counts = simlc(res=res, t=self.t, y=self.y, dt=dt, N=N, o_model=o_model, n_model=n_model, red_noise=red_noise)
-        return o_model, n_model, norm_f, logspec
+        result, o_model, n_model, norm_f = Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=wf, rebin_log=False, exclude=exclude, factor=factor)
+        time, counts = simlc(ares=res, t=self.t, y=self.y, dt=dt, N=N, o_model=o_model, n_model=n_model, red_noise=red_noise)
+        self.result = result
+        self.o_model = o_model
+        self.n_model = n_model
+        self.norm_f = norm_f
+        self.time = time
+        self.counts = counts
+        self.spec = spec
+        self.logspec = logspec
 
-    def plot_spec(self, logspec):
+    def plot_spec(self):
         fig, ax = plt.subplots()
-        ax.plot(logspec.freq, logspec.power , ds='steps-mid')
-        ax.plot(logspec.freq, logspec.o_model, label='Original spec')
-        ax.plot(logspec.freq, logspec.n_model, label='Power boosted spec')
+        ax.plot(self.logspec.freq, self.logspec.power , ds='steps-mid')
+        ax.plot(self.spec.freq, self.o_model, label='Original spec')
+        ax.plot(self.spec.freq, self.n_model, label='Power boosted spec')
         plt.xscale('log')
         plt.yscale('log')
         plt.ylabel('Leahy Power')
