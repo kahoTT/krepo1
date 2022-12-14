@@ -5,7 +5,7 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
-def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=True, exclude=True, factor=None):
+def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, exclude=True, factor=None):
     """Lightcurve may contain gaps, we use n_model to try to take it into account"""
     nan = np.isnan(y)
     notnan = ~nan
@@ -18,7 +18,7 @@ def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=True, ex
     if guess is None: 
         _ind2 = np.where(logfreq >= 2e-2)
         guess = y[_ind2].mean()
-    x0 = np.array([1, -2, guess])
+    x0 = np.array([0, 0, guess])
     if rebin_log == True:
         rf, rebinp, _, _ = stingray.rebin_data_log(logfreq, y, 0.05)
         rebinf = (rf[1:]+rf[:-1])/2
@@ -131,3 +131,8 @@ def F(x, A, B, C):
 
 def G(x, y, args):
     return (F(x, *args) - y) 
+
+def Horizontalfit(freq, power):
+    aver = sum(power) / len(power)
+    model = np.ones(len(freq)) * aver
+    return aver, model

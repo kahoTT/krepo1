@@ -67,8 +67,8 @@ class Test1613(object):
 		y2 = w.ynb
 		dt = t2[1] - t2[0]
 		# _int = np.where((t2> 1200) & (t2<7000))
-		_int = np.where((t2> 7000) & (t2<12600))
-#		_int = np.where((t2> 18500) & (t2<20650))
+		# _int = np.where((t2> 7000) & (t2<12600))
+		_int = np.where((t2> 18500) & (t2<20650))
 		# _int = np.where(t2 < 12600) 
 		t = t2[_int]
 		y = y2[_int]
