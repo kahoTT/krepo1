@@ -18,7 +18,7 @@ def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, e
     if guess is None: 
         _ind2 = np.where(logfreq >= 2e-2)
         guess = y[_ind2].mean()
-    x0 = np.array([0, 0, guess])
+    x0 = np.array([3, -2, guess])
     if rebin_log == True:
         rf, rebinp, _, _ = stingray.rebin_data_log(logfreq, y, 0.05)
         rebinf = (rf[1:]+rf[:-1])/2
@@ -126,13 +126,15 @@ def F(x, A, B, C):
     # B is the alpha, the slope of power spectrum in log space
     return A * x** (B) + C
 
-# def G(x, y, args):
-#     return (np.log(F(x, *args)) - np.log(y)) 
-
 def G(x, y, args):
     return (F(x, *args) - y) 
 
 def Horizontalfit(freq, power):
     aver = sum(power) / len(power)
+    model = np.ones(len(freq)) * aver
+    return aver, model
+
+def Horizontalfit_log(freq, power):
+    aver = np.exp(sum(np.log(power)) / len(power))
     model = np.ones(len(freq)) * aver
     return aver, model
