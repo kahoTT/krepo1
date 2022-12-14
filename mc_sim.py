@@ -5,7 +5,7 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
-def Powfit(logfreq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, exclude=True, factor=None):
+def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, exclude=True, factor=None):
     """Lightcurve may contain gaps, we use n_model to try to take it into account"""
     nan = np.isnan(y)
     notnan = ~nan
