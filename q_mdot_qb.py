@@ -2,35 +2,40 @@ import os
 import matplotlib.pyplot as plt
 from parallelrun import ParallelProcessor as P
 import numpy as np
-path = '/home/kaho/kepshot_run/starshot_paper2/'
+path = '/home/kaho/kepshot_run/starshot_paper/'
 
 _allp = os.listdir(path)
-_allp.sort()
 q = []
 mdot = []
 qb = []
-for i in _allp:
+for i in _allp[:3]:
     p = P.load(path+i)
     q.extend(p.Q)
-    mdot.extend(p.mdot)
     qb.extend(p.Qb)
+    if len(np.unique(p.mdot)) > 1:
+        submdot = [None] * (len(p.results))
+        submdot[::2] = p.mdot[:len(p.mdot)//2]
+        submdot[1::2] = p.mdot[len(p.mdot)//2:]
+        mdot.extend(submdot)
+    else:
+        mdot.extend(p.mdot)
 
 # drop repeat runs
-_stack = np.vstack(q, mdot)
+_stack = np.vstack((q, mdot))
 _, _ind = np.unique(_stack, axis=1, return_index=True)
-sortind = _ind.sort()
-q = q[sortind]
-mdot = mdot[sortind]
-qb = qb[sortind]
+if len(_ind) != len(q):
+    sortind = _ind.sort()
+    q = list(np.array(q)[sortind])
+    mdot = list(np.array(mdot)[sortind])
+    qb = list(np.array(qb)[sortind])
 
 qb2 = [qb2 for _,qb2 in sorted(zip(q, qb))]
-sortqb = [sortqb for _,sortqb in sorted(zip(mdot, qb2))]
-sortq = q.sort()
-sortmdot = mdot.sort()
+sortmdot = [sortmdot for _,sortmdot in sorted(zip(q, mdot))]
+sortqb = [sortqb for _,sortqb in sorted(zip(sortmdot, qb2))]
 
-a = np.unique(sortq)
-b = np.unique(sortmdot)
-qqb = np.array(sortqb).reshape(len(b), len(a), order='F')
+a = np.unique(q)
+b = np.unique(mdot)
+qqb = np.array(sortqb).reshape(len(b), len(a))
 
 fig, ax = plt.subplots()
 pcm = plt.pcolor(a, b, qqb)
