@@ -966,14 +966,14 @@ class Shot(Serialising):
         ax.plot(np.log10(self.y_m[i1]), self.ki[i1], label='$\kappa$')
         ax.legend(loc='best')
 
-    def plot_combine(self, escale=None, A = 500, lim = 10**(-2.4), ls='on'):
+    def plot_combine(self, escale=None, A = 50, lim = 10**(-2.4), ls='on'):
         matplotlib.rc('xtick', labelsize=14) 
         matplotlib.rc('ytick', labelsize=14) 
         i1 = slice(1, None)
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
 
-        fig, ax = plt.subplots(4, sharex=True, figsize=(7,14))
+        fig, ax = plt.subplots(4, sharex=True, figsize=(7,13.5))
         fig.subplots_adjust(hspace=.1)
         self.fig = fig
         self.ax = ax

@@ -8,7 +8,7 @@ _allp = os.listdir(path)
 q = []
 mdot = []
 qb = []
-for i in _allp[:3]:
+for i in _allp:
     p = P.load(path+i)
     q.extend(p.Q)
     qb.extend(p.Qb)
@@ -19,19 +19,22 @@ for i in _allp[:3]:
         mdot.extend(submdot)
     else:
         mdot.extend(p.mdot)
+q = np.round(q,3)
+mdot = np.round(mdot,3)
+qb = np.round(qb,3)
 
 # drop repeat runs
 _stack = np.vstack((q, mdot))
 _, _ind = np.unique(_stack, axis=1, return_index=True)
 if len(_ind) != len(q):
-    sortind = _ind.sort()
-    q = list(np.array(q)[sortind])
-    mdot = list(np.array(mdot)[sortind])
-    qb = list(np.array(qb)[sortind])
+    _ind.sort()
+    q = list(q[_ind])
+    mdot = list(mdot[_ind])
+    qb = list(qb[_ind])
 
-qb2 = [qb2 for _,qb2 in sorted(zip(q, qb))]
-sortmdot = [sortmdot for _,sortmdot in sorted(zip(q, mdot))]
-sortqb = [sortqb for _,sortqb in sorted(zip(sortmdot, qb2))]
+qb2 = [x for _, x in sorted(zip(q, qb), key=lambda pair: pair[0])]
+sortmdot = [x for _, x in sorted(zip(q, mdot), key=lambda pair: pair[0])]
+sortqb= [x for _, x in sorted(zip(sortmdot, qb2), key=lambda pair: pair[0])]
 
 a = np.unique(q)
 b = np.unique(mdot)
@@ -44,6 +47,6 @@ ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)', fontsize=15)
 ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$', fontsize=15)
 ax.tick_params(labelsize=13)
 cbar = plt.colorbar(pcm)
-cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', rotation=270, fontsize=15, labelpad=20)
+cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', fontsize=15, labelpad=20)
 # cbar.update_ticks(size=15)
 plt.tight_layout()
