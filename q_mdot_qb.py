@@ -2,13 +2,13 @@ import os
 import matplotlib.pyplot as plt
 from parallelrun import ParallelProcessor as P
 import numpy as np
-path = '/home/kaho/kepshot_run/starshot_paper/'
+path = '/home/kaho/kepshot_run/starshot_paper_H_model/'
 
 _allp = os.listdir(path)
 q = []
 mdot = []
 qb = []
-for i in _allp:
+for i in _allp[2:4]:
     p = P.load(path+i)
     q.extend(p.Q)
     qb.extend(p.Qb)
