@@ -512,7 +512,7 @@ class Shot(Serialising):
                             if dxmax > 1:
                                 break                                    
                             else:
-                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}\n[SHOT] Reduced factor = {xmaf}')
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
@@ -522,14 +522,14 @@ class Shot(Serialising):
                             if dxmax > 1:
                                 break                                    
                             else:
-                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                                print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}\n[SHOT] Reduced factor = {xmaf}')
                                 xmaf *= (GOLDEN - 1)  
                                 restart = True
                                 break
-                        else:
-                            xmaf *= (GOLDEN - 1)
-                            restart = True
-                            break
+                        # else:
+                        #     xmaf *= (GOLDEN - 1)
+                        #     restart = True
+                        #     break
 
                     print(f'[SHOT] Iteration {jj}: dvr = [{dvr[0], dvr[1]}]: dxmax = {dxmax}')
                     h0bt0 = p0bt0
@@ -553,7 +553,7 @@ class Shot(Serialising):
 
 # If it seems the dxmax is unlikely > 1 after iterations
                     if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
-                        print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}')
+                        print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}\n[SHOT] Reduced factor = {xmaf}')
                         xmaf *= (GOLDEN - 1)  
                         restart = True
                         break

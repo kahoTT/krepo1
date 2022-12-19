@@ -2,27 +2,38 @@ import os
 import matplotlib.pyplot as plt
 from parallelrun import ParallelProcessor as P
 import numpy as np
-path = '/home/kaho/kepshot_run/starshot_paper_H_model/'
+path = '/home/kaho/kepshot_run/starshot_paper/'
 
 _allp = os.listdir(path)
 q = []
 mdot = []
 qb = []
-for i in _allp[2:4]:
+for i in _allp:
     p = P.load(path+i)
     q.extend(p.Q)
     qb.extend(p.Qb)
-    if len(np.unique(p.mdot)) > 1:
+    if len(np.unique(p.mdot)) == 2:
         submdot = [None] * (len(p.results))
         submdot[::2] = p.mdot[:len(p.mdot)//2]
         submdot[1::2] = p.mdot[len(p.mdot)//2:]
         mdot.extend(submdot)
+    elif len(np.unique(p.mdot)) > 2 and len(np.unique(p.Q)) > 1:
+        submdot = [None] * (len(p.results))
+        submdot[:len(p.mdot)//2] = p.mdot[::2]
+        submdot[len(p.mdot)//2:] = p.mdot[1::2]
+        mdot.extend(submdot)
     else:
         mdot.extend(p.mdot)
+q.append(5.4)
+mdot.append(0.12)
+qb.append(0.376)
 q = np.round(q,3)
 mdot = np.round(mdot,3)
 qb = np.round(qb,3)
-
+_index = np.where((q>=5.4)&(q<=5.9))
+q = q[_index]
+mdot = mdot[_index]
+qb = qb[_index]
 # drop repeat runs
 _stack = np.vstack((q, mdot))
 _, _ind = np.unique(_stack, axis=1, return_index=True)
@@ -47,6 +58,6 @@ ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)', fontsize=15)
 ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$', fontsize=15)
 ax.tick_params(labelsize=13)
 cbar = plt.colorbar(pcm)
-cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', fontsize=15, labelpad=20)
+cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', fontsize=15, labelpad=10)
 # cbar.update_ticks(size=15)
 plt.tight_layout()
