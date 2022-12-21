@@ -24,9 +24,6 @@ for i in _allp:
         mdot.extend(submdot)
     else:
         mdot.extend(p.mdot)
-q.append(5.4)
-mdot.append(0.12)
-qb.append(0.376)
 q = np.round(q,3)
 mdot = np.round(mdot,3)
 qb = np.round(qb,3)
