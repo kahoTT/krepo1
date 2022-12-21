@@ -439,6 +439,7 @@ class Shot(Serialising):
       
                 jj = 0
                 fmin = 1
+                ri = 1
                 ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
     ### main loop ###
                 while True:
