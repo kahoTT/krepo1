@@ -9,18 +9,18 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
     """Lightcurve may contain gaps, we use n_model to try to take it into account"""
     nan = np.isnan(y)
     notnan = ~nan
-    logfreq = logfreq[notnan]
+    freq = freq[notnan]
     y = y[notnan]
     if exclude == True:  
-        _ind = np.where((logfreq <= 5e-3) | (logfreq >= 15e-3))
-        logfreq = logfreq[_ind]
+        _ind = np.where((freq <= 5e-3) | (freq >= 15e-3))
+        freq = freq[_ind]
         y = y[_ind]
     if guess is None: 
-        _ind2 = np.where(logfreq >= 2e-2)
+        _ind2 = np.where(freq >= 2e-2)
         guess = y[_ind2].mean()
     x0 = np.array([3, -2, guess])
     if rebin_log == True:
-        rf, rebinp, _, _ = stingray.rebin_data_log(logfreq, y, 0.05)
+        rf, rebinp, _, _ = stingray.rebin_data_log(freq, y, 0.05)
         rebinf = (rf[1:]+rf[:-1])/2
         nan2 = np.isnan(rebinp)
         notnan2 = ~nan2
@@ -28,7 +28,7 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
         rebinp = rebinp[notnan2]
         result = least_squares(partial(G, rebinf, rebinp), x0)
     else:
-        result = least_squares(partial(G, logfreq, y), x0)
+        result = least_squares(partial(G, freq, y), x0)
      
     if wf is None:
         wf = f
@@ -99,7 +99,7 @@ class RealLc(object):
         self.y = y
         tc, yc, N, factor, dt, res = Fillpoint(t, y, dt)
         spec, logspec = Genspec(t=tc, y=yc, dt=dt, norm=norm, input_counts=input_counts)
-        result, o_model, n_model, norm_f = Powfit(logfreq=logspec.freq, f=spec.freq, y=logspec.power, wf=wf, rebin_log=False, exclude=exclude, factor=factor)
+        result, o_model, n_model, norm_f = Powfit(freq=spec.freq, f=spec.freq, y=spec.power, wf=wf, rebin_log=False, exclude=exclude, factor=factor)
         time, counts = simlc(ares=res, t=self.t, y=self.y, dt=dt, N=N, o_model=o_model, n_model=n_model, red_noise=red_noise)
         self.result = result
         self.o_model = o_model

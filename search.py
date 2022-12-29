@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
+import sys
 from kwavelet import analysis
 import minbar
 from serialising import Serialising as S
 from pathlib import Path
+import numpy as np
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
-data_path='~/mhz_QPOs_search_in_minbar'
+data_path='/home/kaho/mhz_QPOs_search_in_minbar'
 
 class Search(object):
-    def __init__(self, restart=False, filename='search_table.gz', refile='search_results.txt'):
+    def __init__(self, restart=True, filename='search_table.gz', refile='search_results.txt'):
         if restart == True:
             o = minbar.Observations()
             b = minbar.Bursts()
@@ -16,24 +18,27 @@ class Search(object):
             file = open(Path(data_path)/refile, 'w')	    
         else:
             _allre = S.load(filename=filename, path=data_path)
-        file = open(Path(data_path)/refile, 'r+')	    
-        file.read() # change the file object to located in a new line
+            file = open(Path(data_path)/refile, 'r+')	    
+            file.read() # change the file object to located in a new line
 
         # need to run in parallel later
-        for i, j in enumerate(_allre):
-            _re = _allre[i]
+        for i, j in enumerate(_allre[:3]):
+            _re = j
+            detection = None
             if _re['searched?'] == 'N':
                 a = analysis(_re=_re, b=b)
-                _allre['searched?'][_re.index] = 'Y'
-                if any(a.p > 1):
-                    file.write(f'{a.name} {a.obsid} yes\n')
+                if a.bg is not None:
+                    _allre['searched?'][_re.index] = 'Y'
+                    for k in range(len(a.p)):
+                        detection = np.any(a.p[k] > 1)
+                    if detection:
+                        file.write(f'{a.name} {a.obsid} yes\n')
+                    S.save(a, filename=f'{a.name}_{a.obsid}', path=data_path+'/results')
                 else:
-                    file.write(f'{a.name} {a.obsid} no\n')
+                    # skip observations with negatives
+                    _allre['searched?'][_re.index] = '-'
         file.close()
-        S.save(a, filename=f'{a.name}_{a.obsid}', path=data_path+'/results')
         S.save(_allre, filename, data_path)
-
-
 
 if __name__ == "__main__":
 	Search()
