@@ -65,7 +65,7 @@ def Slice(t, gap=400):
 class analysis(object):
     """
     argument:_re is minbar table
-    cannot pick _re
+    cannot pick _re, so remove it from arguments
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
