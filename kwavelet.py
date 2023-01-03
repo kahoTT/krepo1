@@ -63,7 +63,10 @@ def Slice(t, gap=400):
 
 
 class analysis(object):
-    'argument:_re is minbar table'
+    """
+    argument:_re is minbar table
+    cannot pick _re
+    """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
     def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=10, _re=None, b=None, ng=None):
@@ -403,7 +406,6 @@ class analysis(object):
         for i in range(self.ltnb): 
             if self.ltnb == 1:
                 i = slice(None)
-            _f = fill(t[i], y[i], dt=dt)
             ystd = y[i].std()
             ws = wavelet_spec(y=(_f.yc / ystd**2), f=f, sigma=10, dt=dt, powera='Liu')
 

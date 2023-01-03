@@ -73,7 +73,7 @@ def Fillpoint(t=None, y=None, dt=None):
     return t_c, y_c, n_of_data, factor, dt, ares 
 
 def Genspec(t=None, y=None, input_counts=False, norm='leahy', dt=None):
-    lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=False)
+    lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=True)
     spec = stingray.Powerspectrum(lc, norm=norm)   
     spec.power = abs(spec.power)
     logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
