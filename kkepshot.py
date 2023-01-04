@@ -439,7 +439,6 @@ class Shot(Serialising):
       
                 jj = 0
                 fmin = 1
-                ri = 1
                 ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
     ### main loop ###
                 while True:
@@ -546,11 +545,13 @@ class Shot(Serialising):
                     dfr = c / v
                     dfrm = np.max(np.abs(dfr))
                     print(f'[SHOT] dfrm = {dfrm}')
+
+                    ri = fmin
                     if dfrm > GOLDEN - 1:
                         ri = fmin / (dfrm * GOLDEN)
-#                    if ri != fmin:
-#                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
-                    ri = 1
+                    if ri != fmin:
+                        print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+                    # ri = 1
                     t0, d0 = v - c * ri
 
 # If it seems the dxmax is unlikely > 1 after iterations
