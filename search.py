@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import os
 from kwavelet import analysis
 import minbar
 from serialising import Serialising as S
@@ -33,7 +34,12 @@ class Search(object):
                         detection = np.any(a.p[k] > 1)
                     if detection:
                         file.write(f'{a.name} {a.obsid} yes\n')
-                    S.save(a, filename=f'{a.name}_{a.obsid}', path=data_path+'/results')
+                    re_path = data_path+'/results/'f'{a.name}_{a.obsid}'
+                    try:
+                        os.mkdir(re_path)
+                        S.save(a.p, filename='Power', path=re_path)
+                    except:
+                        S.save(a.p, filename='Power', path=re_path)
                 else:
                     # skip observations with negatives
                     _allre['searched?'][_re.index] = '-'
