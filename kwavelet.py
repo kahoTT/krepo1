@@ -24,7 +24,7 @@ def detrend(t=None, y=None, dt=None, plot=False, dof=2):
         plt.plot(t,y)
         plt.plot(t, np.polyval(p, t))
     dat_notrend = y - np.polyval(p, t)
-    return dat_notrend
+    return dat_notrend, p
 
 # class sim(mc_sim.simLC): # Main purpose of this class is to divide lightcurve into different sections and being put to another simulation module
 #     def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None'):
@@ -211,9 +211,10 @@ class analysis(object):
             tc.append(t_c)
             spec, logspec = mc_sim.Genspec(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             result, o_model, n_model, norm_f = mc_sim.Powfit(freq=spec.freq, f=spec.freq, y=spec.power, wf=f, rebin_log=False, factor=factor)
-            dat_notrend = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
+            dat_notrend, _ = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
             _, y_c, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=dat_notrend, dt=dt)
             rws = wavelet_spec(y=y_c, f=f, sigma=sigma, dt=dt)
+            norm_f = None
             if norm_f is not None:
                 rpower = rws.power * result.x[2] / norm_f[:, np.newaxis]  # dealing with extra [] for 1D f array  
             else:
@@ -229,7 +230,7 @@ class analysis(object):
                 for i3 in range(sims):
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
-                    sdat_notrend = detrend(time, counts, dt=dt) # fill class
+                    sdat_notrend, _ = detrend(time, counts, dt=dt) # fill class
                     _, sy, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=sdat_notrend, dt=dt)
                     ws = wavelet_spec(y=sy, f=f, sigma=sigma, dt=dt)
                     if len(f) == 1: 
@@ -328,9 +329,12 @@ class analysis(object):
  
 # plot only burst
     def plot_b(self):
-        plt.plot(self.tb, self.yb, 'rx')
-        plt.ylabel('Count/s')
-        plt.xlabel('Time (s)')
+        plt.rc('xtick', labelsize=15)
+        plt.rc('ytick', labelsize=15)
+        plt.plot(self.tb, self.yb, 'r')
+        plt.ylabel('Counts/s', fontsize=15)
+        plt.xlabel('Time (s)', fontsize=15)
+        plt.tight_layout()
         plt.show()
  
     def plot_lc(self,
@@ -340,7 +344,12 @@ class analysis(object):
                 tend = None
                ):
         ii = slice(astart, aend)
+        plt.rc('xtick', labelsize=15)
+        plt.rc('ytick', labelsize=15)
         plt.plot(self.t[ii], self.y[ii],'.')
+        plt.ylabel('Counts/s', fontsize=15)
+        plt.xlabel('Time (s)', fontsize=15)
+        plt.tight_layout()
         plt.show()
 
     def plot_wspec(
