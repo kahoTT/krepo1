@@ -13,7 +13,9 @@ minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 # Normalized light curves and fill spaces with zeors
 # The normalization is applied to the whole lightcurve, even wavelet spectrum could be done seperately
 # Examples from 1636 is obsid('60032-05-02-00') and 1608 obsid('10072-05-01-00') and EXO 0748 obsid('90039-01-03-05')
-# 1323 obsid('96405-01-02-01')
+# 1323 obsid('96405-01-02-01') but with negative values
+# 1608 obsid('10072-05-01-00') Revnivtsev et al. 2000
+# 4U 1608-52 obsid: 10094-01-01-00 Revnivtsev et al. 2000
 
 # This class is to fill the gap data with mean value, will change to fill with the fitted polynomail vales
 def detrend(t=None, y=None, dt=None, plot=False, dof=2):
@@ -68,7 +70,7 @@ class analysis(object):
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=15e-3, nf=200, sims=None, sigma=10, _re=None, b=None, ng=None):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, ng=None):
         if b is None:
             b = minbar.Bursts()
         if _re:
@@ -129,7 +131,8 @@ class analysis(object):
                 self.bg = bg
             else:
                 self.bg = None
-                return
+                print('Lightcurve has negative values')
+                return 
 
         if np.any(np.isnan(y)) == True:
             print('data cleaning: arrays contain nan data after background correction')
@@ -214,6 +217,7 @@ class analysis(object):
             dat_notrend, _ = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
             _, y_c, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=dat_notrend, dt=dt)
             rws = wavelet_spec(y=y_c, f=f, sigma=sigma, dt=dt)
+            # drop the normalisation to spectrum
             norm_f = None
             if norm_f is not None:
                 rpower = rws.power * result.x[2] / norm_f[:, np.newaxis]  # dealing with extra [] for 1D f array  
@@ -227,6 +231,7 @@ class analysis(object):
                     sims = self.total_sims // (len(f) * len(t_c)) + 1
                 lsigma3 = []
                 """Simulation, the number of sims means the number of simulations."""
+                print(sims)
                 for i3 in range(sims):
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
@@ -256,7 +261,8 @@ class analysis(object):
                 synpall = synp.reshape(1, synp.size)[0]
                 _int2 = np.isnan(synpall)
                 synpall = np.sort(synpall[~_int2])
-                sigma3 = synpall[int(len(synpall) * 0.9973)]
+                # sigma3 = synpall[int(len(synpall) * 0.9973)]
+                sigma3 = synpall[int(len(synpall) * 0.99999)]
                 _pow = rpower / sigma3
                 _powall.append(_pow)
                 lsigma3.append(sigma3)
@@ -264,6 +270,7 @@ class analysis(object):
                 _powall.append(rpower)
                 lsigma3 = None
             self.sigma = lsigma3
+            self.synpall = synpall
             self.p = _powall
             self.tc = tc
         self.finish_time = T.time() - start_time
@@ -391,8 +398,7 @@ class analysis(object):
         # cm = ax[1].contourf(_f.tc, f, norm_pow, cmap=plt.cm.viridis, vmin=vmin, vmax=(int(vmax)+1))
         # ax[1].contourf(tc, f, p, cmap=plt.cm.viridis)
 
-        ax[0].set_ylabel('Count/s')
-        ax[1].set_ylabel('Frequency Hz')
+        ax[0].set_ylabel('Counts/s')
         fig.subplots_adjust(hspace=0.05)
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
