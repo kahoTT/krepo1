@@ -551,7 +551,6 @@ class Shot(Serialising):
                         ri = fmin / (dfrm * GOLDEN)
                     if ri != fmin:
                         print(f'[SHOT] {ri} reduction for the correction of temperature and density')
-                    # ri = 1
                     t0, d0 = v - c * ri
 
 # If it seems the dxmax is unlikely > 1 after iterations

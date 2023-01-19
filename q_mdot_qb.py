@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from parallelrun import ParallelProcessor as P
 import numpy as np
-path = '/home/kaho/kepshot_run/starshot_paper/'
+path = '/home/kaho/kepshot_run/starshot_paper2/'
 
 _allp = os.listdir(path)
 q = []
