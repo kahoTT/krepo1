@@ -1,5 +1,5 @@
 from logging import raiseExceptions
-from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA, SIGT, AMU 
+from physconst import ARAD, RK, GRAV, SB, CLIGHT, MEV, NA, SIGT, AMU
 from isotope import ion as I, ufunc_A, ufunc_Z, ufunc_idx, ufunc_ion_from_idx, ioncacheza, ufunc_idx_ZA
 from heat.net import Net3aC12 as Net
 from heat.eos import eos as Eos
@@ -55,7 +55,7 @@ class SimpleEos(object):
         pd = RK*T/mu
         ut = 1.5 * RK / mu + 4*ARAD*T**3/rho
         ud = -4*ARAD*T**4/rho**2
-        return p,u,pt,pd,ut,ud    
+        return p,u,pt,pd,ut,ud
 
 class SimpleKappa(object):
     def __init__(self, abu):
@@ -77,16 +77,16 @@ class SimpleNet(object):
     def __init__(self, abu, *args, **kwargs):
         kappa = kwargs.pop('kappa', 'abc')
         if kappa == 'simple':
-            self._kappai = SimpleKappa(abu) 
+            self._kappai = SimpleKappa(abu)
         else:
-            self._kappai = partial(TabKappa(), T4=False) 
+            self._kappai = partial(TabKappa(), T4=False)
         eos = kwargs.pop('eos', 'table')
         if eos == 'simple':
-            self.eos = SimpleEos(self._net) 
+            self.eos = SimpleEos(self._net)
         else:
-            self.eos = partial(Eos(), T4=False) 
+            self.eos = partial(Eos(), T4=False)
         self._net = NetWork(abu, *args, **kwargs)
-        self.sdot = self._net.sdot 
+        self.sdot = self._net.sdot
 
 
 class Shot(Serialising):
@@ -115,12 +115,12 @@ class Shot(Serialising):
 #              m       0       1       2
 #         m2       m       0       1       2
     def __init__(self, L=7e35, R=1e6, M=2.8e33, mdot=5e17, # default mdot = 1 Eddington accretion rate
-            abu = None, 
+            abu = None,
             amode = 1,
             xms=1e13, xmsf=1.2,
             net='',
             eos='',
-            kepler = 'restart', # module | process | restart 
+            kepler = 'restart', # module | process | restart
             yfloorx = 1.e-3,
             safenet = True,
             eosmode = None, # static | burn | adapt , is NOT adaptive step size !!!
@@ -136,7 +136,7 @@ class Shot(Serialising):
             burn = True,
             par = None,
             track_abu = True,
-                 ): 
+                 ):
         if abu is None:
             abu = dict(he4=0.99, n14=0.009, fe56=0.001)
         abu = AbuSet(abu)
@@ -188,7 +188,7 @@ class Shot(Serialising):
         print(f'[SHOT] L    = {L:12g} erg/s ({L/xledd:12g} Edd.)')
 
 # surface zone
-        T = qqrt(L / (4 * np.pi * R**2 * SB)) 
+        T = qqrt(L / (4 * np.pi * R**2 * SB))
         g = GRAV*M/R**2
         d0 = 1.
         dt0 = 1.
@@ -200,27 +200,27 @@ class Shot(Serialising):
             print(f'[SHOT] Iteration {jj} {h/p0}')
             if np.abs(h) < 1e-12 * p0:
                break
-            dh = p0bd0 - g / 1.5 * ki0bd0     
+            dh = p0bd0 - g / 1.5 * ki0bd0
             dd0 = h/dh
-            d0n = d0 - dd0  
-            d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density 
+            d0n = d0 - dd0
+            d0 = np.minimum(GOLDEN * d0, np.maximum(d0 / GOLDEN, d0n))  # 1.61 , d0 is the boundary density
         print(f'[SHOT] surface zone , tn={T:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc')
 
-### 1st zone ###        
+### 1st zone ###
         p_surf = p0
         t_surf = T
         #dm = d0 * 4 * np.pi * (R**3 - (R-dr)**3) / 3  # solve directly , dm : change of mass
-        t0 = T 
+        t0 = T
         r0 = R
         xm1 = 4 * np.pi * r0**2   * p0  / g  # surface mass
         xl0 = L
         z0 = M
         xm0 = xms
         g0 = GRAV * z0 / r0**2
-        p = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2) 
+        p = p_surf + 0.5 * xm0 * g0 / (4 * np.pi * r0**2)
         u1 = u0
         d1 = d0
-        ki1 = ki0 
+        ki1 = ki0
         dt0 = xm0 / mdot
         ppn0 = net.abu()
         jj = 0
@@ -229,14 +229,14 @@ class Shot(Serialising):
         while True:
             jj += 1
             p0, u0, p0bt0, p0bd0, _, _, ki0, ki0bt0, ki0bd0, dxmax  = eos(t0, d0, dt0)
-            rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0)) 
+            rm = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
 #            dr0 = r0 - rm # rm : curretly r at zone bottom
-            rmc = np.cbrt(r0**3 - 3 * xm0 / (8 * np.pi * d0)) 
+            rmc = np.cbrt(r0**3 - 3 * xm0 / (8 * np.pi * d0))
             drc0 = r0 - rmc # goes to center of zone
             ac = 16 * np.pi * r0**2 * ARAD * CLIGHT / 3
-            acdr0 = ac * ki0 / (d0 * drc0) 
+            acdr0 = ac * ki0 / (d0 * drc0)
             l0 = (t0**4 - t_surf**4) * acdr0
-            
+
             h0 = p0 - p
             f0 = l0 - xl0
 
@@ -251,24 +251,24 @@ class Shot(Serialising):
             if jj >= 5:
                 if np.max(np.abs(dvr)) < accuracy:
                     break
-            
+
             if jj >=5 and jj%5 == 0:
                 ri *= (GOLDEN - 1)
 
             if jj >= 20:
                 if np.max(np.abs(dvr)) < accept:
-                    break 
+                    break
 
             drc0bd0 = - xm0 / (rmc**2 * 8 * np.pi * d0**2) # need to change
             h0bt0 = p0bt0
-            h0bd0 = p0bd0 
+            h0bd0 = p0bd0
 
             f0bt0 = l0 * ki0bt0 / ki0 + acdr0 * 4 * t0 ** 3
             f0bd0 = l0 * (ki0bd0 / ki0 - 1 / d0 - drc0bd0 / drc0)
 
-            A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]]) 
-            c = np.linalg.solve(A,b) 
-            v = np.array([t0, d0]) 
+            A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]])
+            c = np.linalg.solve(A,b)
+            v = np.array([t0, d0])
             dfr = c / v
             dfrm = np.max(np.abs(dfr))
             if dfrm > GOLDEN - 1:
@@ -278,7 +278,7 @@ class Shot(Serialising):
             ri = 1
             t0, d0 = v - c * ri
 # goes to center of the zone
-# P,T defined by center except the surface, 
+# P,T defined by center except the surface,
 # 'kappa' function return ki and 2x its logarithmic derivatives
 
 # third step: include energy generation, we have t0 d0 p0 at the zone center
@@ -286,7 +286,7 @@ class Shot(Serialising):
         p1  = p_surf
         s0, snu0, dxmax = sdot(t0, d0, dt0)
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
-#        z0  = M - xm1 
+#        z0  = M - xm1
 #@&&!Y*@&^$*@&#(**&!(*#&! may have problem!!!!(*&#*@$*($^
         print(f'[SHOT] first zone , tn={t0:12.5e} K, dn={d0:12.5e} g/cc, P={p0:12.5e} erg/cc, sn={s0:12.5e} erg/g/s, xln={xl0:12.5e} erg/s')
         print(f'[SHOT] next zone mass={xm0*1.2:12.5e}')
@@ -296,7 +296,7 @@ class Shot(Serialising):
         sv1 = sv0 = 0
 
 #        k = np.log10(1 - (M - xm_surf)/xms + xmsf * (M - xm_surf) / xms) / np.log10(xmsf) -1
-        k   = 100000 
+        k   = 100000
         tn  = np.ndarray(k)
         dn  = np.ndarray(k)
         ki  = np.ndarray(k)
@@ -315,7 +315,7 @@ class Shot(Serialising):
         smnun  = np.ndarray(k)
         scn = np.ndarray(k)
         rn  = np.ndarray(k)
-        dln = np.ndarray(k) 
+        dln = np.ndarray(k)
         xlnsv  = np.ndarray(k)
         xlnint  = np.ndarray(k)
         xlnmec  = np.ndarray(k)
@@ -325,7 +325,7 @@ class Shot(Serialising):
         abulen = np.ndarray(k)
         mue = np.ndarray(k)
         max_mass_no = np.ndarray(k)
-        gn  = np.ndarray(k) 
+        gn  = np.ndarray(k)
         y  = np.ndarray(k)
 
         tn[0]  = t_surf
@@ -379,13 +379,13 @@ class Shot(Serialising):
         max_mass_no[1] = np.max(ufunc_A(abu[1].iso))
         rn[1]  = R
         rn[2]  = rm
-        y[1] = xm1 / (4 * np.pi * R**2)             
+        y[1] = xm1 / (4 * np.pi * R**2)
         y[2] = y[1] +  xm0 / (4 * np.pi * R**2)
         gn[1] = g0
 
 # starting from the SECOND ZONE (burn zone)
         second_last_step = None
-        for j in range(1 , k , 1): 
+        for j in range(1 , k , 1):
             xm2 = xm1
             xm1 = xm0
             r1  = r0
@@ -394,7 +394,7 @@ class Shot(Serialising):
             z0  = z1 - xm1
             g1  = g0
             g0  = GRAV * z0 / r0**2
-    
+
             ki1 = ki0
             p2  = p1
             p1  = p0
@@ -402,7 +402,7 @@ class Shot(Serialising):
             d2  = d1
             d1  = d0
             u2  = u1
-            u1  = u0    
+            u1  = u0
             xl1 = xl0
             sv2 = sv1
             sv1 = sv0
@@ -412,20 +412,22 @@ class Shot(Serialising):
             xmaf = 1
             while True:
                 restart = None
-                if second_last_step is True:
-                    xm0 = xm0_2last
-                else:
-                    xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
-                p   = p1 +  0.5 * (xm0 + xm1) * g0 / (4 * np.pi * r0**2) 
+                # if second_last_step is True:
+                #     xm0 = xm0_2last
+                # else:
+                xm0 = xm1 * xmsf * xmaf # a for adaptive; f for factor
+                if ymax is not None and k == 100000:
+                    xm0 = min(xm0, (ymax - y[j+1]) * (4 * np.pi * r0**2))
+                p   = p1 +  0.5 * (xm0 + xm1) * g0 / (4 * np.pi * r0**2)
                 dmx1 = 2 * mdot / (xm1 + xm2)
                 dmx0 = 2 * mdot / (xm0 + xm1)
                 dt0 = xm0 / mdot
                 du1 = u2 - u1
-    
+
                 if amode == 1: # harmonic mean, the accurate one. Currently just amode == 1 is used
                     pdv1 = 2 / (1 / p2 + 1 / p1) * (1 / d2 - 1 / d1)
                     dL1 = (du1 + pdv1) * dmx1
-    
+
                 elif amode == 2: # geometric mean
                     pdv1 = np.sqrt(p1*p2) * (1 / d2 - 1 / d1)
                     dL1 = (du1 + pdv1) * dmx1
@@ -436,7 +438,7 @@ class Shot(Serialising):
 
                 else:
                     raise AttributeError(f'Need to define a way to manage pressure between zones')
-      
+
                 jj = 0
                 fmin = 1
                 ac = (4 * np.pi * r0**2)**2 * ARAD * CLIGHT / (3 * (xm0 + xm1))  # use xm0 , xm1
@@ -445,12 +447,12 @@ class Shot(Serialising):
                     jj += 1
                     print(f'[SHOT] Iteration {jj}')
 # elements are updated in the following step
-                    p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)  
-    
+                    p0, u0, p0bt0, p0bd0, u0bt0, u0bd0, ki0, ki0bt0, ki0bd0, dxmax = eos(t0 , d0, dt0)
+
                     du0    = u1 - u0
                     du0bt0 = - u0bt0
                     du0bd0 = - u0bd0
-    
+
                     if amode == 1: # Harmonic mean for boundary pressure
                         pdv0    = 2 / (1 / p1 + 1 / p0) * (1 / d1 - 1 / d0)
                         pdv0bt0 = pdv0 / (1 / p1 + 1 / p0) * p0bt0 / p0**2
@@ -459,7 +461,7 @@ class Shot(Serialising):
                         dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
                         sv1  = 0.5 * (dL1 + dL0) # 0.5 should be better to put on line 411
-    
+
                     elif amode == 2: # geometic mean
                         pdv0 = np.sqrt(p0 * p1) * (1 / d1 - 1 / d0)
                         pdv0bt0 = 0.5 * pdv0 * p0bt0 / p0
@@ -467,8 +469,7 @@ class Shot(Serialising):
                         dL0  = (du0 + pdv0) * dmx0
                         dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
-                        sv1  = 0.5 * (dL1 + dL0) 
-
+                        sv1  = 0.5 * (dL1 + dL0)
                     elif amode == 3: # Arithmetic mean
                         pdv0 = 0.5 * (p0 + p1) * (1 / d1 - 1 / d0)
                         pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
@@ -476,7 +477,7 @@ class Shot(Serialising):
                         dL0  = (du0 + pdv0) * dmx0
                         dxl0bt0 = - 0.5 * (du0bt0 + pdv0bt0) * dmx0 * xm1
                         dxl0bd0 = - 0.5 * (du0bd0 + pdv0bd0) * dmx0 * xm1
-                        sv1  = 0.5 * (dL1 + dL0) 
+                        sv1  = 0.5 * (dL1 + dL0)
 
                     elif amode == 4: # Use integral
                         pdv = (p2 + p1) / (d2 + d1) - (p1 + p0) / (d1 + d0) # divided by two on the Numerator and denominator
@@ -488,19 +489,19 @@ class Shot(Serialising):
                         dxl0bt0 = - 0.5 * du0bt0 * dmx0 * xm1 - pdv0bt0 * mdot
                         dxl0bd0 = - 0.5 * du0bd0 * dmx0 * xm1 - pdv0bd0 * mdot
                         sv1  = 0.5 * (dL1 + dL0) + dw
-    
+
     #                pdv0    = 0.5 * (p1 + p0) * (1 / d1 - 1 / d0)
     #                pdv0bt0 = 0.5 * p0bt0 * (1 / d1 - 1 / d0)
-    #                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2 
-    
+    #                pdv0bd0 = 0.5 * p0bd0 * (1 / d1 - 1 / d0) + 0.5 * (p1 + p0) / d0**2
+
                     dL   = (sv1 + s1) * xm1 # move outside the amode conditions, maybe better to put them back
                     xl0  = xl1 - dL # move outside the amode conditions, maybe better to put them back
-    
+
                     acdr0 = ac * (ki0 + ki1) # the boundary of opacity
                     l0 = (t0**4 - t1**4) * acdr0
                     h0 = p0 - p
                     f0 = l0 - xl0
-        
+
                     b = np.array([h0,f0])
                     b1 = np.array([p,xl0])
                     dvr = b / b1
@@ -511,20 +512,20 @@ class Shot(Serialising):
                     if jj <= 5:
                         if np.max(np.abs(dvr)) < accuracy:
                             if dxmax > 1:
-                                break                                    
+                                break
                             # else:
                             #     print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}\n[SHOT] Reduced factor = {xmaf}')
-                            #     xmaf *= (GOLDEN - 1)  
+                            #     xmaf *= (GOLDEN - 1)
                             #     restart = True
                             #     break
-                            
-                    elif jj > 5: 
+
+                    elif jj > 5:
                         if np.max(np.abs(dvr)) < accept:
                             if dxmax > 1:
-                                break                                    
+                                break
                             else:
                                 print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}\n[SHOT] Reduced factor = {xmaf}')
-                                xmaf *= (GOLDEN - 1)  
+                                xmaf *= (GOLDEN - 1)
                                 restart = True
                                 break
                         # else:
@@ -534,11 +535,11 @@ class Shot(Serialising):
 
                     print(f'[SHOT] dvr = [{dvr[0], dvr[1]}]: dxmax = {dxmax}')
                     h0bt0 = p0bt0
-                    h0bd0 = p0bd0 
-        
+                    h0bd0 = p0bd0
+
                     f0bt0 = (t0**4 - t1**4) * ac * ki0bt0 + acdr0 * 4 * t0 ** 3 - dxl0bt0
                     f0bd0 = (t0**4 - t1**4) * ac * ki0bd0 - dxl0bd0
-        
+
                     A = np.array([[h0bt0, h0bd0],[f0bt0, f0bd0]])
                     c = np.linalg.solve(A,b)
                     v = np.array([t0, d0])
@@ -551,12 +552,13 @@ class Shot(Serialising):
                         ri = fmin / (dfrm * GOLDEN)
                     if ri != fmin:
                         print(f'[SHOT] {ri} reduction for the correction of temperature and density')
+                    # ri = 1
                     t0, d0 = v - c * ri
 
 # If it seems the dxmax is unlikely > 1 after iterations
                     if jj > 1 and dxmax < 0.1 and np.max(np.abs(dvr)) < 1e-3:
                         print(f'[SHOT] Time step reduced as it is too large dxmax = {dxmax}\n[SHOT] Reduced factor = {xmaf}')
-                        xmaf *= (GOLDEN - 1)  
+                        xmaf *= (GOLDEN - 1)
                         restart = True
                         break
 
@@ -566,12 +568,14 @@ class Shot(Serialising):
                 rm  = np.cbrt(r0**3 - 3 * xm0 / (4 * np.pi * d0))
                 ym = xm0 / (4 * np.pi * r0**2)
                 y[j+2] = y[j+1] + ym
-                if y[j+2] > ymax and second_last_step is None:
-                    second_last_step = True
-                    print(f'[SHOT]------------------\n[SHOT] penultimate zone\n[SHOT]------------------')
-                    xm0_2last = (ymax - y[j+1]) * (4 * np.pi * r0**2) 
-                    k = j + 1
-                    continue # for index j
+                # if y[j+2] > ymax * (1 + 5.e-9) and k == 100000:
+                #     # second_last_step = True
+                #     # print(f'[SHOT]------------------\n[SHOT] penultimate zone\n[SHOT]------------------')
+                #     # xm0_2last = (ymax - y[j+1]) * (4 * np.pi * r0**2)
+
+                #     xm1 = (ymax - y[j+1]) * (4 * np.pi * r0**2) / (xmsf * xmaf)
+                #     # k = j + 1
+                #     continue # for index j
 
                 break # break for loop j finished
             s0, snu0, dxmax  = sdot(t0, d0, dt0)
@@ -613,11 +617,14 @@ class Shot(Serialising):
             print('-----------------------------------------------------------------------')
 
             if j == k:
-                break # for index j
+               break # for index j
 
             if ymax is None:
                 if (d0 > 5e11 or t0 > 5e10):
                     break # for index j
+            else:
+                if abs(y[j+2] - ymax) < 1.e-8:
+                    k = j + 1
 
 # bottom heat
         Qb = xl0 / (MEV * mdot * NA)
@@ -675,8 +682,8 @@ class Shot(Serialising):
         snun      = snun[:j+3][::-1]
         smn      = smn[:j+3][::-1]
         smnun      = smnun[:j+3][::-1]
-        xlnn = np.append(smn[1:], 0) 
-        xlnun = np.append(smnun[1:], 0) 
+        xlnn = np.append(smn[1:], 0)
+        xlnun = np.append(smnun[1:], 0)
         xlnsv      = xlnsv[:j+3][::-1]
         xlnint      = xlnint[:j+3][::-1]
         xlnmec      = xlnmec[:j+3][::-1]
@@ -757,7 +764,7 @@ class Shot(Serialising):
         self.maxions = self.abulen.argmax()
         self.da = ufunc_idx(self.abu[self.maxions].iso)
         self.pabu = np.ndarray(len(self.abu)-1) # the array stars from the second element, skipping the phoney value
-        
+
         if endnet:
             net.done()
 
@@ -792,7 +799,7 @@ class Shot(Serialising):
 #        ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
         ax.legend(loc='best')
         plt.show()
-       
+
     def plot_l2(self):
         i1 = slice(1, None)
         i0 = slice(None, 1)
@@ -803,16 +810,16 @@ class Shot(Serialising):
         fig, ax = plt.subplots()
         self.fig = fig
         self.ax = ax
-        
+
         scale = 1 / (MEV * self.mdot * NA)
         ax.set_xscale('log')
         ax.set_ylabel('Specific flux ($\mathrm{MeV\,u}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
 
-        xlne = (self.en[i2] - self.en[-2]) * self.mdot 
+        xlne = (self.en[i2] - self.en[-2]) * self.mdot
         ax.plot(self.y_m[i2], xlne * scale, label='Int')
 
-        xlnpdv = (self.pn[i2] / self.dn[i2] - self.pn[-2] / self.dn[-2]) * self.mdot 
+        xlnpdv = (self.pn[i2] / self.dn[i2] - self.pn[-2] / self.dn[-2]) * self.mdot
         ax.plot(self.y_m[i2], xlnpdv * scale, label='Mech')
 
         xlngrav = (self.gn[i2] * self.rn[i2] - self.gn[-2] * self.rn[-2]) * self.mdot
@@ -830,7 +837,7 @@ class Shot(Serialising):
 
         ax.legend(loc='best')
         plt.show()
-       
+
     def plot_td(self):
         i1 = slice(1, None)
         i0 = slice(None, -1)
@@ -918,7 +925,7 @@ class Shot(Serialising):
 
         max_mass_no = self.max_mass_no[int(start+1):end].max()
         y = np.r_[1:max_mass_no+1]
-        
+
         x = self.y_m[int(start+1):end]
         zz = self.abu[int(start+1):end]
 
@@ -935,9 +942,9 @@ class Shot(Serialising):
                 z = z1
             else:
                 z = np.vstack((z,z1))
-        pcm = ax.pcolor(x, y, z.T, cmap = 'Reds', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T)))) 
+        pcm = ax.pcolor(x, y, z.T, cmap = 'Reds', norm=colors.LogNorm(vmin = 1e-10, vmax = max(map(max, z.T))))
         fig.colorbar(pcm, ax=ax, extend='max')
-        
+
     def plot_mue(self):
         i1 = slice(1, -1)
 
@@ -949,7 +956,7 @@ class Shot(Serialising):
 #        ax.set_yscale('log')
 #        ax.set_ylabel('Opacity ($cm^2\,g^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
-        
+
         ax.plot(np.log10(self.y_m[i1]), self.mue[i1], label='$\mu_e$')
         ax.legend(loc='best')
 
@@ -964,13 +971,13 @@ class Shot(Serialising):
         ax.set_yscale('log')
         ax.set_ylabel('Opacity ($\mathrm{cm}^2\,\mathrm{g}^{-1}$)')
         ax.set_xlabel('Column depth ($\mathrm{g\,cm}^{-2}$)')
-        
+
         ax.plot(np.log10(self.y_m[i1]), self.ki[i1], label='$\kappa$')
         ax.legend(loc='best')
 
     def plot_combine(self, escale=None, A = 50, lim = 10**(-2.4), ls='on'):
-        matplotlib.rc('xtick', labelsize=14) 
-        matplotlib.rc('ytick', labelsize=14) 
+        matplotlib.rc('xtick', labelsize=14)
+        matplotlib.rc('ytick', labelsize=14)
         i1 = slice(1, None)
         i0 = slice(1, -1)
         ir = slice(None, None, -1)
