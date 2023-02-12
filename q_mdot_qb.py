@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from parallelrun import ParallelProcessor as P
 import numpy as np
-path = '/home/kaho/kepshot_run/starshot_paper2/'
+path = '/home/kaho/kepshot_run/starshot_paper/'
 
 _allp = os.listdir(path)
 q = []
@@ -48,13 +48,13 @@ a = np.unique(q)
 b = np.unique(mdot)
 qqb = np.array(sortqb).reshape(len(b), len(a))
 
-fig, ax = plt.subplots()
-pcm = plt.pcolor(a, b, qqb)
+# fig, ax = plt.subplots()
+# pcm = plt.pcolor(a, b, qqb)
 
-ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)', fontsize=15)
-ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$', fontsize=15)
-ax.tick_params(labelsize=13)
-cbar = plt.colorbar(pcm)
-cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', fontsize=15, labelpad=10)
-# cbar.update_ticks(size=15)
-plt.tight_layout()
+# ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)', fontsize=15)
+# ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$', fontsize=15)
+# ax.tick_params(labelsize=13)
+# cbar = plt.colorbar(pcm)
+# cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', fontsize=15, labelpad=10)
+# # cbar.update_ticks(size=15)
+# plt.tight_layout()

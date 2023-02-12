@@ -321,7 +321,7 @@ class Shot(Serialising):
         xlnmec  = np.ndarray(k)
         xlnphi  = np.ndarray(k)
         if track_abu:
-            abu = np.ndarray(k, dtype=np.object)
+            abu = np.ndarray(k, dtype=object)
         abulen = np.ndarray(k)
         mue = np.ndarray(k)
         max_mass_no = np.ndarray(k)
@@ -528,10 +528,10 @@ class Shot(Serialising):
                                 xmaf *= (GOLDEN - 1)
                                 restart = True
                                 break
-                        # else:
-                        #     xmaf *= (GOLDEN - 1)
-                        #     restart = True
-                        #     break
+                        else:
+                            xmaf *= (GOLDEN - 1)
+                            restart = True
+                            break
 
                     print(f'[SHOT] dvr = [{dvr[0], dvr[1]}]: dxmax = {dxmax}')
                     h0bt0 = p0bt0
