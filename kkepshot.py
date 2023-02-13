@@ -1028,10 +1028,13 @@ class Shot(Serialising):
         l = LineStyle()
         k = -1
 
+        # take the top 5 elements
+        top5 = [x for _, x in sorted(zip(self.abub.abu()[1], self.abub.ions), key=lambda pair: pair[0])][::-1][:5]
+
         _ind = self.logabu(self.y_m[i1])
         for i,a in self.abub:
             if A:
-                if i.A < A:
+                if i.A < A or i in top5:
                     am = np.max(a[i1])
                     if am > lim:
                         if i.A != 4:
