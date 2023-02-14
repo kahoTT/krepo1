@@ -35,7 +35,7 @@ class fill(object):
             yc = np.zeros(len(tc))
             tc = np.concatenate([t, tc])
             yc = np.concatenate([dat_notrend, yc])
-            y_c = np.array([x for _,x in sorted(zip(tc, yc))])
+            y_c = np.array([x for _,x in sorted(zip(tc, yc), key=lambda pair: pair[0])])
             t_c = np.sort(tc)
             self.tc = t_c
             self.yc = y_c
@@ -208,8 +208,8 @@ class analysis(object):
         tc = []
         _powall = []
         lsigma3 = []
+        nop = []
         for i2 in range(ltnb): # tnb is a tuple
-            breakpoint()
             realf = fill(tnb_s[i2], ynb_s[i2], dt=dt)
             tc.append(realf.tc)
             rystd = realf.yc.std()
@@ -220,6 +220,8 @@ class analysis(object):
             for i5 in range(len(rpower[0])):
                 _int = np.where(f < 1/rws.coi[i5])
                 rpower[:,i5][_int] = np.nan
+            _ind2, _ = np.where(np.isnan(rpower) == False)
+            nop.append(len(_ind2))
             if test == 0:
                 _powall.append(rpower)
             else:
@@ -262,6 +264,7 @@ class analysis(object):
             self.p = _powall
             self.sigma = lsigma3
             self.tc = tc
+            self.nop = nop
         self.finish_time = time.time() - start_time
         print(f'Finish time = {self.finish_time}')
 

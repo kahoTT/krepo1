@@ -49,7 +49,7 @@ class simLC(object):
             yc = np.ones(len(tc)) * y.mean()
             tc = np.concatenate([t, tc])
             yc = np.concatenate([y, yc])
-            y_c = np.array([x for _,x in sorted(zip(tc, yc))])
+            y_c = np.array([x for _,x in sorted(zip(tc, yc), key=lambda pair: pair[0])])
             t_c = np.sort(tc)
         else:
             t_c = t

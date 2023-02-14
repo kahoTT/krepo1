@@ -31,6 +31,12 @@ _index = np.where((q>=5.4)&(q<=5.9))
 q = q[_index]
 mdot = mdot[_index]
 qb = qb[_index]
+
+# drop values over 3 decimal points
+_index2 = np.where(len(str(q)) == 4)
+q = q[_index2]
+mdot = mdot[_index2]
+qb = qb[_index2]
 # drop repeat runs
 _stack = np.vstack((q, mdot))
 _, _ind = np.unique(_stack, axis=1, return_index=True)
@@ -40,7 +46,7 @@ if len(_ind) != len(q):
     mdot = list(mdot[_ind])
     qb = list(qb[_ind])
 
-qb2 = [x for _, x in sorted(zip(q, qb), key=lambda pair: pair[0])]
+qb2 = [x for _, x in sorted(zip(q, qb), key=lambda pair: pair[0])] # extra argument is for not s
 sortmdot = [x for _, x in sorted(zip(q, mdot), key=lambda pair: pair[0])]
 sortqb= [x for _, x in sorted(zip(sortmdot, qb2), key=lambda pair: pair[0])]
 

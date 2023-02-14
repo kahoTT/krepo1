@@ -1029,7 +1029,8 @@ class Shot(Serialising):
         k = -1
 
         # take the top 5 elements
-        top5 = [x for _, x in sorted(zip(self.abub.abu()[1], self.abub.ions), key=lambda pair: pair[0])][::-1][:5]
+        top5 = [x for _, x in sorted(zip(self.abub.abu()[1], self.abub.ions), key=lambda pair: pair[0])][::-1][:3]
+        print(top5)
 
         _ind = self.logabu(self.y_m[i1])
         for i,a in self.abub:
