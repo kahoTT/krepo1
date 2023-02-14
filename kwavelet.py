@@ -209,6 +209,7 @@ class analysis(object):
 
         tc = []
         _powall = []
+        nop = []
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
@@ -226,6 +227,8 @@ class analysis(object):
             for i5 in range(len(rpower[0])):
                 _int = np.where(f < 1/rws.coi[i5])
                 rpower[:,i5][_int] = np.nan
+            _ind2, _ = np.where(np.isnan(rpower) == False)
+            nop.append(len(_ind2))
             if sims:
                 if sims is True:
                     sims = self.total_sims // (len(f) * len(t_c)) + 1
@@ -273,6 +276,7 @@ class analysis(object):
             self.synpall = synpall
             self.p = _powall
             self.tc = tc
+            self.nop = nop
         self.finish_time = T.time() - start_time
         print(f'Finish time = {self.finish_time}')
 

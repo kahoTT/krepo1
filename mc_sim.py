@@ -61,7 +61,7 @@ def Fillpoint(t=None, y=None, dt=None):
         yc = np.ones(len(tc)) * y.mean()
         tc = np.concatenate([t, tc])
         yc = np.concatenate([y, yc])
-        y_c = np.array([x for _,x in sorted(zip(tc, yc))])
+        y_c = np.array([x for _,x in sorted(zip(tc, yc), key=lambda pair: pair[0])])
         t_c = np.sort(tc)
         n_of_data = int((t[-1] - t[0]) / dt + 1)
         factor = n_of_data / (len(t)) 
