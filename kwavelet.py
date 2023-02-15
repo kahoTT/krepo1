@@ -265,12 +265,6 @@ class analysis(object):
                 rpower[:,i5][_int] = np.nan
             _ind2, _ = np.where(np.isnan(rpower) == False)
             nop.append(len(_ind2))
-<<<<<<< HEAD
-            if test == 0:
-                _powall.append(rpower)
-            else:
-                for i3 in range(test):
-=======
             if sims:
                 if sims is True:
                     sims = self.total_sims // (len(f) * len(t_c)) + 1
@@ -278,7 +272,6 @@ class analysis(object):
                 """Simulation, the number of sims means the number of simulations."""
                 print(sims)
                 for i3 in range(sims):
->>>>>>> develop_kwavelet
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
                     sdat_notrend, _ = detrend(time, counts, dt=dt) # fill class
@@ -320,11 +313,7 @@ class analysis(object):
             self.p = _powall
             self.tc = tc
             self.nop = nop
-<<<<<<< HEAD
-        self.finish_time = time.time() - start_time
-=======
         self.finish_time = T.time() - start_time
->>>>>>> develop_kwavelet
         print(f'Finish time = {self.finish_time}')
 
 

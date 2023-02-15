@@ -33,33 +33,6 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
     if wf is None:
         wf = f
 
-class simLC(object):
-    def __init__(self, t=None, y=None, dt=None, input_counts=False, norm='None', red_noise=1, model='n', gen = True):
-        self.norm = norm
-        if dt is None:
-            dt = t[1] - t[0]       
-        # fill light curve with mean value 
-        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]  
-        if np.any(res) == True:
-            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-            tc = np.array([])
-            for i in ag[1:]:
-                ta = np.arange(t[i] + dt, t[i+1], dt)
-                tc = np.concatenate([tc, ta])
-            yc = np.ones(len(tc)) * y.mean()
-            tc = np.concatenate([t, tc])
-            yc = np.concatenate([y, yc])
-            y_c = np.array([x for _,x in sorted(zip(tc, yc), key=lambda pair: pair[0])])
-            t_c = np.sort(tc)
-        else:
-            t_c = t
-            y_c = y
-        lc = stingray.Lightcurve(t_c-t_c[0], y_c, input_counts=input_counts, dt = dt, skip_checks=False)
-        spec = stingray.Powerspectrum(lc, norm=norm)   
-        spec.power = abs(spec.power)
-        logspec = spec.rebin_log(0.05) # have an impact on having a flat or inclined spectrum 
-        result, omodel = PowFit(f=logspec.freq, y=logspec.power,
-                                f2=spec.freq, rebin_log=False) 
     o_model = F(f, *result.x)
     if o_model[0] < guess:
         # best fit model does not have decreasing trend over frequenies
