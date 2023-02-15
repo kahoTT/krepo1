@@ -1038,7 +1038,7 @@ class Shot(Serialising):
                 if i.A < A or i in top5:
                     am = np.max(a[i1])
                     if am > lim:
-                        if i.A != 4:
+                        if i.A != 4 and i.A != 66 and i.A !=72:
                             k += 1
                             if ls == 'on':
                                 ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color=c(i), ls=l(k))
@@ -1046,6 +1046,16 @@ class Shot(Serialising):
                             for j in _ind:
                                 ax[2].text(
                                     np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color=c(i), ha='center', va='center', clip_on=True, fontsize=12)
+                        elif i.A == 66:
+                            ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='b') 
+                            for j in _ind:
+                                ax[2].text(
+                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color='b', ha='center', va='center', clip_on=True, fontsize=12)
+                        elif i.A == 72:
+                            ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='g') 
+                            for j in _ind:
+                                ax[2].text(
+                                    np.log10(self.y_m[i1])[j], np.log10(a[i1])[j], i.mpl, color='g', ha='center', va='center', clip_on=True, fontsize=12)
                         else:
                             ax[2].plot(np.log10(self.y_m[i1]), np.log10(a[i1]), label=i.mpl, color='k')
                             for j in _ind:

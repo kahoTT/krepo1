@@ -34,7 +34,8 @@ mdot = mdot[_index]
 qb = qb[_index]
 
 # drop values over 3 decimal points
-_index2 = np.where(len(str(q)) == 4)
+_drop = np.arange(0.005, 0.1, 0.01).round(3)
+_index2 = ~np.isin(mdot, _drop)
 q = q[_index2]
 mdot = mdot[_index2]
 qb = qb[_index2]
@@ -55,13 +56,13 @@ a = np.unique(q)
 b = np.unique(mdot)
 qqb = np.array(sortqb).reshape(len(b), len(a))
 
-# fig, ax = plt.subplots()
-# pcm = plt.pcolor(a, b, qqb)
+fig, ax = plt.subplots()
+pcm = plt.pcolor(a, b, qqb)
 
-# ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)', fontsize=15)
-# ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$', fontsize=15)
-# ax.tick_params(labelsize=13)
-# cbar = plt.colorbar(pcm)
-# cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', fontsize=15, labelpad=10)
-# # cbar.update_ticks(size=15)
-# plt.tight_layout()
+ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)', fontsize=15)
+ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$', fontsize=15)
+ax.tick_params(labelsize=13)
+cbar = plt.colorbar(pcm)
+cbar.set_label('Base luminosity / $\dot{m}$ (MeV/u)', fontsize=15, labelpad=10)
+# cbar.update_ticks(size=15)
+plt.tight_layout()
