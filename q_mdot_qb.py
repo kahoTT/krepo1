@@ -9,6 +9,7 @@ q = []
 mdot = []
 qb = []
 for i in _allp:
+    print(i)
     p = P.load(path+i)
     q.extend(p.Q)
     qb.extend(p.Qb)

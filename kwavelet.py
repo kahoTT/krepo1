@@ -235,7 +235,6 @@ class analysis(object):
 
         tc = []
         _powall = []
-<<<<<<< HEAD
         lsigma3 = []
         nop = []
         for i2 in range(ltnb): # tnb is a tuple
@@ -246,7 +245,6 @@ class analysis(object):
             rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=sigma, dt=dt, powera='Liu')
             realresult, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
             rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
-=======
         nop = []
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
@@ -262,7 +260,6 @@ class analysis(object):
                 rpower = rws.power * result.x[2] / norm_f[:, np.newaxis]  # dealing with extra [] for 1D f array  
             else:
                 rpower = rws.power
->>>>>>> develop_kwavelet
             for i5 in range(len(rpower[0])):
                 _int = np.where(f < 1/rws.coi[i5])
                 rpower[:,i5][_int] = np.nan
