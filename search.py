@@ -37,9 +37,9 @@ class Search(object):
                     re_path = data_path+'/results/'f'{a.name}_{a.obsid}'
                     try:
                         os.mkdir(re_path)
-                        S.save(a.p, filename='Power', path=re_path)
+                        S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
                     except:
-                        S.save(a.p, filename='Power', path=re_path)
+                        S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
                 else:
                     # skip observations with negatives
                     _allre['searched?'][_re.index] = '-'

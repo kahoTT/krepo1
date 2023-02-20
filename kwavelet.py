@@ -85,10 +85,10 @@ class analysis(object):
                 t = lc.time
                 y = lc.xlum
             else:
-                self.lc = fits.open(filename)
-                t1 = self.lc[1].data['TIME']
+                lc = fits.open(filename)
+                t1 = lc[1].data['TIME']
                 t = t1 - t1[0]
-                y = self.lc[1].data['RATE']
+                y = lc[1].data['RATE']
         elif obsid:
             b.clear()
             b.obsid(obsid)
@@ -103,9 +103,9 @@ class analysis(object):
                 name = o.get('name')[0]
                 obs = minbar.Observation(o[o['entry']]) 
             _path = obs.instr.lightcurve(obsid)
-            self.lc = fits.open(obs.get_path()+'/'+_path)
-            t1 = self.lc[1].data['TIME']
-            y = self.lc[1].data['RATE']
+            lc = fits.open(obs.get_path()+'/'+_path)
+            t1 = lc[1].data['TIME']
+            y = lc[1].data['RATE']
             t = t1 - t1[0]
             if obs.instr.name == 'pca':
                 dt = 0.125
