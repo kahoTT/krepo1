@@ -18,32 +18,6 @@ minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 # 4U 1608-52 obsid: 10094-01-01-00 Revnivtsev et al. 2000
 
 # This class is to fill the gap data with mean value, will change to fill with the fitted polynomail vales
-class fill(object):
-    def __init__(self, t=None, y=None, dt=None, plot=False):
-        if dt is None:
-            dt = t[1] - t[0]
-        p = np.polyfit(t, y, 2) # value is the d.o.f
-        if plot == True:
-            plt.plot(t,y)
-            plt.plot(t, np.polyval(p, t))
-        dat_notrend = y - np.polyval(p, t)
-        res = [(sub2 - sub1 > dt) for sub1, sub2 in zip(t[:-1], t[1:])]
-        if np.any(res) == True:
-            ag = np.concatenate(([-1], (np.where(res))[0]), axis=0)
-            tc = np.array([])
-            for i in ag[1:]:
-                ta = np.arange(t[i] + dt, t[i+1], dt)
-                tc = np.concatenate([tc, ta])
-            yc = np.zeros(len(tc))
-            tc = np.concatenate([t, tc])
-            yc = np.concatenate([dat_notrend, yc])
-            y_c = np.array([x for _,x in sorted(zip(tc, yc), key=lambda pair: pair[0])])
-            t_c = np.sort(tc)
-            self.tc = t_c
-            self.yc = y_c
-        else:
-            self.tc = t
-            self.yc = dat_notrend
 def detrend(t=None, y=None, dt=None, plot=False, dof=2):
     if dt is None:
         dt = t[1] - t[0]
@@ -235,17 +209,7 @@ class analysis(object):
 
         tc = []
         _powall = []
-        lsigma3 = []
-        nop = []
-        for i2 in range(ltnb): # tnb is a tuple
-            realf = fill(tnb_s[i2], ynb_s[i2], dt=dt)
-            tc.append(realf.tc)
-            rystd = realf.yc.std()
-            #' power spectrum for real data to for normalising the synthetic ones
-            rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=sigma, dt=dt, powera='Liu')
-            realresult, realmodel = mc_sim.PowFit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
-            rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
-        nop = []
+        nops = []
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
@@ -254,8 +218,10 @@ class analysis(object):
             dat_notrend, _ = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
             _, y_c, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=dat_notrend, dt=dt)
             rws = wavelet_spec(y=y_c, f=f, sigma=sigma, dt=dt)
+
             # drop the normalisation to spectrum
             norm_f = None
+
             if norm_f is not None:
                 rpower = rws.power * result.x[2] / norm_f[:, np.newaxis]  # dealing with extra [] for 1D f array  
             else:
@@ -264,10 +230,12 @@ class analysis(object):
                 _int = np.where(f < 1/rws.coi[i5])
                 rpower[:,i5][_int] = np.nan
             _ind2, _ = np.where(np.isnan(rpower) == False)
-            nop.append(len(_ind2))
+            nop = len(_ind2)
+            nops.append(nop)
             if sims:
                 if sims is True:
-                    sims = self.total_sims // (len(f) * len(t_c)) + 1
+                    # sims = self.total_sims // (len(f) * len(t_c)) + 1
+                    sims = 2
                 lsigma3 = []
                 """Simulation, the number of sims means the number of simulations."""
                 print(sims)
@@ -308,11 +276,12 @@ class analysis(object):
             else:
                 _powall.append(rpower)
                 lsigma3 = None
+                synpall = None
             self.sigma = lsigma3
             self.synpall = synpall
             self.p = _powall
             self.tc = tc
-            self.nop = nop
+            self.nops = nops
         self.finish_time = T.time() - start_time
         print(f'Finish time = {self.finish_time}')
 

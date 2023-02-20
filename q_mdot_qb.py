@@ -34,7 +34,7 @@ mdot = mdot[_index]
 qb = qb[_index]
 
 # drop values over 3 decimal points
-_drop = np.arange(0.005, 0.1, 0.01).round(3)
+_drop = np.arange(0.005, 1.15, 0.01).round(3)
 _index2 = ~np.isin(mdot, _drop)
 q = q[_index2]
 mdot = mdot[_index2]
@@ -54,6 +54,7 @@ sortqb= [x for _, x in sorted(zip(sortmdot, qb2), key=lambda pair: pair[0])]
 
 a = np.unique(q)
 b = np.unique(mdot)
+breakpoint()
 qqb = np.array(sortqb).reshape(len(b), len(a))
 
 fig, ax = plt.subplots()
