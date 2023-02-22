@@ -62,7 +62,7 @@ class TestLc(object):
 # red_noise = 0, no exclude, use the model without any boosting seems to be the best, with problem occurs for both red_noise = 0 or 1 
 class Test1613(object):
 	def __init__(self, red_noise=1, testno = 5, norm = 'leahy', norm2 = 'None'):
-		w = kwavelet.analysis(obsid='60032-05-02-00')
+		w = kwavelet.analysis(obsid='60032-05-02-00', sims=0)
 		t2 = w.tnb
 		y2 = w.ynb
 		dt = t2[1] - t2[0]

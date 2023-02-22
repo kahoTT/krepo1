@@ -18,7 +18,7 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
     if guess is None: 
         _ind2 = np.where(freq >= 2e-2)
         guess = y[_ind2].mean()
-    x0 = np.array([3, -2, guess])
+    x0 = np.array([0.1, -1, guess])
     if rebin_log == True:
         rf, rebinp, _, _ = stingray.rebin_data_log(freq, y, 0.05)
         rebinf = (rf[1:]+rf[:-1])/2

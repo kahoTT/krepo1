@@ -209,7 +209,10 @@ class analysis(object):
 
         tc = []
         _powall = []
+        _npowall = []
         nops = []
+        specl = []
+        o_modell = []
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
@@ -218,7 +221,8 @@ class analysis(object):
             dat_notrend, _ = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
             _, y_c, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=dat_notrend, dt=dt)
             rws = wavelet_spec(y=y_c, f=f, sigma=sigma, dt=dt)
-
+            specl.append(spec)
+            o_modell.append(o_model)
             # drop the normalisation to spectrum
             norm_f = None
 
@@ -268,69 +272,32 @@ class analysis(object):
                 synpall = synp.reshape(1, synp.size)[0]
                 _int2 = np.isnan(synpall)
                 synpall = np.sort(synpall[~_int2])
-                # sigma3 = synpall[int(len(synpall) * 0.9973)]
-                sigma3 = synpall[int(len(synpall) * 0.99999)]
-                _pow = rpower / sigma3
+                sigma3 = synpall[-sims] # take the nth element having n time simulations
+                _pow = rpower
+                _npow = rpower / sigma3
                 _powall.append(_pow)
+                _npowall.append(_npow)
                 lsigma3.append(sigma3)
             else:
                 _powall.append(rpower)
                 lsigma3 = None
                 synpall = None
+                _npowall = None
             self.sigma = lsigma3
             self.synpall = synpall
             self.p = _powall
+            self.np = _npowall
             self.tc = tc
             self.nops = nops
+            if ltnb == 1:
+                self.specl = specl[0]
+                self.o_mdell = o_modell[0]
+            else:
+                self.specl = specl
+                self.o_mdell = o_modell
+            self.logspec = logspec
         self.finish_time = T.time() - start_time
         print(f'Finish time = {self.finish_time}')
-
-
-#         lsigma3 = []
-#             tc.append(realf.tc)
-#             rystd = realf.yc.std()
-#             # power spectrum for real data to for normalising the synthetic ones
-#             rws = wavelet_spec(y=(realf.yc/rystd), f=f, sigma=sigma, dt=dt, powera='Liu')
-#             realresult, realmodel = mc_sim.Powfit(f=rws.fftfreqs, y=rws.fft_power, f2=f)
-#             rpower = rws.power * realresult.x[2] / realmodel[:, np.newaxis]  # dealing with extra [] for 1D f array  
-#             if sims == 0:
-#                 _powall.append(rpower)
-#             else:
-#                 for i3 in range(sims):
-# #                    testtime = time.time() - start_time
-#                     s = sim(t=tnb_s[i2], y=ynb_s[i2], dt=dt) # Simulation class
-#                     _f = fill(s.lct, s.lcy, dt=dt) # fill class
-#                     ystd = _f.yc.std()
-#                     ws = wavelet_spec(y=(_f.yc / ystd), f=f, sigma=sigma, dt=dt, powera=None)
-
-#                     # Case when using single frequency
-#                     if len(f) == 1: 
-#                         norm_pow = ws.power[0] * realresult.x[2] / realmodel # dealing with extra [] for 1D f array  
-#                         _int = np.where(f > 1/ws.coi)
-#                         synp = norm_pow[_int]
-#                     else:
-#                         norm_pow = ws.power * realresult.x[2] / realmodel[:, np.newaxis]  
-#                         for i4 in range(len(norm_pow[0])):
-#                             _int = np.where(f < 1/ws.coi[i4])
-#                             norm_pow[:,i4][_int] = np.nan
-#                     if i3 == 0:
-#                         synp = norm_pow
-#                     else:
-#                         synp = np.concatenate((synp, norm_pow), axis=1)
-#                 synpall = synp.reshape(1, synp.size)[0]
-#                 _int2 = np.isnan(synpall)
-#                 synpall = np.sort(synpall[~_int2])
-#                 sigma3 = synpall[int(len(synpall) * 0.9973)]
-#                 _pow = rpower / sigma3
-#                 _powall.append(_pow)
-#                 lsigma3.append(sigma3)
-#         #           plt.colorbar()
-#         #            plt.fill(np.concatenate([_f.tc[:1], _f.tc, _f.tc[-1:]]),
-#         #                     np.concatenate([[f1], 1/ws.coi, [f1]]), 'k', alpha=0.3, hatch='x')
-#         #            plt.ylim(f1, f2)
-#         #            plt.plot(_f.tc, _f.yc, 'b')
-#                 # coiarray = ws.coi,
-#             # self.coi = coiarray
 
 # Plot without burst
     def plot_nob(self): # put self arguments
@@ -414,24 +381,3 @@ class analysis(object):
         fig.suptitle(f'{self.name} obsid: {self.obsid}')
 #        fig.colorbar(cm, ax=ax)
 ### norm_pow may need to modity, as this only has the elements for the last loop
-
-# plot fft spectrum
-    def plot_spec(self, sigma=10):
-        fig, ax = plt.subplots()
-        self.fig = fig
-        self.ax = ax
-
-        f = self.f 
-        t = self.tnb
-        y = self.ynb
-        dt = self.dt
-
-        for i in range(self.ltnb): 
-            if self.ltnb == 1:
-                i = slice(None)
-            ystd = y[i].std()
-            ws = wavelet_spec(y=(_f.yc / ystd**2), f=f, sigma=10, dt=dt, powera='Liu')
-
-        ax.plot(ws.fftfreqs, ws.fft_power)
-        plt.yscale('log')
-        plt.xscale('log')
