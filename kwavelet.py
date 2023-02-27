@@ -70,7 +70,7 @@ class analysis(object):
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, ng=None):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, ng=None, norm_f=True):
         if b is None:
             b = minbar.Bursts()
         if _re:
@@ -217,17 +217,16 @@ class analysis(object):
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
             spec, logspec = mc_sim.Genspec(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
-            result, o_model, n_model, norm_f = mc_sim.Powfit(freq=spec.freq, f=spec.freq, y=spec.power, wf=f, rebin_log=False, factor=factor)
+            result, o_model, n_model, norm_fr = mc_sim.Powfit(freq=spec.freq, f=spec.freq, y=spec.power, wf=f, rebin_log=False, factor=factor)
             dat_notrend, _ = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
             _, y_c, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=dat_notrend, dt=dt)
             rws = wavelet_spec(y=y_c, f=f, sigma=sigma, dt=dt)
             specl.append(spec)
             o_modell.append(o_model)
             # drop the normalisation to spectrum
-            norm_f = None
 
-            if norm_f is not None:
-                rpower = rws.power * result.x[2] / norm_f[:, np.newaxis]  # dealing with extra [] for 1D f array  
+            if norm_f is True:
+                rpower = rws.power * result.x[2] / norm_fr[:, np.newaxis]  # dealing with extra [] for 1D f array  
             else:
                 rpower = rws.power
             for i5 in range(len(rpower[0])):
@@ -246,20 +245,22 @@ class analysis(object):
                 for i3 in range(sims):
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
+                    specs, logspecs = mc_sim.Genspec(t=time, y=counts, dt=dt)
+                    results, _, _, norm_fs = mc_sim.Powfit(freq=specs.freq, f=specs.freq, y=specs.power, wf=f, rebin_log=False, factor=factor)
                     sdat_notrend, _ = detrend(time, counts, dt=dt) # fill class
                     _, sy, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=sdat_notrend, dt=dt)
                     ws = wavelet_spec(y=sy, f=f, sigma=sigma, dt=dt)
                     if len(f) == 1: 
                         # Case when using single frequency
-                        if norm_f is not None:
-                            norm_pow = ws.power[0] * result.x[2] / norm_f # dealing with extra [] for 1D f array  
+                        if norm_f is True:
+                            norm_pow = ws.power[0] * results.x[2] / norm_fs # dealing with extra [] for 1D f array  
                         else:
                             norm_pow = ws.power[0]
                         _int = np.where(f > 1/ws.coi)
                         synp = norm_pow[_int]
                     else:
-                        if norm_f is not None:
-                            norm_pow = ws.power * result.x[2] / norm_f[:, np.newaxis]  
+                        if norm_f is True:
+                            norm_pow = ws.power * results.x[2] / norm_fs[:, np.newaxis]  
                         else:
                             norm_pow = ws.power
                         for i4 in range(len(norm_pow[0])):

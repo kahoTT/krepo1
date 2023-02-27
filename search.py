@@ -27,22 +27,25 @@ class Search(object):
             _re = j
             detection = None
             if _re['searched?'] == 'N':
-                a = analysis(_re=_re, b=b)
-                if a.bg is not None:
-                    _allre['searched?'][_re.index] = 'Y'
-                    for k in range(len(a.p)):
-                        detection = np.any(a.p[k] > 1)
-                    if detection:
-                        file.write(f'{a.name} {a.obsid} yes\n')
-                    re_path = data_path+'/results/'f'{a.name}_{a.obsid}'
-                    try:
-                        os.mkdir(re_path)
-                        S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
-                    except:
-                        S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
-                else:
-                    # skip observations with negatives
-                    _allre['searched?'][_re.index] = '-'
+                try:
+                    a = analysis(_re=_re, b=b, sims=10)
+                    if a.bg is not None:
+                        _allre['searched?'][_re.index] = 'Y'
+                        for k in range(len(a.p)):
+                            detection = np.any(a.p[k] > 1)
+                        if detection:
+                            file.write(f'{a.name} {a.obsid} yes\n')
+                        re_path = data_path+'/results/'f'{a.name}_{a.obsid}'
+                        try:
+                            os.mkdir(re_path)
+                            S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
+                        except:
+                            S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
+                    else:
+                        # skip observations with negatives
+                        _allre['searched?'][_re.index] = '-'
+                except:
+                    _allre['searched?'][_re.index] = 'x'
         file.close()
         S.save(_allre, filename, data_path)
 
