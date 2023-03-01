@@ -8,6 +8,7 @@ import mc_sim
 import time as T
 import minbar
 import stingray
+import glob
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 
 # Normalized light curves and fill spaces with zeors
@@ -102,13 +103,12 @@ class analysis(object):
                 o.obsid(obsid)
                 name = o.get('name')[0]
                 obs = minbar.Observation(o[o['entry']]) 
-            _path = obs.instr.lightcurve(obsid)
-            lc = fits.open(obs.get_path()+'/'+_path)
+            # _path = obs.instr.lightcurve(obsid)
+            lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_s2a.lc.gz')[0])
             t1 = lc[1].data['TIME']
             y = lc[1].data['RATE']
             t = t1 - t1[0]
-            if obs.instr.name == 'pca':
-                dt = 0.125
+            dt = t1[1] - t1[0]
         else:
             raise AttributeError(f'give me a light curve')
 
@@ -213,6 +213,7 @@ class analysis(object):
         nops = []
         specl = []
         o_modell = []
+        accsynpl = []
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
@@ -235,12 +236,11 @@ class analysis(object):
             _ind2, _ = np.where(np.isnan(rpower) == False)
             nop = len(_ind2)
             nops.append(nop)
+            """Simulation, the number of sims means the number of simulations."""
             if sims:
-                if sims is True:
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
-                    sims = 2
                 lsigma3 = []
-                """Simulation, the number of sims means the number of simulations."""
+                accsynp = []
                 print(sims)
                 for i3 in range(sims):
 #                    testtime = time.time() - start_time
@@ -266,10 +266,14 @@ class analysis(object):
                         for i4 in range(len(norm_pow[0])):
                             _int = np.where(f < 1/ws.coi[i4])
                             norm_pow[:,i4][_int] = np.nan
+                        norm_pow_non = norm_pow.reshape(1, norm_pow.size)[0][~np.isnan(norm_pow.reshape(1, norm_pow.size)[0])]
                     if i3 == 0:
                         synp = norm_pow
+                        all_norm_pow_non = norm_pow_non
                     else:
                         synp = np.concatenate((synp, norm_pow), axis=1)
+                        all_norm_pow_non = np.concatenate((all_norm_pow_non, norm_pow_non), axis=0)
+                    accsynp.append(((i3+1),np.sort(all_norm_pow_non)[-int(i3+1)]))
                 synpall = synp.reshape(1, synp.size)[0]
                 _int2 = np.isnan(synpall)
                 synpall = np.sort(synpall[~_int2])
@@ -279,6 +283,7 @@ class analysis(object):
                 _powall.append(_pow)
                 _npowall.append(_npow)
                 lsigma3.append(sigma3)
+                accsynpl.append(accsynp)
             else:
                 _powall.append(rpower)
                 lsigma3 = None
@@ -293,9 +298,11 @@ class analysis(object):
             if ltnb == 1:
                 self.specl = specl[0]
                 self.o_mdell = o_modell[0]
+                self.accsynpl = accsynpl[0]
             else:
                 self.specl = specl
                 self.o_mdell = o_modell
+                self.accsynpl = accsynpl
             self.logspec = logspec
         self.finish_time = T.time() - start_time
         print(f'Finish time = {self.finish_time}')
@@ -358,12 +365,15 @@ class analysis(object):
         p = self.p
         tc = self.tc
         sigma = self.sigma
+        np = self.np
 
         ax[0].plot(tnb, ynb)
         for i in range(self.ltnb): 
-            ax[1].contourf(tc[i], f, p[i], cmap=plt.cm.viridis)
-            if sigma is not None:
-                ax[1].contour(tc[i], f, p[i], 1, colors='k')
+            if np:
+                ax[1].contourf(tc[i], f, np[i], cmap=plt.cm.viridis)
+                ax[1].contour(tc[i], f, np[i], 1, colors='k')
+            else:
+                ax[1].contourf(tc[i], f, p[i], cmap=plt.cm.viridis)
 
 
         # vmin = 0

@@ -34,16 +34,10 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
         wf = f
 
     o_model = F(f, *result.x)
-    if o_model[0] < guess:
-        # best fit model does not have decreasing trend over frequenies
-        o_model = np.ones(len(f)) * guess
-        n_model = o_model * factor
-        norm_f = None
-    else:
-        n_result = result
-        n_result.x[2] = n_result.x[2] * factor
-        n_model = F(f, *n_result.x)
-        norm_f = F(wf, *result.x)
+    n_result = result
+    n_result.x[2] = n_result.x[2] * factor
+    n_model = F(f, *n_result.x)
+    norm_f = F(wf, *result.x)
     return result, o_model, n_model, norm_f
 
 def Fillpoint(t=None, y=None, dt=None):
@@ -138,3 +132,18 @@ def Horizontalfit_log(freq, power):
     aver = np.exp(sum(np.log(power)) / len(power))
     model = np.ones(len(freq)) * aver
     return aver, model
+
+def log_exp(freq, power):
+    da = np.ones(len(freq))
+    db = np.log10(freq) 
+    dc = np.log10(power) 
+    Corma = np.matrix([
+                       [sum(da**2) , sum(da*db)],
+                       [sum(db*da) , sum(db**2)]
+                       ]).I
+    Sy = np.matrix([sum(da*dc),sum(db*dc)]).T
+    realcoef = np.dot(Corma,Sy)
+    return realcoef.item(0), realcoef.item(1)
+
+def F2(x, A, B):
+    return 10**A * x**(B)
