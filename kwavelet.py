@@ -213,7 +213,6 @@ class analysis(object):
         nops = []
         specl = []
         o_modell = []
-        accsynpl = []
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
@@ -241,6 +240,7 @@ class analysis(object):
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 lsigma3 = []
                 accsynp = []
+                accsynpl = []
                 print(sims)
                 for i3 in range(sims):
 #                    testtime = time.time() - start_time
@@ -298,11 +298,13 @@ class analysis(object):
             if ltnb == 1:
                 self.specl = specl[0]
                 self.o_mdell = o_modell[0]
-                self.accsynpl = accsynpl[0]
+                if sims:
+                    self.accsynpl = accsynpl[0]
             else:
                 self.specl = specl
                 self.o_mdell = o_modell
-                self.accsynpl = accsynpl
+                if sims:
+                    self.accsynpl = accsynpl
             self.logspec = logspec
         self.finish_time = T.time() - start_time
         print(f'Finish time = {self.finish_time}')

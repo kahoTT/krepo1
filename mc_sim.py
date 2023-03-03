@@ -5,39 +5,45 @@ from stingray.simulator import simulator
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
-def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, exclude=True, factor=None):
+def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, exclude=True, factor=1, fit='power'):
     """Lightcurve may contain gaps, we use n_model to try to take it into account"""
     nan = np.isnan(y)
     notnan = ~nan
     freq = freq[notnan]
     y = y[notnan]
+    if wf is None:
+        wf = f
     if exclude == True:  
         _ind = np.where((freq <= 5e-3) | (freq >= 15e-3))
         freq = freq[_ind]
         y = y[_ind]
-    if guess is None: 
-        _ind2 = np.where(freq >= 2e-2)
-        guess = y[_ind2].mean()
-    x0 = np.array([0.1, -1, guess])
     if rebin_log == True:
         rf, rebinp, _, _ = stingray.rebin_data_log(freq, y, 0.05)
         rebinf = (rf[1:]+rf[:-1])/2
         nan2 = np.isnan(rebinp)
         notnan2 = ~nan2
-        rebinf = rebinf[notnan2]
-        rebinp = rebinp[notnan2]
-        result = least_squares(partial(G, rebinf, rebinp), x0)
-    else:
-        result = least_squares(partial(G, freq, y), x0)
-     
-    if wf is None:
-        wf = f
+        freq = rebinf[notnan2]
+        y = rebinp[notnan2]
 
-    o_model = F(f, *result.x)
-    n_result = result
-    n_result.x[2] = n_result.x[2] * factor
-    n_model = F(f, *n_result.x)
-    norm_f = F(wf, *result.x)
+    if fit == 'simple':
+        result = log_exp(freq, y)
+        o_model = F2(f, *result)
+        if factor != 1:
+            result[0] = result[0] * factor
+        n_model = F2(f, *result)
+        norm_f = F(wf, *result)
+
+    if fit == 'power':
+        if guess is None: 
+            _ind2 = np.where(freq >= 2e-2)
+            guess = y[_ind2].mean()
+        x0 = np.array([0.01, -1, guess])
+        result = least_squares(partial(G, freq, y), x0)
+        o_model = F(f, *result.x)
+        n_result = result
+        n_result.x[2] = n_result.x[2] * factor
+        n_model = F(f, *n_result.x)
+        norm_f = F(wf, *result.x)
     return result, o_model, n_model, norm_f
 
 def Fillpoint(t=None, y=None, dt=None):
@@ -66,7 +72,7 @@ def Fillpoint(t=None, y=None, dt=None):
         factor = 1
     return t_c, y_c, n_of_data, factor, dt, ares 
 
-def Genspec(t=None, y=None, input_counts=False, norm='leahy', dt=None):
+def Genspec(t=None, y=None, input_counts=True, norm='leahy', dt=None):
     lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=True)
     spec = stingray.Powerspectrum(lc, norm=norm)   
     spec.power = abs(spec.power)
@@ -143,7 +149,14 @@ def log_exp(freq, power):
                        ]).I
     Sy = np.matrix([sum(da*dc),sum(db*dc)]).T
     realcoef = np.dot(Corma,Sy)
-    return realcoef.item(0), realcoef.item(1)
+    return 10**(realcoef.item(0)), realcoef.item(1)
 
 def F2(x, A, B):
-    return 10**A * x**(B)
+    return A * x**(B)
+
+def F3(x, A, B): 
+    # B is the alpha, the slope of power spectrum in log space
+    return A * x** (B)
+
+def G3(x, y, args):
+    return (F3(x, *args) - y) 
