@@ -6,11 +6,16 @@ import minbar
 from serialising import Serialising as S
 from pathlib import Path
 import numpy as np
+import argparse
+
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 data_path='/home/kaho/mhz_QPOs_search_in_minbar'
+parser=argparse.ArgumentParser(description="""restart""")
+parser.add_argument('-re', default=False, action=argparse.BooleanOptionalAction)
+args = parser.parse_args()
 
 class Search(object):
-    def __init__(self, restart=True, filename='search_table.gz', refile='search_results.txt'):
+    def __init__(self, restart=args.re, filename='search_table.gz', refile='search_results.txt'):
         if restart == True:
             o = minbar.Observations()
             b = minbar.Bursts()
@@ -23,12 +28,12 @@ class Search(object):
             file.read() # change the file object to located in a new line
 
         # need to run in parallel later
-        for i, j in enumerate(_allre[:3]):
+        for i, j in enumerate(_allre[:20]):
             _re = j
             detection = None
             if _re['searched?'] == 'N':
                 try:
-                    a = analysis(_re=_re, b=b, sims=10)
+                    a = analysis(_re=_re, b=b, sims=100)
                     if a.bg is not None:
                         _allre['searched?'][_re.index] = 'Y'
                         for k in range(len(a.p)):
