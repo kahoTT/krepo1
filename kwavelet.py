@@ -71,7 +71,7 @@ class analysis(object):
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, ng=None, norm_f=True):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True):
         if b is None:
             b = minbar.Bursts()
         if _re:
@@ -94,15 +94,12 @@ class analysis(object):
             b.clear()
             b.obsid(obsid)
             ifb = b.get('obsid')
-            if _re:
-                obs = minbar.Observation(_re)
-                name = _re['name']
-            else:
+            if o is None:
                 o = minbar.Observations()
-                o.clear()
-                o.obsid(obsid)
-                name = o.get('name')[0]
-                obs = minbar.Observation(o[o['entry']]) 
+            o.clear()
+            o.obsid(obsid)
+            name = o.get('name')[0]
+            obs = minbar.Observation(o[o['entry']]) 
             # _path = obs.instr.lightcurve(obsid)
             lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_s2a.lc.gz')[0])
             t1 = lc[1].data['TIME']
@@ -153,7 +150,7 @@ class analysis(object):
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
-            bst = bursttime - 5
+            bst = bursttime - 10
             bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration
             barray = []
             nbarray = []
@@ -278,6 +275,7 @@ class analysis(object):
                 _int2 = np.isnan(synpall)
                 synpall = np.sort(synpall[~_int2])
                 sigma3 = synpall[-sims] # take the nth element having n time simulations
+                breakpoint()
                 _pow = rpower
                 _npow = rpower / sigma3
                 _powall.append(_pow)
@@ -373,7 +371,7 @@ class analysis(object):
         for i in range(self.ltnb): 
             if np:
                 ax[1].contourf(tc[i], f, np[i], cmap=plt.cm.viridis)
-                ax[1].contour(tc[i], f, np[i], 1, colors='k')
+                ax[1].contour(tc[i], f, np[i], [1], colors='k')
             else:
                 ax[1].contourf(tc[i], f, p[i], cmap=plt.cm.viridis)
 
@@ -393,4 +391,4 @@ class analysis(object):
         ax[1].set_ylabel('Frequency (Hz)')
         fig.suptitle(f'{self.name} obsid: {self.obsid}')
 #        fig.colorbar(cm, ax=ax)
-### norm_pow may need to modity, as this only has the elements for the last loop
+### norm_pow may need to modity, as this only has the elements for the last Ekoop

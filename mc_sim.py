@@ -72,7 +72,7 @@ def Fillpoint(t=None, y=None, dt=None):
         factor = 1
     return t_c, y_c, n_of_data, factor, dt, ares 
 
-def Genspec(t=None, y=None, input_counts=True, norm='leahy', dt=None):
+def Genspec(t=None, y=None, input_counts=False, norm='leahy', dt=None):
     lc = stingray.Lightcurve(t-t[0], y, input_counts=input_counts, dt = dt, skip_checks=True)
     spec = stingray.Powerspectrum(lc, norm=norm)   
     spec.power = abs(spec.power)
@@ -90,7 +90,7 @@ def simlc(ares=None, t=None, y=None, dt=None, N=None, red_noise=1, o_model=None,
     else:
         _intin = ()
     time = lc.time[_intin]
-    counts = lc.counts[_intin]
+    counts = lc.countrate[_intin]
     return time, counts
 
 class RealLc(object):

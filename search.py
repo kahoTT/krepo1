@@ -33,7 +33,7 @@ class Search(object):
             detection = None
             if _re['searched?'] == 'N':
                 try:
-                    a = analysis(_re=_re, b=b, sims=100)
+                    a = analysis(_re=_re, b=b, o=o, sims=100)
                     if a.bg is not None:
                         _allre['searched?'][_re.index] = 'Y'
                         for k in range(len(a.p)):
@@ -43,9 +43,9 @@ class Search(object):
                         re_path = data_path+'/results/'f'{a.name}_{a.obsid}'
                         try:
                             os.mkdir(re_path)
-                            S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
+                            S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
                         except:
-                            S.save(a, filename=f'{a.name}_{a.obsid}', path=re_path)
+                            S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
                     else:
                         # skip observations with negatives
                         _allre['searched?'][_re.index] = '-'
