@@ -71,7 +71,7 @@ class analysis(object):
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True, _5sigma=False):
         if b is None:
             b = minbar.Bursts()
         if _re:
@@ -150,7 +150,7 @@ class analysis(object):
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
-            bst = bursttime - 10
+            bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration
             barray = []
             nbarray = []
@@ -158,6 +158,9 @@ class analysis(object):
             for i in range(len(b.get('bnum'))): # extract burst data and non-burst data
                 a = list(abs(t-bst[i])).index(min(abs(t - bst[i])))
                 _a = list(abs(t-bet[i])).index(min(abs(t - bet[i])))
+                if dt-16 < 1e-5:
+                    a = a-1
+                    _a = _a+2
                 barray.extend(np.r_[a:_a])
                 if i == 0: 
                     if a != 0: 
@@ -192,6 +195,9 @@ class analysis(object):
         self.obsid = obsid
         self.t = t
         self.y = y
+        plt.plot(t,y)
+        plt.show()
+        self.tstart = t1[0]
         self.tnb = tnb
         self.ynb = ynb
         self.name = name
@@ -233,6 +239,9 @@ class analysis(object):
             nop = len(_ind2)
             nops.append(nop)
             """Simulation, the number of sims means the number of simulations."""
+            if _5sigma == True:
+                # sims = int(3.5e7 // nop + 1)
+                sims = int(1e7 // nop + 1)
             if sims:
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 lsigma3 = []
@@ -274,8 +283,10 @@ class analysis(object):
                 synpall = synp.reshape(1, synp.size)[0]
                 _int2 = np.isnan(synpall)
                 synpall = np.sort(synpall[~_int2])
-                sigma3 = synpall[-sims] # take the nth element having n time simulations
-                breakpoint()
+                if _5sigma == True:
+                    sigma3 = synpall[-1]
+                else:
+                    sigma3 = synpall[-sims] # take the nth element having n time simulations
                 _pow = rpower
                 _npow = rpower / sigma3
                 _powall.append(_pow)
@@ -322,7 +333,7 @@ class analysis(object):
     def plot_b(self):
         plt.rc('xtick', labelsize=15)
         plt.rc('ytick', labelsize=15)
-        plt.plot(self.tb, self.yb, 'r')
+        plt.plot(self.tb, self.yb, 'r.')
         plt.ylabel('Counts/s', fontsize=15)
         plt.xlabel('Time (s)', fontsize=15)
         plt.tight_layout()

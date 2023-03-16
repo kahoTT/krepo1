@@ -26,21 +26,21 @@ class Search(object):
             _allre = S.load(filename=filename, path=data_path)
             file = open(Path(data_path)/refile, 'r+')	    
             file.read() # change the file object to located in a new line
+        re_path = data_path+'/results/'
 
         # need to run in parallel later
-        for i, j in enumerate(_allre[:20]):
+        for i, j in enumerate(_allre[100:150]):
             _re = j
             detection = None
             if _re['searched?'] == 'N':
                 try:
-                    a = analysis(_re=_re, b=b, o=o, sims=100)
+                    a = analysis(_re=_re, b=b, o=o, sims=0)
                     if a.bg is not None:
                         _allre['searched?'][_re.index] = 'Y'
                         for k in range(len(a.p)):
-                            detection = np.any(a.p[k] > 1)
+                            detection = np.any(a.np[k] > 1)
                         if detection:
                             file.write(f'{a.name} {a.obsid} yes\n')
-                        re_path = data_path+'/results/'f'{a.name}_{a.obsid}'
                         try:
                             os.mkdir(re_path)
                             S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
