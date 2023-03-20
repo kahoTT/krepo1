@@ -179,31 +179,6 @@ class ParallelProcessor(Serialising):
                             self.Q[maxabu], a[maxabu], i.mpl, color=c(i),  
                             ha='center', va='center', clip_on=True, size=12)
 
-    def plot_contour_Q_mdot_Qb(self, Q=None, mdot=None, Qb=None):
-        fig, ax = plt.subplots()
-        # self.fig = fig
-        # self.ax = ax
-
-        if Q is None:
-            Q = self.Q
-        if mdot is None:
-            mdot = self.mdot
-        if Qb is None:
-            qba = self.Qba
-        else:
-            a = len(np.unique(Q))
-            b = len(np.unique(mdot))
-            qba = np.array(Qb).reshape(b, a)
-
-        cm = ax.contourf(np.unique(Q), np.unique(mdot), qba, 20, cmap=plt.cm.viridis)
-        plt.colorbar
-        fig.colorbar(cm, ax=ax)
-        ax.set_ylabel('$\dot{m}_{\mathrm{Edd}}$')
-        ax.set_xlabel('Surface luminosity / $\dot{m}$ (MeV/u)')
-        # cm.ax.set_title('Your Label')
-
-
-
 class Result(Serialising):
     def __init__(self, data):
         self.result = data[1]

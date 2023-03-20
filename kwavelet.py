@@ -195,8 +195,6 @@ class analysis(object):
         self.obsid = obsid
         self.t = t
         self.y = y
-        plt.plot(t,y)
-        plt.show()
         self.tstart = t1[0]
         self.tnb = tnb
         self.ynb = ynb
@@ -240,8 +238,8 @@ class analysis(object):
             nops.append(nop)
             """Simulation, the number of sims means the number of simulations."""
             if _5sigma == True:
-                # sims = int(3.5e7 // nop + 1)
-                sims = int(1e7 // nop + 1)
+                sims = int(3.5e7 // nop + 1)
+                # sims = int(1e7 // nop + 1)
             if sims:
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 lsigma3 = []

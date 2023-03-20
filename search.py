@@ -7,6 +7,7 @@ from serialising import Serialising as S
 from pathlib import Path
 import numpy as np
 import argparse
+from multiprocessing import JoinableQueue, Process
 
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 data_path='/home/kaho/mhz_QPOs_search_in_minbar'
@@ -27,7 +28,8 @@ class Search(object):
             file = open(Path(data_path)/refile, 'r+')	    
             file.read() # change the file object to located in a new line
         re_path = data_path+'/results/'
-
+        qi = JoinableQueue()
+        qo = JoinableQueue()
         # need to run in parallel later
         for i, j in enumerate(_allre[100:150]):
             _re = j
@@ -53,6 +55,10 @@ class Search(object):
                     _allre['searched?'][_re.index] = 'x'
         file.close()
         S.save(_allre, filename, data_path)
+
+class ParallelSearch(Process):
+    def __init__(self, _re, qi, qo, nice=19):
+        qi = 
 
 if __name__ == "__main__":
 	Search()

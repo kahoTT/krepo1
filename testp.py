@@ -18,7 +18,6 @@ class Main(object):
         processes = list()
         for _ in range(len(self.data)):
             qi.put(self.data[_])
-#        for _ in range(len(self.data)):
         qi.put(None)
         while True:
             data2 = qi.get()
@@ -29,9 +28,8 @@ class Main(object):
             p.daemon = False
             p.start()
             processes.append(p)
-            qi.task_done()
-        qi.join()
         print('job started')    
         for p in processes: # kernal starts again until all the processes have been finished
+            print(p)
             p.join() 
         print('job finished')
