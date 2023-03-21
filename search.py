@@ -16,7 +16,7 @@ parser.add_argument('-re', default=False, action=argparse.BooleanOptionalAction)
 args = parser.parse_args()
 
 class Search(object):
-    def __init__(self, restart=args.re, filename='search_table.gz', refile='search_results.txt'):
+    def __init__(self, restart=args.re, filename='search_table.gz', refile='search_results.txt', nparallel=None):
         if restart == True:
             o = minbar.Observations()
             b = minbar.Bursts()
@@ -57,8 +57,23 @@ class Search(object):
         S.save(_allre, filename, data_path)
 
 class ParallelSearch(Process):
-    def __init__(self, _re, qi, qo, nice=19):
-        qi = 
+    def __init__(self, qi, qo, nice=19, task=None):
+        self.qi = qi
+        self.qo = qo
+        self.nice = nice
+        self.task = task
+
+    def run(self):
+        os.nice(self.nice)
+        while True:
+            data = self.qi.get() # remove and reture an item from the queue
+            if data is None:
+                self.qi.task_done() # indicate tasks are completed
+                self.qo.close()
+                break
+            task = self.task(**data)
+            self.qo.put((data, task))
+            self.qi.task_done()
 
 if __name__ == "__main__":
 	Search()
