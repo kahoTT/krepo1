@@ -7,7 +7,7 @@ from serialising import Serialising as S
 from pathlib import Path
 import numpy as np
 import argparse
-from multiprocessing import JoinableQueue, Process
+from multiprocessing import JoinableQueue, Process, cpu_count
 
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 data_path='/home/kaho/mhz_QPOs_search_in_minbar'
@@ -28,11 +28,24 @@ class Search(object):
             file = open(Path(data_path)/refile, 'r+')	    
             file.read() # change the file object to located in a new line
         re_path = data_path+'/results/'
+
         qi = JoinableQueue()
         qo = JoinableQueue()
-        # need to run in parallel later
-        for i, j in enumerate(_allre[100:150]):
+        if nparallel is None:
+            nparallel = cpu_count()
+        for i in range(nparallel):
+            p = ParallelSearch(qi, qo, task=analysis(b=b, o=o, sims=0))
+            p.daemon = False
+            p.start()
+
+        for k, j in enumerate(_allre[100:150]):
             _re = j
+            if _re['searched?'] == 'N':
+                qi.put(_re)
+            for _ in range(nparallel):
+                qi.put(None)
+            qi.close()
+
             detection = None
             if _re['searched?'] == 'N':
                 try:
@@ -58,6 +71,7 @@ class Search(object):
 
 class ParallelSearch(Process):
     def __init__(self, qi, qo, nice=19, task=None):
+        super().__init__()
         self.qi = qi
         self.qo = qo
         self.nice = nice
@@ -73,7 +87,7 @@ class ParallelSearch(Process):
                 break
             task = self.task(**data)
             self.qo.put((data, task))
-            self.qi.task_done()
+            # self.qi.task_done()
 
 if __name__ == "__main__":
 	Search()
