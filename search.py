@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import argparse
 from multiprocessing import JoinableQueue, Process, cpu_count
+from functools import partial
 
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 data_path='/home/kaho/mhz_QPOs_search_in_minbar'
@@ -42,9 +43,9 @@ class Search(object):
             _re = j
             if _re['searched?'] == 'N':
                 qi.put(_re)
-            for _ in range(nparallel):
-                qi.put(None)
-            qi.close()
+        for _ in range(nparallel):
+            qi.put(None)
+        qi.close()
 
             detection = None
             if _re['searched?'] == 'N':
