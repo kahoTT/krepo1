@@ -16,11 +16,12 @@ parser=argparse.ArgumentParser(description="""restart""")
 parser.add_argument('-re', default=False, action=argparse.BooleanOptionalAction)
 args = parser.parse_args()
 
+o = minbar.Observations()
+b = minbar.Bursts()
+
 class Search(object):
     def __init__(self, restart=args.re, filename='search_table.gz', refile='search_results.txt', nparallel=None):
         if restart == True:
-            o = minbar.Observations()
-            b = minbar.Bursts()
             _allre = o.get_records()[o.instr_like('pca')]
             _allre.add_column('N', name='searched?')
             file = open(Path(data_path)/refile, 'w')	    
@@ -28,7 +29,6 @@ class Search(object):
             _allre = S.load(filename=filename, path=data_path)
             file = open(Path(data_path)/refile, 'r+')	    
             file.read() # change the file object to located in a new line
-        re_path = data_path+'/results/'
 
         qi = JoinableQueue()
         qo = JoinableQueue()
@@ -47,28 +47,31 @@ class Search(object):
             qi.put(None)
         qi.close()
 
-            detection = None
-            if _re['searched?'] == 'N':
-                try:
-                    a = analysis(_re=_re, b=b, o=o, sims=0)
-                    if a.bg is not None:
-                        _allre['searched?'][_re.index] = 'Y'
-                        for k in range(len(a.p)):
-                            detection = np.any(a.np[k] > 1)
-                        if detection:
-                            file.write(f'{a.name} {a.obsid} yes\n')
-                        try:
-                            os.mkdir(re_path)
-                            S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
-                        except:
-                            S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
-                    else:
-                        # skip observations with negatives
-                        _allre['searched?'][_re.index] = '-'
-                except:
-                    _allre['searched?'][_re.index] = 'x'
         file.close()
         S.save(_allre, filename, data_path)
+
+def task():
+    detection = None
+    sign = None
+    re_path = data_path+'/results/'
+    try:
+        a = analysis(_re=_re, b=b, o=o, sims=0)
+        if a.bg is not None:
+            sign = 'Y'
+            for k in range(len(a.p)):
+                detection = np.any(a.np[k] > 1)
+            try:
+                os.mkdir(re_path)
+                S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
+            except:
+                S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
+        else:
+            # skip observations with negatives
+            sign = '-'
+    except:
+        sign = 'x'
+    return sign, detection
+
 
 class ParallelSearch(Process):
     def __init__(self, qi, qo, nice=19, task=None):

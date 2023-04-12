@@ -54,7 +54,6 @@ sortqb= [x for _, x in sorted(zip(sortmdot, qb2), key=lambda pair: pair[0])]
 
 a = np.unique(q)
 b = np.unique(mdot)
-breakpoint()
 qqb = np.array(sortqb).reshape(len(b), len(a))
 
 fig, ax = plt.subplots()
