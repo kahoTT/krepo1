@@ -35,11 +35,12 @@ class Search(object):
         if nparallel is None:
             nparallel = cpu_count()
         for i in range(nparallel):
-            p = ParallelSearch(qi, qo, task=analysis(b=b, o=o, sims=0))
+            p = ParallelSearch(qi, qo, task=task)
             p.daemon = False
             p.start()
 
-        for k, j in enumerate(_allre[100:150]):
+        data = _allre[100:150] 
+        for k, j in enumerate(data):
             _re = j
             if _re['searched?'] == 'N':
                 qi.put(_re)
@@ -47,10 +48,12 @@ class Search(object):
             qi.put(None)
         qi.close()
 
+        for _ in range(len(data)):
+
         file.close()
         S.save(_allre, filename, data_path)
 
-def task():
+def task(_re):
     detection = None
     sign = None
     re_path = data_path+'/results/'
@@ -70,7 +73,7 @@ def task():
             sign = '-'
     except:
         sign = 'x'
-    return sign, detection
+    return _re, sign, detection
 
 
 class ParallelSearch(Process):
