@@ -12,23 +12,21 @@ from functools import partial
 
 minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 data_path='/home/kaho/mhz_QPOs_search_in_minbar'
-parser=argparse.ArgumentParser(description="""restart""")
-parser.add_argument('-re', default=False, action=argparse.BooleanOptionalAction)
-args = parser.parse_args()
-
 o = minbar.Observations()
 b = minbar.Bursts()
 
 class Search(object):
-    def __init__(self, restart=args.re, filename='search_table.gz', refile='search_results.txt', nparallel=None):
+    def __init__(self, i0=0, i1=None, restart=False, filename='search_table.gz', refile='search_results.txt', nparallel=None):
         if restart == True:
             _allre = o.get_records()[o.instr_like('pca')]
-            _allre.add_column('N', name='searched?')
+            _allre.add_column('.', name='result')
             file = open(Path(data_path)/refile, 'w')	    
         else:
             _allre = S.load(filename=filename, path=data_path)
             file = open(Path(data_path)/refile, 'r+')	    
             file.read() # change the file object to located in a new line
+        if i1 == None:
+            i1 == len(_allre)        
 
         qi = JoinableQueue()
         qo = JoinableQueue()
@@ -39,30 +37,40 @@ class Search(object):
             p.daemon = False
             p.start()
 
-        data = _allre[100:150] 
-        for k, j in enumerate(data):
-            _re = j
-            if _re['searched?'] == 'N':
-                qi.put(_re)
+        # for k, j in enumerate(data):
+        for k in range(i0, i1):
+            _re = _allre[k]
+            if _re['result'] == '.':
+                data = dict(_re=_re, k=k)
+                qi.put(data)
         for _ in range(nparallel):
             qi.put(None)
         qi.close()
 
-        for _ in range(len(data)):
-
+        for _ in range(i0, i1):
+            (data, sign) = qo.get()
+            k = data['k']
+            _re = _allre[k]
+            _re['result'] = sign
+            if sign == 'Y':
+               file.write(f"{k}, {_re['name']}, {_re['obsid']}") 
+            qo.task_done()
+        qi.join()
+        qo.join()
         file.close()
         S.save(_allre, filename, data_path)
 
-def task(_re):
-    detection = None
+def task(_re, k):
     sign = None
     re_path = data_path+'/results/'
     try:
-        a = analysis(_re=_re, b=b, o=o, sims=0)
+        a = analysis(_re=_re, b=b, o=o, sims=1)
         if a.bg is not None:
-            sign = 'Y'
+            sign = 'N'
             for k in range(len(a.p)):
-                detection = np.any(a.np[k] > 1)
+                if np.any(a.np[k] > 1):
+                    sign = 'Y'
+                    break
             try:
                 os.mkdir(re_path)
                 S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
@@ -71,9 +79,10 @@ def task(_re):
         else:
             # skip observations with negatives
             sign = '-'
-    except:
+    except Exception as e:
+        # raise e
         sign = 'x'
-    return _re, sign, detection
+    return sign
 
 
 class ParallelSearch(Process):
@@ -94,7 +103,17 @@ class ParallelSearch(Process):
                 break
             task = self.task(**data)
             self.qo.put((data, task))
-            # self.qi.task_done()
+            self.qi.task_done()
 
 if __name__ == "__main__":
-	Search()
+    parser=argparse.ArgumentParser(description="""restart""")
+    parser.add_argument('-re', default=False, action=argparse.BooleanOptionalAction)
+    parser.add_argument('-i0', default="0", action="store")
+    parser.add_argument('-i1', default="None", action="store")
+    args = parser.parse_args()
+    i0 = int(args.i0)
+    if args.i1 == "None":
+        i1 = None
+    else:
+        i1 = int(args.i1)
+    Search(i0, i1, restart=args.re)
