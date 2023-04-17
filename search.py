@@ -23,7 +23,7 @@ class Search(object):
                         #    (_allre['sflag'] == 'a') | (_allre['sflag'] == 'f')
                             # )
             # _allre = _rawre[_int]
-            _allre = S.load(filename='seach.gz', path=data_path)
+            _allre = S.load(filename='table.gz', path=data_path)
             _allre.add_column('.', name='result')
             file = open(Path(data_path)/refile, 'w')	    
         else:
@@ -69,7 +69,7 @@ def task(_re, k):
     sign = None
     re_path = data_path+'/results/'
     try:
-        a = analysis(_re=_re, b=b, o=o, sims=1, _5sigma=False)
+        a = analysis(_re=_re, b=b, o=o, sims=True, _5sigma=True)
         if a.bg is not None:
             sign = 'N'
             for k in range(len(a.p)):
