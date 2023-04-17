@@ -71,7 +71,7 @@ class analysis(object):
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True, _5sigma=False):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True, _5sigma=True):
         if b is None:
             b = minbar.Bursts()
         if _re:
@@ -237,15 +237,14 @@ class analysis(object):
             nop = len(_ind2)
             nops.append(nop)
             """Simulation, the number of sims means the number of simulations."""
-            if _5sigma == True:
-                sims = int(3.5e7 // nop + 1)
                 # sims = int(1e7 // nop + 1)
             if sims:
+                if _5sigma == True:
+                    sims = int(3.5e7 // nop + 1)
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 lsigma3 = []
                 accsynp = []
                 accsynpl = []
-                print(sims)
                 for i3 in range(sims):
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')

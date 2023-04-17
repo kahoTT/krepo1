@@ -18,7 +18,12 @@ b = minbar.Bursts()
 class Search(object):
     def __init__(self, i0=0, i1=None, restart=False, filename='search_table.gz', refile='search_results.txt', nparallel=None):
         if restart == True:
-            _allre = o.get_records()[o.instr_like('pca')]
+            # _rawre = o.get_records()[o.instr_like('pca')]
+            # _int = np.where((_allre['sflag'] == '-') | (_allre['sflag'] == 'd')|
+                        #    (_allre['sflag'] == 'a') | (_allre['sflag'] == 'f')
+                            # )
+            # _allre = _rawre[_int]
+            _allre = S.load(filename='seach.gz', path=data_path)
             _allre.add_column('.', name='result')
             file = open(Path(data_path)/refile, 'w')	    
         else:
@@ -53,7 +58,7 @@ class Search(object):
             _re = _allre[k]
             _re['result'] = sign
             if sign == 'Y':
-               file.write(f"{k}, {_re['name']}, {_re['obsid']}") 
+               file.write(f"{k} {_re['name']} {_re['obsid']} \n") 
             qo.task_done()
         qi.join()
         qo.join()
@@ -64,18 +69,19 @@ def task(_re, k):
     sign = None
     re_path = data_path+'/results/'
     try:
-        a = analysis(_re=_re, b=b, o=o, sims=1)
+        a = analysis(_re=_re, b=b, o=o, sims=1, _5sigma=False)
         if a.bg is not None:
             sign = 'N'
             for k in range(len(a.p)):
                 if np.any(a.np[k] > 1):
                     sign = 'Y'
                     break
+            # filename = "a.name_a.obsid.gz" % name
             try:
                 os.mkdir(re_path)
-                S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
+                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=re_path)
             except:
-                S.save(a, filename=f'{a.name}_{a.obsid}.gz', path=re_path)
+                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=re_path)
         else:
             # skip observations with negatives
             sign = '-'
