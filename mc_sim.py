@@ -90,7 +90,7 @@ def simlc(ares=None, t=None, y=None, dt=None, N=None, red_noise=1, o_model=None,
     else:
         _intin = ()
     time = lc.time[_intin]
-    counts = lc.countrate[_intin]
+    counts = lc.counts[_intin]
     return time, counts
 
 class RealLc(object):
