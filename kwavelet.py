@@ -149,7 +149,6 @@ class analysis(object):
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
-            breakpoint()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration
@@ -216,7 +215,7 @@ class analysis(object):
         specl = []
         o_modell = []
         if sims:
-            lsigma3 = []
+            lsigma3 = [] # a list to store all thresholds
             accsynpl = []
 
         for i2 in range(ltnb): # tnb is a list 
@@ -245,7 +244,8 @@ class analysis(object):
                 # sims = int(1e7 // nop + 1)
             if sims:
                 if _5sigma == True:
-                    sims = int(3.5e7 // nop + 1)
+                    # sims = int(3.5e6 // nop + 1)
+                    sims = int(1e6 // nop + 1)
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 accsynp = []
                 for i3 in range(sims):
@@ -259,14 +259,14 @@ class analysis(object):
                     if len(f) == 1: 
                         # Case when using single frequency
                         if norm_f is True:
-                            norm_pow = ws.power[0] * results.x[2] / norm_fs # dealing with extra [] for 1D f array  
+                            norm_pow = ws.power[0] / norm_fs # dealing with extra [] for 1D f array  
                         else:
                             norm_pow = ws.power[0]
                         _int = np.where(f > 1/ws.coi)
                         synp = norm_pow[_int]
                     else:
                         if norm_f is True:
-                            norm_pow = ws.power * results.x[2] / norm_fs[:, np.newaxis]  
+                            norm_pow = ws.power / norm_fs[:, np.newaxis]  
                         else:
                             norm_pow = ws.power
                         for i4 in range(len(norm_pow[0])):
