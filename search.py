@@ -58,12 +58,16 @@ class Search(object):
             _re = _allre[k]
             _re['result'] = sign
             if sign == 'Y':
+            # file = open(...)
                file.write(f"{k} {_re['name']} {_re['obsid']} \n") 
+            # file.close()
+               file.flush()
+            S.save(_allre, filename, data_path)
             qo.task_done()
         qi.join()
         qo.join()
         file.close()
-        S.save(_allre, filename, data_path)
+        # S.save(_allre, filename, data_path)
 
 def task(_re, k):
     sign = None

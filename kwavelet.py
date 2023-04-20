@@ -149,6 +149,7 @@ class analysis(object):
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
+            breakpoint()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration
@@ -214,6 +215,10 @@ class analysis(object):
         nops = []
         specl = []
         o_modell = []
+        if sims:
+            lsigma3 = []
+            accsynpl = []
+
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
@@ -242,9 +247,7 @@ class analysis(object):
                 if _5sigma == True:
                     sims = int(3.5e7 // nop + 1)
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
-                lsigma3 = []
                 accsynp = []
-                accsynpl = []
                 for i3 in range(sims):
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
