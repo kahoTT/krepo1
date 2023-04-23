@@ -216,7 +216,7 @@ class analysis(object):
         o_modell = []
         if sims:
             lsigma3 = [] # a list to store all thresholds
-            accsynpl = []
+            accsynpl = [] # a list of the nth largest power in n simulations
 
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
@@ -231,7 +231,7 @@ class analysis(object):
             # drop the normalisation to spectrum
 
             if norm_f is True:
-                rpower = rws.power * result.x[2] / norm_fr[:, np.newaxis]  # dealing with extra [] for 1D f array  
+                rpower = rws.power / norm_fr[:, np.newaxis]  # dealing with extra [] for 1D f array  
             else:
                 rpower = rws.power
             for i5 in range(len(rpower[0])):
@@ -241,11 +241,10 @@ class analysis(object):
             nop = len(_ind2)
             nops.append(nop)
             """Simulation, the number of sims means the number of simulations."""
-                # sims = int(1e7 // nop + 1)
             if sims:
                 if _5sigma == True:
-                    # sims = int(3.5e6 // nop + 1)
-                    sims = int(1e6 // nop + 1)
+                    sims = int(3.5e6 // nop + 1)
+                    # sims = int(1e6 // nop + 1)
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 accsynp = []
                 for i3 in range(sims):

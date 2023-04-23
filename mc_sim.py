@@ -25,25 +25,28 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
         freq = rebinf[notnan2]
         y = rebinp[notnan2]
 
-    if fit == 'simple':
-        result = log_exp(freq, y)
-        o_model = F2(f, *result)
-        if factor != 1:
-            result[0] = result[0] * factor
-        n_model = F2(f, *result)
-        norm_f = F(wf, *result)
+    g_result = log_exp(freq, y)
+    if g_result[1] > 0:
+        fit = 'linear'
 
+    if guess is None: 
+        _ind2 = np.where(freq >= 2e-2)
+        guess = y[_ind2].mean()
     if fit == 'power':
-        if guess is None: 
-            _ind2 = np.where(freq >= 2e-2)
-            guess = y[_ind2].mean()
-        x0 = np.array([0.01, -1, guess])
-        result = least_squares(partial(G, freq, y), x0)
-        o_model = F(f, *result.x)
+        x0 = np.array([g_result[0], g_result[1], guess])
+        ls = least_squares(partial(G, freq, y), x0, bounds=(np.array([0, -1, guess/2]), np.array([np.inf, 0, 2*guess])))
+        result = ls.x
+        o_model = F(f, *result)
         n_result = result
-        n_result.x[2] = n_result.x[2] * factor
-        n_model = F(f, *n_result.x)
-        norm_f = F(wf, *result.x)
+        n_result[2] = n_result[2] * factor
+        n_model = F(f, *n_result)
+        norm_f = F(wf, *result)
+    elif fit == 'linear':
+        result = np.array([0, 0, guess])
+        o_model = np.ones(len(f)) * guess
+        n_model = np.ones(len(f)) * guess * factor
+        norm_f = np.ones(len(wf))
+        
     return result, o_model, n_model, norm_f
 
 def Fillpoint(t=None, y=None, dt=None):
