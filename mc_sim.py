@@ -34,8 +34,11 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
         guess = y[_ind2].mean()
     if fit == 'power':
         x0 = np.array([g_result[0], g_result[1], guess])
-        ls = least_squares(partial(G, freq, y), x0, bounds=(np.array([0, -1, guess/2]), np.array([np.inf, 0, 2*guess])))
+        ls = least_squares(partial(G, freq, y), x0, bounds=(np.array([0, -5, guess/2]), np.array([2, 0, 2*guess])))
         result = ls.x
+        # x0 = np.array([g_result[0], g_result[1]])
+        # ls = least_squares(partial(G2, freq, y, guess), x0, bounds=(np.array([0, -2]), np.array([1, 0])))
+        # result = np.concatenate((ls.x, np.array([guess])), axis=0)
         o_model = F(f, *result)
         n_result = result
         n_result[2] = n_result[2] * factor
@@ -46,7 +49,6 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
         o_model = np.ones(len(f)) * guess
         n_model = np.ones(len(f)) * guess * factor
         norm_f = np.ones(len(wf))
-        
     return result, o_model, n_model, norm_f
 
 def Fillpoint(t=None, y=None, dt=None):
@@ -131,6 +133,9 @@ def F(x, A, B, C):
 
 def G(x, y, args):
     return (F(x, *args) - y) 
+
+def G2(x, y, C, args):
+    return (F(x, C, *args) - y) 
 
 def Horizontalfit(freq, power):
     aver = sum(power) / len(power)

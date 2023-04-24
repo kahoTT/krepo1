@@ -82,10 +82,13 @@ def task(_re, k):
                     break
             # filename = "a.name_a.obsid.gz" % name
             try:
-                os.mkdir(re_path)
-                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=re_path)
+                result_dir = re_path+f"{a.name}_{a.obsid}"
+                os.mkdir(result_dir)
+                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=result_dir)
+                a.plot_wspec(savef_path=result_dir)
             except:
-                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=re_path)
+                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=result_dir)
+                a.plot_wspec(savef_path=result_dir)
         else:
             # skip observations with negatives
             sign = '-'

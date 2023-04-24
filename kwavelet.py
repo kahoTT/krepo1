@@ -232,6 +232,7 @@ class analysis(object):
 
             if norm_f is True:
                 rpower = rws.power / norm_fr[:, np.newaxis]  # dealing with extra [] for 1D f array  
+                # breakpoint()
             else:
                 rpower = rws.power
             for i5 in range(len(rpower[0])):
@@ -251,7 +252,7 @@ class analysis(object):
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
                     specs, logspecs = mc_sim.Genspec(t=time, y=counts, dt=dt)
-                    results, _, _, norm_fs = mc_sim.Powfit(freq=specs.freq, f=specs.freq, y=specs.power, wf=f, rebin_log=False, factor=factor)
+                    results, o_models, _, norm_fs = mc_sim.Powfit(freq=specs.freq, f=specs.freq, y=specs.power, wf=f, rebin_log=False, factor=factor, exclude=False)
                     sdat_notrend, _ = detrend(time, counts, dt=dt) # fill class
                     _, sy, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=sdat_notrend, dt=dt)
                     ws = wavelet_spec(y=sy, f=f, sigma=sigma, dt=dt)
@@ -266,6 +267,7 @@ class analysis(object):
                     else:
                         if norm_f is True:
                             norm_pow = ws.power / norm_fs[:, np.newaxis]  
+                            # breakpoint()
                         else:
                             norm_pow = ws.power
                         for i4 in range(len(norm_pow[0])):
@@ -358,9 +360,12 @@ class analysis(object):
             astart = None,
             aend = None,
             tstart = None,
-            tend = None
+            tend = None,
+            savef_path = None,
             ):
     
+        if savef_path:
+            plt.ioff()
         fig, ax = plt.subplots(2, sharex=True)
         self.fig = fig
         self.ax = ax
@@ -400,5 +405,7 @@ class analysis(object):
         ax[1].set_xlabel('Time (s)')
         ax[1].set_ylabel('Frequency (Hz)')
         fig.suptitle(f'{self.name} obsid: {self.obsid}')
+        if savef_path:
+            plt.savefig(savef_path+'/wavelet_spec.png')
 #        fig.colorbar(cm, ax=ax)
 ### norm_pow may need to modity, as this only has the elements for the last Ekoop
