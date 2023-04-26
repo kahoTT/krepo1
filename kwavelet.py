@@ -305,6 +305,8 @@ class analysis(object):
             self.np = _npowall
             self.tc = tc
             self.nops = nops
+            self.sims = sims
+            self.fit_model = result
             if ltnb == 1:
                 self.specl = specl[0]
                 self.o_mdell = o_modell[0]
