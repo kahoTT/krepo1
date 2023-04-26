@@ -303,7 +303,7 @@ class analysis(object):
                 _npowall.append(_npow)
                 lsigma3.append(sigma3)
                 accsynpl.append(accsynp)
-                simsl.append((sims, ji))
+                simsl.append((sims, fi))
             else:
                 _powall.append(rpower)
                 lsigma3 = None
