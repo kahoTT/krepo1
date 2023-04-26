@@ -49,7 +49,7 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
         o_model = np.ones(len(f)) * guess
         n_model = np.ones(len(f)) * guess * factor
         norm_f = np.ones(len(wf))
-    return result, o_model, n_model, norm_f
+    return result, o_model, n_model, norm_f, guess
 
 def Fillpoint(t=None, y=None, dt=None):
     """fill missing data of light curve with mean value."""

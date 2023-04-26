@@ -214,20 +214,23 @@ class analysis(object):
         nops = []
         specl = []
         o_modell = []
+        resultl = []
         if sims:
             lsigma3 = [] # a list to store all thresholds
             accsynpl = [] # a list of the nth largest power in n simulations
+            simsl = [] # a list contain a tuple of (number of simulations, and number of fails)
 
         for i2 in range(ltnb): # tnb is a list 
             t_c, _, n_of_data, factor, dt, ares  = mc_sim.Fillpoint(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
             tc.append(t_c)
             spec, logspec = mc_sim.Genspec(t=tnb_s[i2], y=ynb_s[i2], dt=dt)
-            result, o_model, n_model, norm_fr = mc_sim.Powfit(freq=spec.freq, f=spec.freq, y=spec.power, wf=f, rebin_log=False, factor=factor)
+            result, o_model, n_model, norm_fr, guess = mc_sim.Powfit(freq=spec.freq, f=spec.freq, y=spec.power, wf=f, rebin_log=False, factor=factor)
             dat_notrend, _ = detrend(tnb_s[i2], ynb_s[i2], dt=dt)
             _, y_c, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=dat_notrend, dt=dt)
             rws = wavelet_spec(y=y_c, f=f, sigma=sigma, dt=dt)
             specl.append(spec)
             o_modell.append(o_model)
+            resultl.append(result)
             # drop the normalisation to spectrum
 
             if norm_f is True:
@@ -243,16 +246,21 @@ class analysis(object):
             nops.append(nop)
             """Simulation, the number of sims means the number of simulations."""
             if sims:
+                i3 = 1
+                fi = 0
                 if _5sigma == True:
                     sims = int(3.5e6 // nop + 1)
                     # sims = int(1e6 // nop + 1)
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 accsynp = []
-                for i3 in range(sims):
+                while i3 <= sims:
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
                     specs, logspecs = mc_sim.Genspec(t=time, y=counts, dt=dt)
-                    results, o_models, _, norm_fs = mc_sim.Powfit(freq=specs.freq, f=specs.freq, y=specs.power, wf=f, rebin_log=False, factor=factor, exclude=False)
+                    results, o_models, _, norm_fs, guesss = mc_sim.Powfit(freq=specs.freq, f=specs.freq, y=specs.power, wf=f, rebin_log=False, factor=factor, exclude=False)
+                    if (guesss >= 2*guess) or (guesss <= 0.5*guess):
+                        fi += 1
+                        continue
                     sdat_notrend, _ = detrend(time, counts, dt=dt) # fill class
                     _, sy, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=sdat_notrend, dt=dt)
                     ws = wavelet_spec(y=sy, f=f, sigma=sigma, dt=dt)
@@ -274,13 +282,14 @@ class analysis(object):
                             _int = np.where(f < 1/ws.coi[i4])
                             norm_pow[:,i4][_int] = np.nan
                         norm_pow_non = norm_pow.reshape(1, norm_pow.size)[0][~np.isnan(norm_pow.reshape(1, norm_pow.size)[0])]
-                    if i3 == 0:
+                    if i3 == 1:
                         synp = norm_pow
                         all_norm_pow_non = norm_pow_non
                     else:
                         synp = np.concatenate((synp, norm_pow), axis=1)
                         all_norm_pow_non = np.concatenate((all_norm_pow_non, norm_pow_non), axis=0)
-                    accsynp.append(((i3+1),np.sort(all_norm_pow_non)[-int(i3+1)]))
+                    accsynp.append(((i3),np.sort(all_norm_pow_non)[-int(i3)]))
+                    i3 += 1
                 synpall = synp.reshape(1, synp.size)[0]
                 _int2 = np.isnan(synpall)
                 synpall = np.sort(synpall[~_int2])
@@ -294,6 +303,7 @@ class analysis(object):
                 _npowall.append(_npow)
                 lsigma3.append(sigma3)
                 accsynpl.append(accsynp)
+                simsl.append((sims, ji))
             else:
                 _powall.append(rpower)
                 lsigma3 = None
@@ -304,19 +314,22 @@ class analysis(object):
             self.p = _powall
             self.np = _npowall
             self.tc = tc
-            self.nops = nops
-            self.sims = sims
-            self.fit_model = result
             if ltnb == 1:
                 self.specl = specl[0]
                 self.o_mdell = o_modell[0]
+                self.fit_model = resultl[0]
+                self.nops = nops[0]
                 if sims:
                     self.accsynpl = accsynpl[0]
+                    self.simsl = simsl[0]
             else:
                 self.specl = specl
                 self.o_mdell = o_modell
+                self.fit_model = resultl
+                self.nops = nops
                 if sims:
                     self.accsynpl = accsynpl
+                    self.simsl = simsl
             self.logspec = logspec
         self.finish_time = T.time() - start_time
         print(f'Finish time = {self.finish_time}')
