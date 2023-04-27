@@ -34,7 +34,7 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
         guess = y[_ind2].mean()
     if fit == 'power':
         x0 = np.array([g_result[0], g_result[1], guess])
-        ls = least_squares(partial(G, freq, y), x0, bounds=(np.array([0, -5, guess/2]), np.array([20, 0, 2*guess])))
+        ls = least_squares(partial(G, freq, y), x0, bounds=(np.array([0, -5, guess/2]), np.array([np.inf, 0, 2*guess])))
         result = ls.x
         # x0 = np.array([g_result[0], g_result[1]])
         # ls = least_squares(partial(G2, freq, y, guess), x0, bounds=(np.array([0, -2]), np.array([1, 0])))

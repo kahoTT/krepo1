@@ -59,7 +59,7 @@ class Search(object):
             _re['result'] = sign
             if sign == 'Y':
             # file = open(...)
-               file.write(f"{k} {_re['name']} {_re['obsid']} \n") 
+               file.write(f"{k}_{_re['name']}_{_re['obsid']} \n") 
             # file.close()
                file.flush()
             S.save(_allre, filename, data_path)
@@ -73,7 +73,7 @@ def task(_re, k):
     sign = None
     re_path = data_path+'/results/'
     try:
-        a = analysis(_re=_re, b=b, o=o, sims=True, _5sigma=True)
+        a = analysis(_re=_re, b=b, o=o, sims=60, _5sigma=False)
         if a.bg is not None:
             sign = 'N'
             for k in range(len(a.p)):
@@ -84,10 +84,10 @@ def task(_re, k):
             try:
                 result_dir = re_path+f"{a.name}_{a.obsid}"
                 os.mkdir(result_dir)
-                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=result_dir)
+                S.save(a, filename=f"{k}_{a.name}_{a.obsid}.gz", path=result_dir)
                 a.plot_wspec(savef_path=result_dir)
             except:
-                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=result_dir)
+                S.save(a, filename=f"{k}_{a.name}_{a.obsid}.gz", path=result_dir)
                 a.plot_wspec(savef_path=result_dir)
         else:
             # skip observations with negatives

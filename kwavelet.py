@@ -149,6 +149,7 @@ class analysis(object):
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
+            breakpoint()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration
