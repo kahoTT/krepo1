@@ -17,6 +17,7 @@ minbar.MINBAR_ROOT = '/u/kaho/minbar/minbar'
 # 1323 obsid('96405-01-02-01') but with negative values
 # 1608 obsid('10072-05-01-00') Revnivtsev et al. 2000
 # 4U 1608-52 obsid: 10094-01-01-00 Revnivtsev et al. 2000
+# Aql X-1 "20098-03-08-00" Revnivtsev et al. 2000
 
 # This class is to fill the gap data with mean value, will change to fill with the fitted polynomail vales
 def detrend(t=None, y=None, dt=None, plot=False, dof=2):
@@ -71,7 +72,7 @@ class analysis(object):
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=True, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True, _5sigma=True):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=60, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True, _5sigma=False):
         if b is None:
             b = minbar.Bursts()
         if _re:
@@ -149,7 +150,6 @@ class analysis(object):
         else:
             print(str(len(b.get('bnum'))) +' bursts on this observation')
             obs.get_lc()
-            breakpoint()
             bursttime = (obs.bursts['time'] - obs.mjd.value[0])*86400
             bst = bursttime - 5
             bet = bst + obs.bursts['dur'] * 4 # scaling the time of the duration

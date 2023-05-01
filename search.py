@@ -84,10 +84,10 @@ def task(_re, k):
             try:
                 result_dir = re_path+f"{a.name}_{a.obsid}"
                 os.mkdir(result_dir)
-                S.save(a, filename=f"{k}_{a.name}_{a.obsid}.gz", path=result_dir)
+                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=result_dir)
                 a.plot_wspec(savef_path=result_dir)
             except:
-                S.save(a, filename=f"{k}_{a.name}_{a.obsid}.gz", path=result_dir)
+                S.save(a, filename=f"{a.name}_{a.obsid}.gz", path=result_dir)
                 a.plot_wspec(savef_path=result_dir)
         else:
             # skip observations with negatives
