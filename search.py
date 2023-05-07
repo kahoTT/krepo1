@@ -45,7 +45,7 @@ class Search(object):
         # for k, j in enumerate(data):
         for k in range(i0, i1):
             _re = _allre[k]
-            if _re['result'] == '.':
+            if _re['result'] == 'x':
                 data = dict(_re=_re, k=k)
                 qi.put(data)
         for _ in range(nparallel):
