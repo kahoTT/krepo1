@@ -27,6 +27,7 @@ def detrend(t=None, y=None, dt=None, plot=False, dof=2):
     if plot == True:
         plt.plot(t,y)
         plt.plot(t, np.polyval(p, t))
+        plt.show()
     dat_notrend = y - np.polyval(p, t)
     return dat_notrend, p
 
@@ -103,6 +104,7 @@ class analysis(object):
             obs = minbar.Observation(o[o['entry']]) 
             # _path = obs.instr.lightcurve(obsid)
             lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_s2a.lc.gz')[0])
+            # lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_n1.lc.gz')[0])
             t1 = lc[1].data['TIME']
             y = lc[1].data['RATE']
             t = t1 - t1[0]
@@ -255,8 +257,8 @@ class analysis(object):
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 accsynp = []
                 while i3 <= sims:
-                    if fi > sims:
-                        raise Exception("too many fails in simulations") 
+                    # if fi > sims:
+                        # raise Exception("too many fails in simulations") 
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
                     specs, logspecs = mc_sim.Genspec(t=time, y=counts, dt=dt)
