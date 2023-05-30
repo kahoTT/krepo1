@@ -103,7 +103,10 @@ class analysis(object):
             name = o.get('name')[0]
             obs = minbar.Observation(o[o['entry']]) 
             # _path = obs.instr.lightcurve(obsid)
+            # 16s resolution lightcurve
             lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_s2a.lc.gz')[0])
+            # lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_n2a.lc.gz')[0])
+            # 1s resolution lightcurve
             # lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_n1.lc.gz')[0])
             t1 = lc[1].data['TIME']
             y = lc[1].data['RATE']
