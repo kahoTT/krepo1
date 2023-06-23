@@ -260,8 +260,8 @@ class analysis(object):
                     # sims = self.total_sims // (len(f) * len(t_c)) + 1
                 accsynp = []
                 while i3 <= sims:
-                    if fi > sims:
-                        raise Exception("too many fails in simulations") 
+                    # if fi > sims:
+                        # raise Exception("too many fails in simulations") 
 #                    testtime = time.time() - start_time
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
                     specs, logspecs = mc_sim.Genspec(t=time, y=counts, dt=dt)
