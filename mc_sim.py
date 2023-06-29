@@ -14,7 +14,7 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
     if wf is None:
         wf = f
     if exclude == True:  
-        _ind = np.where((freq <= 5e-3) | (freq >= 15e-3))
+        _ind = np.where((freq <= 2e-3) | (freq >= 10e-3))
         freq = freq[_ind]
         y = y[_ind]
     if rebin_log == True:
@@ -28,7 +28,6 @@ def Powfit(freq=None, f=None, y=None, wf=None, guess=None, rebin_log=False, excl
     g_result = log_exp(freq, y)
     if g_result[1] > 0:
         fit = 'linear'
-
     if guess is None: 
         _ind2 = np.where(freq >= 2e-2)
         guess = y[_ind2].mean()
