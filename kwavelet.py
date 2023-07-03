@@ -73,13 +73,14 @@ class analysis(object):
     """
     number_obs = 1e5
     total_sims = int(1 / (1-.9973) * number_obs) + 1
-    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=4e-3, f2=12e-3, nf=500, sims=60, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True, _5sigma=False):
+    def __init__(self, t=None, y=None, filename=None, dt=None, obsid=None, name=None, kepler=None, f=None, f1=1.5e-3, f2=12e-3, nf=500, sims=60, sigma=10, _re=None, b=None, o=None, ng=None, norm_f=True, _5sigma=False):
         if b is None:
             b = minbar.Bursts()
         if _re:
             obsid = _re['obsid']
         start_time = T.time()
         if t is not None and y is not None:
+            t1 = t
             pass
         elif filename:
             if kepler == True:
