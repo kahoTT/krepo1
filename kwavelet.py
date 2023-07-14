@@ -105,8 +105,8 @@ class analysis(object):
             obs = minbar.Observation(o[o['entry']]) 
             # _path = obs.instr.lightcurve(obsid)
             # 16s resolution lightcurve
-            lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_s2a.lc.gz')[0])
-            # lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_n2a.lc.gz')[0])
+            lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_n2a.lc.gz')[0])
+            # lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_s2a.lc.gz')[0])
             # 1s resolution lightcurve
             # lc = fits.open(glob.glob(obs.get_path()+'/stdprod/*_n1.lc.gz')[0])
             t1 = lc[1].data['TIME']
@@ -267,9 +267,9 @@ class analysis(object):
                     time, counts = mc_sim.simlc(ares=ares, t=tnb_s[i2], y=ynb_s[i2], dt=dt, N=n_of_data, red_noise=1, o_model=o_model, n_model=n_model, model='n')
                     specs, logspecs = mc_sim.Genspec(t=time, y=counts, dt=dt)
                     results, o_models, _, norm_fs, guesss = mc_sim.Powfit(freq=specs.freq, f=specs.freq, y=specs.power, wf=f, rebin_log=False, factor=factor, exclude=False)
-                    # if (guesss >= 2*guess) or (guesss <= 0.5*guess):
-                    #     fi += 1
-                    #     continue
+                    if (guesss >= 2*guess) or (guesss <= 0.5*guess):
+                        fi += 1
+                        continue
                     sdat_notrend, _ = detrend(time, counts, dt=dt) # fill class
                     _, sy, _, _, _, _  = mc_sim.Fillpoint(t=tnb_s[i2], y=sdat_notrend, dt=dt)
                     ws = wavelet_spec(y=sy, f=f, sigma=sigma, dt=dt)
