@@ -125,16 +125,18 @@ def plot_pulsefrac(obsid, f0, bnum=10):
     plt.tight_layout()
     return rms, _rmserr
 
-def plot_wavelet():
+def plot_wavelet(f0=6):
     plt.rc('xtick', labelsize=15)
     plt.rc('ytick', labelsize=15)
-    m = Morlet()
+    fig, ax = plt.subplots()
+    m = Morlet(f0)
     t = np.arange(-3, 3, 0.01)
-    plt.plot(t, m.psi(t), 'k', label='Re($\psi$)')
-    plt.plot(t, m.psi(t).imag, 'k--', label='Im($\psi$)')
-    plt.legend()
-    plt.xlabel('t', fontsize=15)
-    plt.ylabel('$\psi$(t)', fontsize=15)
+    ax.plot(t, m.psi(t), 'k', label='Re($\psi$)')
+    ax.plot(t, m.psi(t).imag, 'k--', label='Im($\psi$)')
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True, nbins='5'))
+    ax.set_xlabel('t', fontsize=15)
+    ax.set_ylabel('$\psi$(t)', fontsize=15)
+    ax.legend()
     plt.tight_layout()
 
 def plot_whole_lc(o=None, b=None):
