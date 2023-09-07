@@ -10,6 +10,7 @@ import glob
 from pycwt.mothers import Morlet
 from matplotlib.ticker import MaxNLocator
 from serialising import Serialising as S
+import matplotlib.patches as mpatches
 
 path  = "/b/kaho/XTEJ1701-462"
 path2 = "/b/kaho/fits/XTEJ1701-462"
@@ -154,20 +155,29 @@ def plot_whole_lc(o=None, b=None):
     allo = o.get_records()
     MJD_s = 53754
     l_qpos = [105, 162, 388, 780]
+    qpo_id = ['03-06', '09-09', '29-06', '63-08']
     _int = np.where( ((allo['tstart']-MJD_s) < 500) & (allo['flux'] > 0.5) )[0]
     _int2 = np.where((allo['tstart']-MJD_s) > 500)[0]
     _int3 = np.concatenate((_int, _int2), axis=0)
+    s = S.load('/home/kaho/mhz_QPOs_search_in_minbar/J1701-462/all_detections.gz')
+    MJDs = s['tstart']
+    lum = 10.20232346
     plt.plot((allo['tstart'][_int3][:-3]-MJD_s), allo['flux'][_int3][:-3], 'k.')
     # plt.errorbar((allo['tstart'][:-3]-MJD_s), allo['count'][:-3],  yerr=allo['e_count'][:-3], fmt='k.')
-    for i in l_qpos:
-        plt.annotate('qpos', xy=(allo['tstart'][i]-MJD_s, max(allo['flux']*.55)), xycoords='data',
+    for j,i in enumerate(l_qpos):
+        plt.annotate(qpo_id[j], xy=(allo['tstart'][i]-MJD_s, max(allo['flux']*.55)), xycoords='data',
             xytext=(allo['tstart'][i]-MJD_s, max(allo['flux']*.65)), textcoords='data',
             va='bottom', ha='center',
-            arrowprops=dict(facecolor='red'))
+            arrowprops=dict(arrowstyle='->', color='r'), size=10, color='r')
+    for k in MJDs:
+        plt.annotate("", xy=((k-MJD_s), max(allo['flux']*.75)), xycoords='data',
+                     xytext=(k-MJD_s, max(allo['flux']*.85)), textcoords='data',
+            va='bottom', ha='center', arrowprops=dict(arrowstyle='->', color='k'), size=10)
     for j in btime:
         plt.axvline(j-MJD_s,  c='k', ls='--')
+    plt.axhline(lum, c='r', ls='--')
     plt.xlabel(f"Days since 2006 January 19 (MJD {MJD_s})", fontsize=15)
-    plt.ylabel('Mean flux $10^{−9}\;\mathrm{mW}\;\mathrm{cm}^{−2}$', fontsize=15)
+    plt.ylabel('Mean flux $10^{−9}\;\mathrm{erg}\;\mathrm{cm}^{−2}\;\mathrm{s}^{-1}$', fontsize=15)
     plt.tight_layout()
 
 def spec(obsid = None, t=None, y=None):
@@ -251,6 +261,8 @@ def joint_lc(obsids=None, o=None):
     return t, y
 
 def plot_wspec(obsid=''):
+    plt.rc('xtick', labelsize=15)
+    plt.rc('ytick', labelsize=15)
     obsid1 = "92405-01-03-06"
     obsid2 = "92405-01-09-09"
     obsid3 = "92405-01-29-06"
@@ -267,8 +279,11 @@ def plot_wspec(obsid=''):
     s.fig.set_size_inches(6.4, 5)
     s.fig.suptitle('')
     s.ax[0].get_lines()[0].set_color("black")
+    s.ax[1].set_ylim(None,7e-3)
     # s.ax[1].yaxis.set_major_locator(MaxNLocator(nbins=4))
     s.ax[1].set_yticklabels((s.ax[1].get_yticks()*1000).astype(int))
     # s.ax[1].yaxis.set_minor_locator(MaxNLocator(nbins=4))
-    s.ax[1].set_ylabel('Frequency (mHz)')
+    s.ax[1].set_ylabel('Frequency (mHz)', fontsize=15)
+    s.ax[1].xaxis.get_label().set_fontsize(15)
+    s.ax[0].yaxis.get_label().set_fontsize(15)
     s.fig.tight_layout()
