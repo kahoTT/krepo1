@@ -251,10 +251,10 @@ class PredictData(object):
                         std = np.sqrt(2*params[2]**2)
                     elif method == 'norm':
                         std = params[2]
-                    if j > mean + 4 * std:
+                    if l > mean + 4 * std:
                         list_t2in.append(k)
                         list_r2in.append(l)
-                    elif j < mean - 4 * std:
+                    elif l < mean - 4 * std:
                         list_t2de.append(k)
                         list_r2de.append(l)
                 except:
@@ -305,6 +305,10 @@ class PredictData(object):
         ax[1].set_ylabel('Price')
         ax[1].set_xlabel('Days Since 2008 Jan 1')
         ax[1].legend()
+        a = np.arange(365, 365 * 5, 365)
+        for i in a:
+            ax[0].vlines(i, colors='red', ls='--', ymin=91, ymax=97)
+            ax[1].vlines(i, colors='red', ls='--', ymin=.6, ymax=1.1)
         
     def plot_log_return(self):
         """Plot time-series in log return space."""
